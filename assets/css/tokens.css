@@ -1,0 +1,174 @@
+/* Design tokens shared by every page.
+   Colours: Dragon Ink (dragon-ink.md). Fonts: IBM Plex Sans + Mono only (built by scripts/build-fonts.py).
+   See docs/DESIGN.md. */
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  src: url('../fonts/plex-sans-var.woff2') format('woff2');
+  font-weight: 100 700;
+  font-stretch: 85% 100%;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  src: url('../fonts/plex-mono-var.woff2') format('woff2');
+  font-weight: 100 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light;
+
+  /* type */
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-num: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --fs-xs: 0.75rem;     /* 12px  units, captions */
+  --fs-sm: 0.8125rem;   /* 13px  table cells, labels */
+  --fs-md: 0.9375rem;   /* 15px  body */
+  --fs-lg: 1.125rem;    /* 18px  section titles */
+  --fs-xl: 1.5rem;      /* 24px  page title */
+  --fs-2xl: 2.25rem;    /* 36px  key result */
+  --fs-3xl: clamp(2.75rem, 7vw, 4.75rem); /* start page wordmark */
+
+  /* spacing (4px grid) */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 64px;
+
+  /* radius: small parts small, containers larger */
+  --r-input: 4px; --r-button: 6px; --r-panel: 10px;
+
+  --appbar-h: 52px;
+  --gutter: clamp(16px, 3vw, 32px);
+
+  /* ---- Dragon Ink, light ---- */
+  --bg: #faf9f7;
+  --surface: #ffffff;
+  --surface-sunken: #f2f1ee;
+  --surface-hover: #e9e8e4;
+  --surface-inverse: #181616;
+  --border: #dedcd8;
+  --border-strong: #847f7a;
+  --text-strong: #181616;
+  --text: #282727;
+  --text-muted: #625e5a;
+  --text-inverse: #faf9f7;
+  --primary: #356177;
+  --primary-hover: #245065;
+  --on-primary: #ffffff;
+  --primary-subtle: #e4eff5;
+  --accent: #c3a76b;
+  --accent-text: #76602d;
+  --on-accent: #181616;
+  --accent-subtle: #f5eedc;
+  --success: #456f46;
+  --success-subtle: #e7f2e6;
+  --warning: #9a5a12;
+  --warning-subtle: #faecdd;
+  --danger: #b33736;
+  --danger-subtle: #fceae8;
+
+  /* status colours on surface-inverse (toasts): the other column */
+  --inverse-success: #87a987;
+  --inverse-warning: #e3a165;
+  --inverse-danger: #dd766f;
+
+  --chart-1: #2578a6;
+  --chart-2: #973f3a;
+  --chart-3: #a5802e;
+  --chart-4: #9b6196;
+  --chart-5: #4a844c;
+  --chart-6: #5a5a9f;
+  --chart-7: #b66d37;
+  --chart-8: #009592;
+
+  --shadow-pop: 0 6px 24px rgb(24 22 22 / 0.16);
+  --backdrop: rgb(24 22 22 / 0.45);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --bg: #181616;
+    --surface: #1d1c19;
+    --surface-sunken: #0d0c0c;
+    --surface-hover: #282727;
+    --surface-inverse: #e9e8e4;
+    --border: #393836;
+    --border-strong: #847f7a;
+    --text-strong: #e3e5e1;
+    --text: #c5c9c5;
+    --text-muted: #9e9b93;
+    --text-inverse: #181616;
+    --primary: #8ba4b0;
+    --primary-hover: #a1bcc9;
+    --on-primary: #181616;
+    --primary-subtle: #212d35;
+    --accent: #c4b28a;
+    --accent-text: #c4b28a;
+    --on-accent: #181616;
+    --accent-subtle: #332d1f;
+    --success: #87a987;
+    --success-subtle: #242f24;
+    --warning: #e3a165;
+    --warning-subtle: #3b2a1b;
+    --danger: #dd766f;
+    --danger-subtle: #3d2321;
+    --inverse-success: #456f46;
+    --inverse-warning: #9a5a12;
+    --inverse-danger: #b33736;
+    --chart-1: #4998c8;
+    --chart-2: #a64c46;
+    --chart-3: #b18c3b;
+    --chart-4: #b074aa;
+    --chart-5: #64a066;
+    --chart-6: #797ac2;
+    --chart-7: #c57b45;
+    --chart-8: #24a39f;
+    --shadow-pop: 0 6px 24px rgb(0 0 0 / 0.5);
+    --backdrop: rgb(13 12 12 / 0.6);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #181616;
+  --surface: #1d1c19;
+  --surface-sunken: #0d0c0c;
+  --surface-hover: #282727;
+  --surface-inverse: #e9e8e4;
+  --border: #393836;
+  --border-strong: #847f7a;
+  --text-strong: #e3e5e1;
+  --text: #c5c9c5;
+  --text-muted: #9e9b93;
+  --text-inverse: #181616;
+  --primary: #8ba4b0;
+  --primary-hover: #a1bcc9;
+  --on-primary: #181616;
+  --primary-subtle: #212d35;
+  --accent: #c4b28a;
+  --accent-text: #c4b28a;
+  --on-accent: #181616;
+  --accent-subtle: #332d1f;
+  --success: #87a987;
+  --success-subtle: #242f24;
+  --warning: #e3a165;
+  --warning-subtle: #3b2a1b;
+  --danger: #dd766f;
+  --danger-subtle: #3d2321;
+  --inverse-success: #456f46;
+  --inverse-warning: #9a5a12;
+  --inverse-danger: #b33736;
+  --chart-1: #4998c8;
+  --chart-2: #a64c46;
+  --chart-3: #b18c3b;
+  --chart-4: #b074aa;
+  --chart-5: #64a066;
+  --chart-6: #797ac2;
+  --chart-7: #c57b45;
+  --chart-8: #24a39f;
+  --shadow-pop: 0 6px 24px rgb(0 0 0 / 0.5);
+  --backdrop: rgb(13 12 12 / 0.6);
+}

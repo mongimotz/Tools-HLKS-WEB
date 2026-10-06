@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Druckverlust Lüftung – HLKS-Tools</title>
+  <meta name="description" content="Druckverlustberechnung für Lüftungskanäle: Teilstrecken, Formstücke, Einbauteile, kritischer Strang und Drosselbedarf." />
+  <script>try { const t = localStorage.getItem('hlks-tools:theme'); if (t && t !== 'system') document.documentElement.dataset.theme = t; } catch {}</script>
+  <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="../../assets/css/tokens.css" />
+  <link rel="stylesheet" href="../../assets/css/base.css" />
+  <link rel="stylesheet" href="style.css" />
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="appbar">
+    <a class="brand" href="../../" title="Zur Startseite">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5.2 7.6 18.8 12 5.2 16.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      HLKS-Tools
+    </a>
+    <span class="appbar-title">Druckverlust Lüftung</span>
+    <div class="appbar-actions">
+      <button class="btn ghost icon-only" data-action="undo" title="Rückgängig (Strg+Z)" aria-label="Rückgängig"></button>
+      <button class="btn ghost icon-only" data-action="redo" title="Wiederholen (Strg+Y)" aria-label="Wiederholen"></button>
+      <span class="appbar-sep"></span>
+      <button class="btn" data-action="open" title="PDF oder JSON öffnen (Strg+O)"></button>
+      <button class="btn primary" data-action="export-pdf" title="Bericht als PDF speichern, mit eingebetteten Daten (Strg+S)"></button>
+      <div class="menu" id="more-menu">
+        <button class="btn ghost icon-only" data-action="menu" aria-haspopup="true" aria-expanded="false" aria-label="Weitere Aktionen"></button>
+        <ul class="menu-list" role="menu">
+          <li><button data-action="new" role="menuitem">Neue Berechnung</button></li>
+          <li><button data-action="example" role="menuitem">Beispiel laden</button></li>
+          <li><hr /></li>
+          <li><button data-action="export-json" role="menuitem">Nur Daten speichern (JSON)</button></li>
+          <li><button data-action="export-csv" role="menuitem">Tabelle als CSV (Excel)</button></li>
+          <li><hr /></li>
+          <li><button data-action="theme" role="menuitem">Farbschema wechseln</button></li>
+        </ul>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <div id="file-banner" hidden></div>
+
+    <section class="block" aria-label="Projekt">
+      <div id="project"></div>
+    </section>
+
+    <section class="result-strip" id="summary" aria-live="polite" aria-label="Ergebnis"></section>
+
+    <nav class="tabs" role="tablist" aria-label="Ansicht">
+      <button class="tab" role="tab" data-tab="calc" aria-selected="true">Berechnung</button>
+      <button class="tab" role="tab" data-tab="catalogs" aria-selected="false">Kataloge &amp; Grenzwerte</button>
+      <button class="tab" role="tab" data-tab="method" aria-selected="false">Rechenweg</button>
+    </nav>
+
+    <div class="tab-panel" data-panel="calc">
+      <section class="block" aria-labelledby="system-title">
+        <div class="section-head"><h2 class="section-title" id="system-title">Anlage</h2><p>Gilt für alle Teilstrecken, sofern dort nichts anderes steht.</p></div>
+        <div id="system" class="system-grid"></div>
+      </section>
+
+      <section class="block" aria-labelledby="sections-title">
+        <div class="section-head">
+          <h2 class="section-title" id="sections-title">Teilstrecken</h2>
+          <p>Vom Ventilator weg erfassen. „Vorgänger“ bildet Abzweige ab.</p>
+          <div class="table-tools">
+            <label class="toggle"><input type="checkbox" id="toggle-details" /> Zwischenwerte zeigen</label>
+          </div>
+        </div>
+        <div class="table-wrap panel">
+          <table class="sections" id="sections-table"></table>
+        </div>
+        <div class="below-table">
+          <button class="btn" data-action="add-section"></button>
+          <span class="muted hint-keys">Enter springt eine Zeile tiefer, Strg+Z macht rückgängig.</span>
+        </div>
+      </section>
+
+      <section class="block" id="issues-block" aria-labelledby="issues-title" hidden>
+        <div class="section-head"><h2 class="section-title" id="issues-title">Hinweise</h2></div>
+        <ul class="issues" id="issues"></ul>
+      </section>
+
+      <section class="block charts" aria-label="Diagramme">
+        <figure class="panel chart-panel" id="profile-panel">
+          <figcaption><h3>Druckverlauf im kritischen Strang</h3><p class="muted">Reibung steigt linear über die Länge, Formstücke und Einbauteile als Sprung am Ende der Teilstrecke.</p></figcaption>
+          <div class="chart" id="profile-chart"></div>
+        </figure>
+        <figure class="panel chart-panel" id="network-panel">
+          <figcaption><h3>Strangschema</h3><p class="muted">Linienstärke nach Volumenstrom. Kritischer Strang hervorgehoben, an den Enden der Drosselbedarf. Klick öffnet die Teilstrecke.</p></figcaption>
+          <div class="chart network-scroll" id="network-chart"></div>
+        </figure>
+      </section>
+    </div>
+
+    <div class="tab-panel" data-panel="catalogs" hidden>
+      <p class="catalog-intro">Die Kataloge werden mit jeder Datei gespeichert. Änderungen hier gelten nur für diese Berechnung. Alle Werte sind Richtwerte; wo vorhanden, Herstellerangaben verwenden.</p>
+      <div id="catalogs" class="catalog-grid"></div>
+    </div>
+
+    <div class="tab-panel method" data-panel="method" hidden>
+      <div id="method"></div>
+    </div>
+  </main>
+
+  <div class="drop-overlay" aria-hidden="true"><span>PDF oder JSON loslassen zum Öffnen</span></div>
+</body>
+</html>

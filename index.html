@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HLKS-Tools</title>
+  <meta name="description" content="Rechenwerkzeuge für Heizung, Lüftung, Klima und Sanitär. Läuft im Browser, speichert PDF mit eingebetteten Daten." />
+  <script>try { const t = localStorage.getItem('hlks-tools:theme'); if (t && t !== 'system') document.documentElement.dataset.theme = t; } catch {}</script>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="assets/css/tokens.css" />
+  <link rel="stylesheet" href="assets/css/base.css" />
+  <link rel="stylesheet" href="assets/css/home.css" />
+  <script type="module" src="assets/js/home.js"></script>
+</head>
+<body class="home">
+  <div class="home-wrap">
+    <header class="intro">
+      <div class="intro-top">
+        <h1 class="wordmark">HLKS-Tools</h1>
+        <button class="btn ghost icon-only" id="theme-toggle"></button>
+      </div>
+      <p class="intro-text">Rechenwerkzeuge für Heizung, Lüftung, Klima und Sanitär. Alles läuft hier im Browser. Jede Berechnung wird als PDF gespeichert, und in diesem PDF stecken die Eingaben: einfach wieder öffnen und weiterrechnen.</p>
+    </header>
+
+    <main class="network" aria-label="Werkzeuge">
+      <div class="fan" aria-hidden="true">
+        <svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="27"/><path d="M18 17 L48 32 L18 47"/></svg>
+      </div>
+      <ol class="branches" id="tools"></ol>
+    </main>
+
+    <section class="open-file" aria-labelledby="open-title">
+      <h2 id="open-title">Berechnung öffnen</h2>
+      <p>PDF oder JSON aus HLKS-Tools hierher ziehen. Die Datei öffnet sich im passenden Werkzeug.</p>
+      <button class="btn primary" id="open-file"></button>
+    </section>
+  </div>
+
+  <footer class="home-foot">
+    <p>Daten bleiben auf diesem Gerät. Nichts wird hochgeladen.</p>
+    <p>Richtwerte ersetzen keine Herstellerangaben.</p>
+  </footer>
+
+  <div class="drop-overlay" aria-hidden="true"><span>PDF oder JSON loslassen zum Öffnen</span></div>
+</body>
+</html>

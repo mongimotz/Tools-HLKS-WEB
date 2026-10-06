@@ -1,0 +1,196 @@
+/* Start page. The tool list is drawn as a duct network: the fan feeds a main duct,
+   every tool is a branch. Ready tools get air; planned tools sit behind a closed damper. */
+
+.home-wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: clamp(32px, 7vw, 96px) var(--gutter) var(--sp-7);
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.25fr);
+  grid-template-areas: 'intro net' 'open net' '. net';
+  grid-template-rows: auto auto 1fr;
+  gap: var(--sp-7) clamp(32px, 7vw, 112px);
+  align-items: start;
+}
+.intro { grid-area: intro; }
+.network { grid-area: net; }
+.open-file { grid-area: open; }
+@media (max-width: 880px) {
+  .home-wrap { grid-template-columns: 1fr; grid-template-areas: 'intro' 'net' 'open'; grid-template-rows: auto; }
+}
+
+/* ---- intro -------------------------------------------------------------- */
+
+.intro-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); }
+.wordmark {
+  font-family: var(--font-sans);
+  font-stretch: 85%;
+  font-weight: 600;
+  color: var(--text-strong);
+  font-size: var(--fs-3xl);
+  line-height: 0.92;
+  letter-spacing: -0.015em;
+}
+.intro-text { margin-top: var(--sp-5); max-width: 44ch; font-size: 1.0625rem; color: var(--text); line-height: 1.55; }
+
+.open-file {
+  padding: var(--sp-5);
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--r-panel);
+  background: var(--surface);
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: start;
+}
+.open-file h2 { font-size: var(--fs-lg); }
+.open-file p { color: var(--text); font-size: var(--fs-sm); max-width: 40ch; margin-bottom: var(--sp-2); }
+body.is-dragging .open-file { border-color: var(--primary); background: var(--primary-subtle); }
+
+/* ---- duct network --------------------------------------------------------- */
+
+.network {
+  --fan: 64px;
+  --duct: 20px;
+  --wall: 2px;
+  --main-x: calc(var(--fan) / 2 - var(--duct) / 2);
+  --branch-end: 136px;
+  --steel: var(--text-muted);
+  --air: var(--primary);
+  position: relative;
+}
+@media (max-width: 520px) {
+  .network { --fan: 52px; --duct: 16px; --branch-end: 96px; }
+}
+
+.fan { width: var(--fan); height: calc(var(--fan) - 5px); }
+.fan svg { width: var(--fan); height: var(--fan); overflow: visible; display: block; }
+.fan circle { fill: var(--surface); stroke: var(--text-strong); stroke-width: 2.5; }
+.fan path { fill: none; stroke: var(--text-strong); stroke-width: 2.5; stroke-linejoin: round; transform-origin: 32px 32px; transform: rotate(90deg); }
+
+.branches { list-style: none; margin: 0; padding: 0; }
+.branch { position: relative; }
+.branch > a, .branch > div {
+  position: relative;
+  display: block;
+  min-height: 112px;
+  padding: var(--sp-5) 0 var(--sp-5) calc(var(--branch-end) + var(--sp-5));
+  color: inherit;
+  text-decoration: none;
+}
+
+/* main duct piece running through every row (two walls, air down the middle) */
+.branch::before {
+  content: '';
+  position: absolute;
+  left: var(--main-x);
+  top: 0;
+  bottom: 0;
+  width: var(--duct);
+  border-left: var(--wall) solid var(--steel);
+  border-right: var(--wall) solid var(--steel);
+  background: repeating-linear-gradient(to bottom, var(--air) 0 7px, transparent 7px 16px) center 0 / 2px 16px repeat-y;
+  animation: air-down 1.1s linear infinite;
+}
+.branch:last-child::before {
+  bottom: calc(50% - var(--duct) / 2);
+  border-bottom: var(--wall) solid var(--steel);
+}
+/* opening in the right wall where the branch leaves */
+.branch::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--main-x) + var(--duct) - var(--wall));
+  top: calc(50% - var(--duct) / 2 + var(--wall));
+  width: var(--wall);
+  height: calc(var(--duct) - 2 * var(--wall));
+  background: var(--bg);
+}
+
+/* branch duct */
+.duct {
+  position: absolute;
+  left: calc(var(--main-x) + var(--duct));
+  width: calc(var(--branch-end) - var(--main-x) - var(--duct));
+  top: calc(50% - var(--duct) / 2);
+  height: var(--duct);
+  border-top: var(--wall) solid var(--steel);
+  border-bottom: var(--wall) solid var(--steel);
+}
+.air {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% - 1px);
+  height: 2px;
+  background: repeating-linear-gradient(to right, var(--air) 0 7px, transparent 7px 16px) 0 0 / 16px 2px repeat-x;
+  animation: air-right 1.1s linear infinite;
+}
+
+/* supply diffuser at the end of the branch */
+.outlet {
+  position: absolute;
+  left: calc(var(--branch-end) - 1px);
+  top: calc(50% - 20px);
+  width: 9px;
+  height: 40px;
+  border: var(--wall) solid var(--steel);
+  border-radius: 1px;
+  background: repeating-linear-gradient(to bottom, transparent 0 4px, var(--steel) 4px 5px) center / 3px 100% no-repeat, var(--surface);
+}
+
+.tool-text { display: grid; gap: 4px; max-width: 52ch; }
+.tool-name { font-family: var(--font-sans); font-stretch: 85%; font-weight: 600; color: var(--text-strong); font-size: 1.5rem; line-height: 1.15; }
+.tool-summary { color: var(--text); }
+.tool-meta { font-size: var(--fs-xs); color: var(--text-muted); }
+
+/* ready tool: link, faster air on hover; its diffuser carries the page's one gold accent */
+.is-ready .outlet { background: repeating-linear-gradient(to bottom, transparent 0 4px, var(--on-accent) 4px 5px) center / 3px 100% no-repeat, var(--accent); }
+.is-ready a { cursor: pointer; }
+.is-ready a:hover .tool-name, .is-ready a:focus-visible .tool-name { color: var(--primary); }
+.is-ready a:hover .duct, .is-ready a:focus-visible .duct, .is-ready a:hover .outlet, .is-ready a:focus-visible .outlet { border-color: var(--primary); }
+.is-ready a:hover .air, .is-ready a:focus-visible .air { animation-duration: 0.45s; }
+.is-ready a:focus-visible { outline: none; }
+.is-ready a:focus-visible .tool-name { text-decoration: underline; }
+
+/* planned tool: closed damper, no air */
+.is-planned .air { display: none; }
+.is-planned .duct::before {
+  content: '';
+  position: absolute;
+  left: 22px;
+  top: calc(-1 * var(--wall) - 6px);
+  width: var(--wall);
+  height: calc(100% + 2 * var(--wall) + 12px);
+  background: var(--text);
+}
+.is-planned .duct::after {
+  content: '';
+  position: absolute;
+  left: 19px;
+  top: calc(50% - 4px);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: var(--wall) solid var(--text);
+  box-sizing: border-box;
+}
+.is-planned .tool-name { color: var(--text); }
+.is-planned .tool-summary { color: var(--text-muted); }
+
+@keyframes air-down { to { background-position: center 16px; } }
+@keyframes air-right { to { background-position: 16px 0; } }
+
+/* ---- footer ----------------------------------------------------------------- */
+
+.home-foot {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--sp-5) var(--gutter) var(--sp-7);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-6);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
