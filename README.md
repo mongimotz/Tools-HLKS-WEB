@@ -1,50 +1,105 @@
 # HLKS-Tools
 
-Browser-based calculation tools for HVAC (Heizung, Lüftung, Klima, Sanitär). Static site, no build step, no server. Every result is saved as a PDF report with the inputs embedded as `data.json`, so the PDF can be opened again and edited.
+Rechenwerkzeuge für Heizung, Lüftung, Klima und Sanitär. Die Werkzeuge laufen im Browser. Es gibt keinen Server und keine Anmeldung. Die Daten bleiben auf deinem Gerät, nichts wird hochgeladen.
 
-## Tools
+## Werkzeuge
 
-| Tool | Status |
+| Werkzeug | Inhalt | Stand |
+|---|---|---|
+| Druckverlust Lüftung | Teilstrecken mit Formstücken und Einbauteilen, kritischer Strang, Drosselbedarf, Reserve des Ventilators | Testversion |
+| Kanalrechner | Kanal- und Rohrdimensionen aus Volumenstrom und Geschwindigkeit | geplant |
+| Schalldämpfer | Auslegung mit Schallpegel im Oktavband | geplant |
+| Monoblock | Ventilatorleistung, Heiz- und Kühlleistung, Befeuchtung, Filter | geplant |
+| Dämmung | Abschätzung der Dämmstärke für Leitungen und Kanäle | geplant |
+
+Auf der Startseite zeigt eine Lüftungsleitung die Werkzeuge. Ein Werkzeug mit Luft im Abzweig ist bereit. Ein Werkzeug hinter einer geschlossenen Klappe ist geplant. Unter einem Werkzeug steht der Name der letzten Berechnung, wenn dieser Browser einen Entwurf gespeichert hat.
+
+## Speichern und öffnen
+
+- **PDF** speichert einen Bericht. Die PDF enthält die Eingaben als Anhang `data.json`.
+- **Öffnen** (Ordner-Symbol) liest eine PDF oder JSON aus HLKS-Tools. Du kannst die Datei auch auf die Seite ziehen. Auf der Startseite öffnet sich die Datei im passenden Werkzeug.
+- Bewahre die Original-PDF auf. Wenn ein anderes Programm die PDF neu druckt oder neu speichert, geht der Anhang oft verloren.
+- Der Browser speichert die laufende Berechnung als Entwurf. Der Entwurf gilt nur für diesen Browser auf diesem Gerät.
+- Das Menü ⋯ enthält: Neue Berechnung, Beispiel laden, JSON speichern (nur Daten), CSV speichern (Tabelle für Excel, Trennzeichen Semikolon).
+- Das Werkzeug rechnet die Ergebnisse nach dem Öffnen neu. Stammt die Datei aus einer anderen Berechnungsversion, erscheint ein Hinweis mit beiden Versionen. Weicht das Ergebnis ab, zeigt der Hinweis auch den alten und den neuen Wert.
+
+## Druckverlust Lüftung
+
+### Eingabe
+
+1. Trage die Anlage ein: Strömungsrichtung, Höhe, Lufttemperatur, Feuchte, verfügbare Pressung des Ventilators und Zuschlag.
+2. Erfasse die Teilstrecken vom Ventilator weg. Jede Teilstrecke hat einen Vorgänger in Richtung Ventilator.
+3. Für einen Abzweig drücke das Abzweig-Symbol in der Zeile. Die neue Teilstrecke hängt an dieser Zeile.
+4. Öffne mit dem Pfeil links die Details einer Teilstrecke: Formstücke, Einbauteile, eigene Temperatur, Bemerkung, Dimensionierung und Zwischenwerte.
+
+Die Strömungsrichtung „Ventilator → Auslass“ gilt für Zuluft und Fortluft (Überdruck). „Einlass → Ventilator“ gilt für Abluft und Aussenluft (Unterdruck). Die Richtung bestimmt, wie das Werkzeug Querschnittsänderungen rechnet.
+
+### Symbole
+
+| Symbol | Bedeutung |
 |---|---|
-| Druckverlust Lüftung (`tools/duct-pressure-loss/`) | test version |
-| Kanalrechner, Schalldämpfer, Monoblock, Dämmung | planned |
+| ↶ ↷ | Rückgängig, Wiederholen |
+| Ordner | Öffnen |
+| ↓ PDF | PDF speichern |
+| ⋯ | Weitere Aktionen |
+| Halbkreis, Sonne, Mond | Farbschema: System, Hell, Dunkel |
+| Abzweig | Neue Teilstrecke, die an dieser Zeile hängt |
+| Papierkorb | Teilstrecke löschen. Die Meldung danach hat ein Symbol für Rückgängig. |
+| ↺ | Katalog auf Standardwerte setzen |
+| → in den Hinweisen | Springt zur Teilstrecke |
+| ↑ hinter v | Geschwindigkeit über dem Grenzwert |
+| TS | Teilstrecke |
 
-### Druckverlust Lüftung – what is new compared to the Excel sheet
+### Tastatur
 
-- **Branched networks:** every section has a predecessor ("Vorgänger"). The tool finds the critical path and the throttling needed at every other end ("Drosselbedarf").
-- **Exact Colebrook-White** (iterative) instead of the Zanke approximation. Churchill, Haaland, Swamee-Jain and Zanke are selectable for comparison.
-- **Fitting catalogue** with ζ values per section (count × ζ, override per entry), plus computed transitions to the predecessor (Borda-Carnot / contraction).
-- **Components with fixed Δp** (filter, silencer, fire damper, VAV, diffuser …).
-- **Air state:** standard atmosphere pressure, humidity, per-section temperature (Excel used 0 °C for rows without a temperature).
-- **Fan check:** available pressure, safety margin, reserve or shortfall.
-- **Sizing help:** smallest standard round duct and rectangular sizes that keep v ≤ v_max, one click to apply.
-- **Checks:** velocity limit, aspect ratio, flow continuity at branches, laminar/transition regime.
-- Pressure profile along the critical path, network schematic, undo/redo, local draft autosave, CSV export for Excel.
+| Taste | Wirkung |
+|---|---|
+| Enter, Umschalt+Enter | Gleiche Spalte, eine Zeile tiefer oder höher |
+| Strg+Z, Strg+Y | Rückgängig, Wiederholen |
+| Strg+S | PDF speichern |
+| Strg+O | Öffnen |
 
-## Run locally
+### Ergebnisse
 
-ES modules need http (not `file://`):
+- Der Balken oben zeigt den Druckverlust im kritischen Strang, aufgeteilt in Reibung, Formstücke, Einbauteile und Zuschlag. Der Strich im Balken ist die verfügbare Pressung.
+- Der Druckverlauf zeigt den kritischen Strang. Die Reibung steigt linear über die Länge. Formstücke und Einbauteile erscheinen als Sprung am Ende der Teilstrecke.
+- Das Strangschema zeigt das Netz. Die Linienstärke folgt dem Volumenstrom. Der kritische Strang ist farbig. An den übrigen Enden steht der Drosselbedarf. Ein Klick auf eine Teilstrecke öffnet ihre Zeile.
+- Ein farbiger Strich links in der Tabelle markiert den kritischen Strang. Ein roter Strich markiert eine Teilstrecke mit Fehler.
+
+### Kataloge
+
+Die Kataloge enthalten Materialien, Formstücke, Vorlagen für Einbauteile, Grenzgeschwindigkeiten und das maximale Seitenverhältnis. Jede Datei speichert ihre Kataloge mit. Eine Änderung gilt deshalb nur für diese Berechnung.
+
+Alle Werte sind Richtwerte. Massgebend sind die Herstellerangaben.
+
+### Rechenweg
+
+Formeln, Ansätze und Grenzen der Berechnung: [docs/duct-pressure-loss-method.md](docs/duct-pressure-loss-method.md).
+
+## Entwicklung
+
+Das Projekt braucht keinen Build-Schritt. Node 20 oder neuer genügt, es gibt keine Abhängigkeiten zum Installieren.
 
 ```bash
 npm run serve
 ```
 
-Then open http://localhost:8080/. Node 20+ is the only requirement; there are no dependencies to install.
-
-## Test
+Danach läuft die Seite unter http://localhost:8080/.
 
 ```bash
 npm test
 ```
 
-Covers the calculation (reference values, the original Excel row, network sums), the JSON envelope, the PDF round trip (export → import → export keeps the data identical) and regression against the reference PDFs in `tests/fixtures/`.
+Die Tests prüfen die Berechnung, das Dateiformat, die PDF (speichern, öffnen, wieder speichern) und die Referenz-PDFs in `tests/fixtures/`.
 
-## Deploy (GitHub Pages)
+Regeln für Mitwirkende und Agenten: [AGENTS.md](AGENTS.md). Gestaltung: [docs/DESIGN.md](docs/DESIGN.md) und [docs/dragon-ink.md](docs/dragon-ink.md).
 
-Push to `main` and enable Pages for the `main` branch (root). `.nojekyll` is included. For an own domain add a `CNAME` file later.
+### Veröffentlichen
 
-## Notes
+GitHub Pages veröffentlicht den Zweig `main` (Ordner root). Die Datei `.nojekyll` ist vorhanden. Pages braucht ein öffentliches Repository oder GitHub Pro. Für eine eigene Domain kommt später eine Datei `CNAME` dazu.
 
-- Conventions for contributors and agents: `AGENTS.md`. Design rules: `docs/DESIGN.md`. Original idea and plan: `IDEA.md`.
-- Colours: `dragon-ink.md`. Fonts: IBM Plex Sans + Mono only.
-- Third-party: pdf-lib (MIT, `lib/vendor/pdf-lib/`), @pdf-lib/fontkit + pako (MIT, `lib/vendor/fontkit/`), IBM Plex fonts (SIL OFL, `assets/fonts/`).
+## Lizenzen
+
+- pdf-lib (MIT): `lib/vendor/pdf-lib/`
+- @pdf-lib/fontkit und pako (MIT): `lib/vendor/fontkit/`
+- IBM Plex Sans und Mono (SIL Open Font License): `assets/fonts/`

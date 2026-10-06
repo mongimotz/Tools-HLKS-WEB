@@ -28,7 +28,7 @@ const label = (nrOf, id) => nrOf(id) || '?';
 export function renderProfile(el, result, inputs, nrOf) {
   const path = result.path.map((id) => result.sections.get(id));
   if (!path.length || result.totals.critical <= 0) {
-    el.innerHTML = '<p class="chart-empty">Noch keine berechneten Teilstrecken.</p>';
+    el.innerHTML = '';
     return;
   }
   const W = Math.max(320, el.clientWidth || 640);
@@ -83,7 +83,7 @@ export function renderProfile(el, result, inputs, nrOf) {
       lastLabelX = xm;
     }
   }
-  svg += `<text class="axis-title" x="${W - m.right}" y="${H - 4}" text-anchor="end">${useLength ? 'Weg ab Ventilator in m · Teilstrecken' : 'Teilstrecken'}</text>`;
+  svg += `<text class="axis-title" x="${W - m.right}" y="${H - 4}" text-anchor="end">${useLength ? 'm ab Ventilator' : 'Teilstrecken'}</text>`;
   if (useLength) svg += `<text class="tick" x="${sx(xMax)}" y="${sy(0) + 30}" text-anchor="end">${fmt(xMax, 0)} m</text>`;
   // reference line: available pressure
   if (showAvailable) {
@@ -143,7 +143,7 @@ export function renderProfile(el, result, inputs, nrOf) {
 export function renderNetwork(el, result, inputs, nrOf, onSelect) {
   const ids = result.order;
   if (!ids.length) {
-    el.innerHTML = '<p class="chart-empty">Noch keine Teilstrecken.</p>';
+    el.innerHTML = '';
     return;
   }
   const res = result.sections;
@@ -197,9 +197,9 @@ export function renderNetwork(el, result, inputs, nrOf, onSelect) {
     svg += `<path class="${cls}" stroke-width="${width(r)}" d="M${xa},${y} H${xb}"/>`;
     svg += `<circle class="node ${r.critical ? 'is-critical' : ''}" cx="${xb}" cy="${y}" r="3.5"/>`;
     svg += `<text class="seg-nr" x="${(xa + xb) / 2}" y="${y - 10}" text-anchor="middle">${esc(label(nrOf, id))}</text>`;
-    svg += `<text class="seg-val" x="${(xa + xb) / 2}" y="${y + 19}" text-anchor="middle">${r.status === 'ok' ? `${fmt(r.flow, 0)} m³/h` : 'unvollständig'}</text>`;
+    svg += `<text class="seg-val" x="${(xa + xb) / 2}" y="${y + 19}" text-anchor="middle">${r.status === 'ok' ? `${fmt(r.flow, 0)} m³/h` : '–'}</text>`;
     if (r.terminal) {
-      const t = r.critical ? `${fmt(r.cum, 0)} Pa · kritisch` : `${fmt(r.cum, 0)} Pa · Drossel ${fmt(r.throttle, 0)} Pa`;
+      const t = r.critical ? `${fmt(r.cum, 0)} Pa` : `${fmt(r.cum, 0)} Pa · Drossel ${fmt(r.throttle, 0)} Pa`;
       svg += `<text class="seg-end ${r.critical ? 'is-critical' : ''}" x="${xb + 10}" y="${y + 4}">${t}</text>`;
     }
     svg += `<rect class="hit" x="${xa}" y="${y - 24}" width="${xb - xa + 4}" height="48"/>`;

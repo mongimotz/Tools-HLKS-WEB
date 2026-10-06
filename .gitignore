@@ -2,6 +2,3 @@ node_modules/
 .DS_Store
 Thumbs.db
 *.log
-
-# full font package; only the subsets in assets/fonts/ are used (scripts/build-fonts.py)
-IBM Plex/

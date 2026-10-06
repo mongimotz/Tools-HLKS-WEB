@@ -3,7 +3,7 @@
 import { buildPdf, INK } from '../../lib/core/pdf.js';
 import { fmt, fmtSig, fmtDate } from '../../lib/core/format.js';
 import { CALC_VERSION, airState } from './calc.js';
-import { TOOL_NAME, METHOD_LABELS, DIRECTION_SHORT, issueText } from './labels.js';
+import { TOOL_NAME, METHOD_LABELS, DIRECTION_LABELS, issueText } from './labels.js';
 
 function nrMap(sections) {
   const m = new Map();
@@ -30,7 +30,6 @@ export async function buildReport(doc, result, envelope) {
     // ---- title & project ------------------------------------------------------
     w.y += 8;
     w.text('Druckverlustberechnung Lüftung', w.left, w.y + 14, { size: 17, bold: true, color: INK.strong });
-    w.rect(w.left, w.y + 20, 36, 2, { fill: INK.accent });
     w.y += 24;
     if (system.name) w.text(system.name, w.left, w.y + 12, { size: 11, color: INK.text });
     w.y += 20;
@@ -41,7 +40,7 @@ export async function buildReport(doc, result, envelope) {
         ['Projekt-Nr.', project.number],
         ['Bearbeitung', project.author],
         ['Datum', fmtDate(project.date)],
-        ['Strömungsrichtung', DIRECTION_SHORT[system.direction]],
+        ['Strömungsrichtung', DIRECTION_LABELS[system.direction]],
         ['Höhe / Luft', `${fmt(system.altitude, 0)} m ü. M., ${fmt(system.temperature, 1)} °C, ${fmt(system.humidity, 0)} % r. F.`],
         ['Luftdichte (Anlage)', `${fmt(air.density, 3)} kg/m³ bei ${fmt(air.pressure / 100, 0)} hPa`],
         ['Reibungsbeiwert λ', METHOD_LABELS[system.frictionMethod] ?? system.frictionMethod],
@@ -90,7 +89,7 @@ export async function buildReport(doc, result, envelope) {
         dimText(s),
         fmt(s.length, 1),
         ok ? fmt(r.dh * 1000, 0) : '',
-        ok ? { text: fmt(r.velocity, 2), color: over ? INK.danger : undefined, bold: over } : '',
+        ok ? { text: over ? `${fmt(r.velocity, 2)} ↑` : fmt(r.velocity, 2), color: over ? INK.danger : undefined, bold: over } : '',
         ok ? fmt(r.vmax, 1) : '',
         ok ? fmt(r.gradient, 2) : '',
         ok ? fmt(r.zetaSum, 2) : '',
@@ -99,7 +98,7 @@ export async function buildReport(doc, result, envelope) {
         fmt(r?.dpComponents ?? 0, 1),
         fmt(r?.dp ?? 0, 1),
         { text: fmt(r?.cum ?? 0, 1), bold: true },
-        r?.terminal ? (r.critical ? 'krit.' : fmt(r.throttle, 1)) : '',
+        r?.terminal ? fmt(r.throttle, 1) : '',
         s.note,
       ];
     });
@@ -129,7 +128,8 @@ export async function buildReport(doc, result, envelope) {
       rowStyle: (i) => (result.sections.get(sections[i].id)?.critical ? { fill: INK.primarySubtle } : {}),
     });
     w.space(4);
-    w.text('Blau hinterlegt: kritischer Strang. Drossel: Drosselbedarf am Strangende, damit alle Stränge denselben Druckverlust haben.', w.left, w.y + 8, { size: 7, color: INK.muted });
+    w.rect(w.left, w.y + 2.5, 14, 7, { fill: INK.primarySubtle });
+    w.text('kritischer Strang', w.left + 18, w.y + 8.5, { size: 7, color: INK.muted });
     w.y += 12;
 
     // ---- pressure profile ------------------------------------------------------------
@@ -180,7 +180,7 @@ export async function buildReport(doc, result, envelope) {
         .map((r) => {
           const p = [];
           for (let c = r; c; c = c.parent ? result.sections.get(c.parent) : null) p.unshift(nr.get(c.id));
-          return [nr.get(r.id), p.join(' → '), fmt(r.cum, 1), r.critical ? 'kritischer Strang' : fmt(r.throttle, 1)];
+          return [nr.get(r.id), p.join(' → '), fmt(r.cum, 1), fmt(r.throttle, 1)];
         });
       w.table({
         columns: [
@@ -204,18 +204,21 @@ export async function buildReport(doc, result, envelope) {
     }
 
     // ---- basis ------------------------------------------------------------------------------
-    w.heading('Berechnungsgrundlagen');
+    w.heading('Grundlagen');
     const usedMaterials = [...new Set(sections.map((s) => s.material))].map((id) => materials.get(id)).filter(Boolean);
-    w.paragraph(
-      [
-        `Luftdichte für feuchte Luft aus Luftdruck der Normatmosphäre auf ${fmt(system.altitude, 0)} m ü. M., Temperatur und relativer Feuchte; Viskosität nach Sutherland.`,
-        `Rohrreibung nach Darcy-Weisbach mit hydraulischem Durchmesser, λ nach ${METHOD_LABELS[system.frictionMethod] ?? system.frictionMethod}, laminar 64/Re unter Re = 2320.`,
-        'Formstücke: Δp = Σζ · ρ/2 · v², ζ bezogen auf die Geschwindigkeit der jeweiligen Teilstrecke. Querschnittsänderungen aus den Geschwindigkeiten der angrenzenden Teilstrecken (Borda-Carnot bzw. Einschnürung).',
-        `Rauigkeiten: ${usedMaterials.map((m) => `${m.name} k = ${fmtSig(m.roughness, 3)} mm`).join('; ') || '–'}.`,
-        'ζ-Werte und Druckverluste der Einbauteile sind Richtwerte; massgebend sind die Herstellerangaben.',
-      ].join('\n'),
-      { size: 7.5 },
-    );
+    w.table({
+      columns: [
+        { label: 'Grösse', width: 120 },
+        { label: 'Ansatz', width: 640 },
+      ],
+      rows: [
+        ['Luftdichte', 'feuchte Luft, Luftdruck nach Normatmosphäre, Viskosität nach Sutherland'],
+        ['Reibung', `Darcy-Weisbach mit dh, λ nach ${METHOD_LABELS[system.frictionMethod] ?? system.frictionMethod}, laminar 64/Re (Re < 2320)`],
+        ['Formstücke', 'Δp = Σζ · ρ/2 · v² mit v der Teilstrecke; Querschnittsänderung nach Borda-Carnot / Einschnürung'],
+        ['Rauigkeit', usedMaterials.map((m) => `${m.name} k = ${fmtSig(m.roughness, 3)} mm`).join('; ') || '–'],
+        ['ζ, Δp Einbauteile', 'Richtwerte, Herstellerangaben massgebend'],
+      ],
+    });
   };
 
   const decorate = (w, i, total) => {
@@ -228,7 +231,7 @@ export async function buildReport(doc, result, envelope) {
     const fy = w.pageH - 24;
     w.line(w.left, fy - 10, w.right, fy - 10, { color: INK.border, width: 0.4 });
     w.text(
-      `Berechnungsversion ${CALC_VERSION}. Die Eingabedaten sind in dieser PDF eingebettet (data.json): Datei in HLKS-Tools öffnen, um weiterzuarbeiten.`,
+      `Berechnungsversion ${CALC_VERSION} · Eingaben eingebettet (data.json)`,
       w.left,
       fy,
       { size: 6.5, color: INK.muted, maxWidth: w.contentWidth - 80 },
@@ -258,7 +261,7 @@ function drawProfile(w, result, nr) {
   const t = result.totals;
   if (!path.length || t.critical <= 0) return;
   const H = 150;
-  w.heading('Druckverlauf im kritischen Strang', { keepWith: H + 30 });
+  w.heading('Druckverlauf kritischer Strang', { keepWith: H + 30 });
   const m = { left: w.left + 40, right: w.right - 10, top: w.y + 6, bottom: w.y + H };
   const useLength = t.length > 0;
   let x = 0;
@@ -302,6 +305,6 @@ function drawProfile(w, result, nr) {
   }
   w.polyline(pts, { color: INK.chart1, width: 1.4 });
   w.text(`${fmt(t.critical, 1)} Pa`, sx(xMax) - 4, sy(t.critical) - 4, { size: 7, bold: true, align: 'right' });
-  w.text(useLength ? `Weg ab Ventilator in m (gesamt ${fmt(xMax, 1)} m), Teilstrecken` : 'Teilstrecken', m.right, m.bottom + 20, { size: 6.5, color: INK.muted, align: 'right' });
+  w.text(useLength ? `m ab Ventilator (${fmt(xMax, 1)} m)` : 'Teilstrecken', m.right, m.bottom + 20, { size: 6.5, color: INK.muted, align: 'right' });
   w.y = m.bottom + 26;
 }

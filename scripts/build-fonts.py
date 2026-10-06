@@ -1,9 +1,9 @@
 """Build the font files used by the site from the IBM Plex package.
 
 Run once when the fonts change (needs Python with fonttools and brotli):
-    python scripts/build-fonts.py ["path/to/IBM Plex"]
+    python scripts/build-fonts.py
 
-Input: the IBM Plex download (default: ./IBM Plex), variable Sans and Mono.
+Input: assets/fonts/source/ (variable IBM Plex Sans and Mono, roman, from the official IBM Plex package).
 Output:
   assets/fonts/plex-sans-var.woff2, plex-mono-var.woff2   web fonts (variable weight; Sans also width)
   assets/fonts/pdf/plex-sans-{400,600}.ttf, plex-mono-{400,600}.ttf   static fonts embedded in PDF reports
@@ -19,16 +19,16 @@ from fontTools.ttLib import TTFont
 from fontTools.varLib import instancer
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "IBM Plex"
 OUT = ROOT / "assets" / "fonts"
+SRC = OUT / "source"
 
 UNICODES = (
     "U+0000-00FF,U+0100-017F,U+0131,U+0152-0153,U+02C6-02DC,U+0300-036F,U+0370-03FF,"
     "U+2000-206F,U+2070-209F,U+20AC,U+2100-214F,U+2190-21FF,U+2200-22FF,U+FFFD"
 )
 
-SANS = SRC / "Sans" / "Variable" / "IBM Plex Sans Var-Roman.ttf"
-MONO = SRC / "Mono" / "Variable" / "IBM Plex Mono Var-Roman.ttf"
+SANS = SRC / "IBMPlexSans-Var-Roman.ttf"
+MONO = SRC / "IBMPlexMono-Var-Roman.ttf"
 
 
 def subset_font(font: TTFont, flavor: str | None) -> TTFont:

@@ -1,6 +1,8 @@
 /* Duct pressure loss tool. Builds on tokens.css + base.css. */
 
-.page { max-width: 1680px; margin: 0 auto; padding: var(--sp-5) var(--gutter) var(--sp-8); display: grid; gap: var(--sp-5); }
+.page { max-width: 1680px; margin: 0 auto; padding: var(--sp-5) var(--gutter) var(--sp-8); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-5); }
+.tab-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-5); }
+.tab-panel[hidden] { display: none; }
 .block { min-width: 0; }
 
 .appbar-result { font-size: var(--fs-sm); color: var(--text); white-space: nowrap; }
@@ -17,7 +19,6 @@
   padding: var(--sp-4) var(--sp-5);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-left: 4px solid var(--accent);
   border-radius: var(--r-panel);
 }
 .rs-label { display: block; font-size: var(--fs-xs); color: var(--text); font-weight: 500; }
@@ -28,7 +29,6 @@
 .rs-reserve .rs-value .icon { align-self: center; width: 18px; height: 18px; }
 .rs-reserve.is-good .rs-value { color: var(--success); }
 .rs-reserve.is-bad .rs-value { color: var(--danger); }
-.rs-reserve.is-none p { font-size: var(--fs-xs); max-width: 24ch; }
 
 .rs-bar { min-width: 0; }
 .bar-track { position: relative; display: flex; gap: 2px; height: 18px; background: var(--surface-sunken); border-radius: 4px; }
@@ -85,10 +85,10 @@ table.sections { border-collapse: separate; border-spacing: 0; width: 100%; font
 
 .c-exp { width: 28px; padding-left: 8px !important; }
 .c-nr { width: 74px; }
-.c-nr .cell-input { padding-left: calc(6px + var(--depth, 0) * 8px); }
-.c-parent { width: 112px; }
-.c-shape { width: 96px; }
-.c-mat { width: 196px; }
+.c-nr .cell-input { min-width: 64px; padding-left: calc(6px + var(--depth, 0) * 8px); }
+.c-parent .cell-select { min-width: 104px; }
+.c-shape .cell-select { min-width: 76px; }
+.c-mat .cell-select { min-width: 184px; }
 .c-num .cell-input { width: 74px; }
 .c-dim .cell-input { width: 64px; }
 .c-len .cell-input { width: 56px; }
@@ -145,7 +145,6 @@ tr.sec-row.flash td { animation: flash 900ms ease-out; }
 @keyframes flash { from { background: var(--primary-subtle); } }
 
 .below-table { display: flex; align-items: center; gap: var(--sp-4); margin-top: var(--sp-3); flex-wrap: wrap; }
-.hint-keys { font-size: var(--fs-xs); }
 
 /* ---- detail row ------------------------------------------------------------ */
 
@@ -195,9 +194,7 @@ table.mini { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
 @media (min-width: 1200px) { .charts { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } }
 .chart-panel { margin: 0; padding: var(--sp-4) var(--sp-4) var(--sp-3); min-width: 0; }
 .chart-panel h3 { font-size: var(--fs-md); }
-.chart-panel figcaption p { font-size: var(--fs-xs); margin-top: 2px; max-width: 70ch; }
 .chart { position: relative; margin-top: var(--sp-3); }
-.chart-empty { color: var(--text-muted); font-size: var(--fs-sm); padding: var(--sp-6) 0; text-align: center; }
 .network-scroll { overflow-x: auto; }
 
 svg .grid { stroke: var(--border); stroke-width: 1; }
@@ -242,25 +239,11 @@ svg.network .seg:focus-visible .seg-nr { text-decoration: underline; }
 
 /* ---- catalogues --------------------------------------------------------------- */
 
-.catalog-intro { font-size: var(--fs-sm); color: var(--text); max-width: 80ch; padding-top: var(--sp-2); }
 .catalog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: var(--sp-4); align-items: start; }
 @media (max-width: 520px) { .catalog-grid { grid-template-columns: 1fr; } }
 .catalog { padding: var(--sp-4); display: grid; gap: var(--sp-3); }
 .catalog header { display: flex; align-items: center; justify-content: space-between; }
 .catalog h3 { font-size: var(--fs-md); }
-.catalog > p { font-size: var(--fs-xs); }
 .catalog .unit { color: var(--text-muted); font-weight: 400; }
 .catalog > .btn { justify-self: start; }
-
-/* ---- method text ---------------------------------------------------------------- */
-
-.method-text { max-width: 76ch; padding-top: var(--sp-2); font-size: var(--fs-md); }
-.method-text .lead { color: var(--text); }
-.method-text h3 { font-size: var(--fs-lg); margin: var(--sp-6) 0 var(--sp-2); }
-.method-text p, .method-text ul { margin: 0 0 var(--sp-3); }
-.method-text li { margin-bottom: 4px; }
-.method-text .formula {
-  font-family: var(--font-num); font-size: var(--fs-sm); background: var(--surface);
-  border: 1px solid var(--border); border-left: 3px solid var(--primary-subtle);
-  border-radius: var(--r-input); padding: 8px 12px; overflow-x: auto; white-space: nowrap;
-}
+.catalog-grid { padding-top: var(--sp-2); }

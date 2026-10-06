@@ -55,7 +55,7 @@ test('laminar flow uses 64/Re (except Churchill, which is continuous)', () => {
 });
 
 test('Excel reference row (Zanke, dry air) is reproduced within 0.3 %', () => {
-  // DRUCKVERLUSTBERECHNUNG_VEREINFACHT.xlsx, row 5. Excel uses a slightly different barometric
+  // Original Excel sheet (DRUCKVERLUSTBERECHNUNG_VEREINFACHT.xlsx, not in the repo), row 5. Excel uses a slightly different barometric
   // formula (95 163 Pa instead of 95 003 Pa at 540 m), hence the tolerance.
   const inputs = normalizeInputs({
     system: { altitude: 540, temperature: 21, humidity: 0, frictionMethod: 'zanke' },

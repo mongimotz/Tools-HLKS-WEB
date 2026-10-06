@@ -16,13 +16,13 @@ test('create and parse an envelope', () => {
 test('reject foreign JSON and broken files', () => {
   assert.throws(() => parseEnvelope('{"hello":1}'), EnvelopeError);
   assert.throws(() => parseEnvelope('not json'), EnvelopeError);
-  assert.throws(() => parseEnvelope({ ...createEnvelope(base), envelopeVersion: 99 }), /neueren Version/);
+  assert.throws(() => parseEnvelope({ ...createEnvelope(base), envelopeVersion: 99 }), (e) => e.code === 'envelope-too-new');
 });
 
 test('compatibility: newer input version is refused, other calc version gives a note', () => {
   const env = createEnvelope(base);
-  assert.throws(() => checkCompatibility({ ...env, version: 2 }, { tool: 'demo', version: 1, calcVersion: '1.0.0' }), /neueren Version/);
-  assert.throws(() => checkCompatibility(env, { tool: 'other', version: 1, calcVersion: '1.0.0' }), /anderen Tool/);
+  assert.throws(() => checkCompatibility({ ...env, version: 2 }, { tool: 'demo', version: 1, calcVersion: '1.0.0' }), (e) => e.code === 'version-too-new');
+  assert.throws(() => checkCompatibility(env, { tool: 'other', version: 1, calcVersion: '1.0.0' }), (e) => e.code === 'wrong-tool');
   assert.deepEqual(checkCompatibility(env, { tool: 'demo', version: 1, calcVersion: '1.0.0' }), []);
   assert.equal(checkCompatibility({ ...env, calcVersion: '0.9.0' }, { tool: 'demo', version: 1, calcVersion: '1.0.0' }).length, 1);
 });

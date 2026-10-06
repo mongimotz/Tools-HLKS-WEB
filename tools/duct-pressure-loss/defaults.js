@@ -45,8 +45,8 @@ export function defaultFittings() {
     { id: 'inlet-rounded', name: 'Einströmung abgerundet', group: 'any', kind: 'zeta', zeta: 0.05 },
     { id: 'outlet-free', name: 'Ausströmung in den Raum', group: 'any', kind: 'zeta', zeta: 1.0 },
     { id: 'damper-open', name: 'Absperrklappe offen', group: 'any', kind: 'zeta', zeta: 0.2 },
-    { id: 'transition-sudden', name: 'Querschnittsänderung zum Vorgänger, sprunghaft', group: 'any', kind: 'transition', factor: 1 },
-    { id: 'transition-conical', name: 'Querschnittsänderung zum Vorgänger, konisch', group: 'any', kind: 'transition', factor: 0.3 },
+    { id: 'transition-sudden', name: 'Querschnittsänderung sprunghaft', group: 'any', kind: 'transition', factor: 1 },
+    { id: 'transition-conical', name: 'Querschnittsänderung konisch', group: 'any', kind: 'transition', factor: 0.3 },
   ];
 }
 

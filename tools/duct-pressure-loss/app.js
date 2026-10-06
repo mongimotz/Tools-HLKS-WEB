@@ -23,17 +23,16 @@ import {
   defaultCatalogs,
   normalizeSection,
 } from './defaults.js';
-import { TOOL_NAME, METHOD_LABELS, DIRECTION_LABELS, GROUP_LABELS, issueText } from './labels.js';
+import { METHOD_LABELS, DIRECTION_LABELS, GROUP_LABELS, SEVERITY_LABELS, issueText } from './labels.js';
 import { renderProfile, renderNetwork } from './charts.js';
 import { buildCsv } from './csv.js';
-import { methodHtml } from './method.js';
 import { DocumentStore } from '../../lib/core/store.js';
 import { fmt, fmtSig, fmtExpParts, parseNum, toInputValue, todayIso } from '../../lib/core/format.js';
 import { createEnvelope, checkCompatibility, normalizeProject, EnvelopeError } from '../../lib/core/envelope.js';
 import { readEnvelopeFromFile, pickFile, download, safeFileName, takeHandoff, stashHandoff, enableFileDrop } from '../../lib/core/files.js';
 import { mountProjectInfo, newProject } from '../../lib/core/project-info.js';
 import { findTool, toolUrl } from '../../lib/core/registry.js';
-import { html, raw, esc, icon, toast, confirmDialog, bindThemeToggle } from '../../lib/core/ui.js';
+import { html, raw, icon, toast, bindThemeToggle } from '../../lib/core/ui.js';
 
 const DRAFT_KEY = `hlks-tools:${TOOL_ID}:draft`;
 const UI_KEY = `hlks-tools:${TOOL_ID}:ui`;
@@ -89,16 +88,8 @@ function currentEnvelope() {
 async function openEnvelope(env, sourceName = '') {
   if (env.tool !== TOOL_ID) {
     const tool = findTool(env.tool);
-    if (tool?.status === 'ready') {
-      const go = await confirmDialog({
-        title: 'Anderes Tool',
-        message: `Die Datei gehört zu „${tool.name}“. Dort öffnen?`,
-        confirmLabel: `In ${tool.name} öffnen`,
-      });
-      if (go && stashHandoff(env)) location.href = toolUrl(env.tool);
-    } else {
-      toast('Die Datei gehört zu einem Tool, das es hier (noch) nicht gibt.', { kind: 'error' });
-    }
+    if (tool?.status === 'ready' && stashHandoff(env)) location.href = toolUrl(env.tool);
+    else toast('Unbekanntes Werkzeug', { kind: 'error' });
     return;
   }
   let notes;
@@ -114,13 +105,11 @@ async function openEnvelope(env, sourceName = '') {
   const result = compute(next.inputs);
   const saved = env.snapshot?.critical;
   if (typeof saved === 'number' && Math.abs(saved - result.totals.critical) > 0.05) {
-    notes.push(
-      `Gespeichert waren ${fmt(saved, 1)} Pa im kritischen Strang, neu berechnet sind es ${fmt(result.totals.critical, 1)} Pa.`,
-    );
+    notes.push(`Kritischer Strang: gespeichert ${fmt(saved, 1)} Pa, neu ${fmt(result.totals.critical, 1)} Pa`);
   }
   showFileBanner(notes);
   renderAll();
-  toast(sourceName ? `Geöffnet: ${sourceName}` : 'Berechnung geöffnet', { kind: 'success' });
+  toast(sourceName || 'Geöffnet', { kind: 'success' });
 }
 
 async function openFile(file) {
@@ -129,7 +118,7 @@ async function openFile(file) {
     const env = await readEnvelopeFromFile(file);
     await openEnvelope(env, file.name);
   } catch (e) {
-    toast(e instanceof EnvelopeError ? e.message : `Datei konnte nicht geöffnet werden: ${e.message}`, { kind: 'error', timeout: 8000 });
+    toast(e instanceof EnvelopeError ? e.message : `Datei nicht lesbar: ${e.message}`, { kind: 'error', timeout: 8000 });
   }
 }
 
@@ -142,7 +131,7 @@ function showFileBanner(notes) {
   }
   el.hidden = false;
   el.innerHTML = String(html`<div class="banner">${icon('warning')}<div>${notes.map((n) => html`<p>${n}</p>`)}</div>
-    <button class="btn small" data-action="dismiss-banner">Verstanden</button></div>`);
+    <button class="btn ghost small icon-only" data-action="dismiss-banner" title="Schliessen" aria-label="Schliessen">${icon('close', { size: 14 })}</button></div>`);
 }
 
 function fileBaseName() {
@@ -156,36 +145,31 @@ async function exportPdf() {
     const { buildReport } = await import('./report.js'); // pdf-lib + fonts load only when needed
     const bytes = await buildReport(doc(), compute(inputs()), currentEnvelope());
     download(bytes, safeFileName(fileBaseName(), 'pdf'), 'application/pdf');
-    toast('PDF gespeichert. Es enthält die Eingabedaten und lässt sich hier wieder öffnen.', { kind: 'success' });
+    toast('PDF gespeichert', { kind: 'success' });
   } catch (e) {
     console.error(e);
-    toast(`PDF konnte nicht erstellt werden: ${e.message}`, { kind: 'error', timeout: 8000 });
+    toast(`PDF-Fehler: ${e.message}`, { kind: 'error', timeout: 8000 });
   }
 }
 
 function exportJson() {
   store.commit();
   download(JSON.stringify(currentEnvelope(), null, 2), safeFileName(fileBaseName(), 'json'), 'application/json');
-  toast('Daten als JSON gespeichert.', { kind: 'success' });
 }
 
 function exportCsv() {
   store.commit();
   download(buildCsv(doc(), compute(inputs())), safeFileName(fileBaseName(), 'csv'), 'text/csv;charset=utf-8');
-  toast('Tabelle als CSV gespeichert.', { kind: 'success' });
 }
 
-async function newDocument() {
-  const ok = await confirmDialog({
-    title: 'Neue Berechnung',
-    message: 'Die aktuelle Berechnung wird ersetzt. Mit Strg+Z lässt sich das rückgängig machen.',
-    confirmLabel: 'Neu beginnen',
-  });
-  if (!ok) return;
+const UNDO_ACTION = { icon: 'undo', label: 'Rückgängig', run: () => undo() };
+
+function newDocument() {
   store.replace({ project: newProject(), inputs: emptyInputs() });
   ui.expanded.clear();
   showFileBanner([]);
   renderAll();
+  toast('Neue Berechnung', { action: UNDO_ACTION });
   $('[data-field="flow"]')?.focus();
 }
 
@@ -194,7 +178,7 @@ function loadExample() {
   ui.expanded.clear();
   showFileBanner([]);
   renderAll();
-  toast('Beispiel geladen. Strg+Z stellt die vorherige Berechnung wieder her.');
+  toast('Beispiel geladen', { action: UNDO_ACTION });
 }
 
 function undo() {
@@ -287,7 +271,7 @@ function renderSystem() {
   $('#system').innerHTML = String(html`
     <label class="field field-wide">
       <span class="field-label">Anlage / Strang</span>
-      <input class="input" type="text" data-sys="name" value="${s.name}" placeholder="z. B. Zuluft Büro 1. OG" autocomplete="off" />
+      <input class="input" type="text" data-sys="name" value="${s.name}" autocomplete="off" />
     </label>
     <label class="field field-wide">
       <span class="field-label">Strömungsrichtung</span>
@@ -298,7 +282,7 @@ function renderSystem() {
     ${numInput('data-sys="altitude"', s.altitude, { label: 'Höhe', unit: 'm ü. M.' })}
     ${numInput('data-sys="temperature"', s.temperature, { label: 'Lufttemperatur', unit: '°C' })}
     ${numInput('data-sys="humidity"', s.humidity, { label: 'Rel. Feuchte', unit: '%' })}
-    ${numInput('data-sys="availablePressure"', s.availablePressure, { label: 'Verfügbare Pressung', unit: 'Pa', placeholder: 'optional' })}
+    ${numInput('data-sys="availablePressure"', s.availablePressure, { label: 'Verfügbare Pressung', unit: 'Pa', placeholder: '–' })}
     ${numInput('data-sys="safetyMargin"', s.safetyMargin, { label: 'Zuschlag', unit: '%' })}
     <label class="field field-wide">
       <span class="field-label">Reibungsbeiwert λ</span>
@@ -312,10 +296,9 @@ function renderSystem() {
 function updateAirReadout() {
   const s = inputs().system;
   const a = airState(s);
-  $('#air-readout').innerHTML = String(html`Luft bei ${fmt(s.temperature, 1)} °C:
-    ρ = <span class="num">${fmt(a.density, 3)}</span> kg/m³,
-    p = <span class="num">${fmt(a.pressure / 100, 0)}</span> hPa,
-    ν = <span class="num">${expHtml(a.kinematicViscosity)}</span> m²/s`);
+  $('#air-readout').innerHTML = String(html`ρ <span class="num">${fmt(a.density, 3)}</span> kg/m³ ·
+    p <span class="num">${fmt(a.pressure / 100, 0)}</span> hPa ·
+    ν <span class="num">${expHtml(a.kinematicViscosity)}</span> m²/s`);
 }
 
 // ---- sections table ------------------------------------------------------------------
@@ -355,7 +338,7 @@ function renderTable() {
   )}</tr></thead>`;
   const body = secs.map((s, i) => rowHtml(s, i));
   table.innerHTML = String(html`${head}<tbody>${body}</tbody>`);
-  $('[data-action="add-section"]').innerHTML = String(html`${icon('plus')}<span>Teilstrecke hinzufügen</span>`);
+  $('[data-action="add-section"]').innerHTML = String(html`${icon('plus')}<span>Teilstrecke</span>`);
 }
 
 function parentOptions(s) {
@@ -399,12 +382,12 @@ function rowHtml(s, index) {
       ? html`<td class="c-num c-dim">${inputCell(s, 'diameter', s.diameter, { placeholder: 'Ø', list: 'std-diameters' })}</td><td class="c-num c-dim na">–</td>`
       : html`<td class="c-num c-dim">${inputCell(s, 'width', s.width, { placeholder: 'B' })}</td><td class="c-num c-dim">${inputCell(s, 'height', s.height, { placeholder: 'H' })}</td>`}
     <td class="c-num c-len">${inputCell(s, 'length', s.length)}</td>
-    <td class="c-sum"><button class="sum-btn" data-act="toggle" data-out="zetaSum" title="Formstücke bearbeiten">–</button>${zetaCount ? html`<span class="count">${zetaCount}</span>` : ''}</td>
-    <td class="c-sum"><button class="sum-btn" data-act="toggle" title="Einbauteile bearbeiten">${s.components.length ? fmt(compSum, 0) : '–'}</button>${s.components.length ? html`<span class="count">${s.components.length}</span>` : ''}</td>
+    <td class="c-sum"><button class="sum-btn" data-act="toggle" data-out="zetaSum" aria-label="Formstücke">–</button>${zetaCount ? html`<span class="count">${zetaCount}</span>` : ''}</td>
+    <td class="c-sum"><button class="sum-btn" data-act="toggle" aria-label="Einbauteile">${s.components.length ? fmt(compSum, 0) : '–'}</button>${s.components.length ? html`<span class="count">${s.components.length}</span>` : ''}</td>
     ${COLS.filter((c) => c.out).map((c) => html`<td class="${c.cls}" data-out="${c.key}"></td>`)}
     <td class="c-act">
-      <button class="icon-btn" data-act="branch" title="Abzweig von hier hinzufügen" aria-label="Abzweig hinzufügen">${icon('branch', { size: 15 })}</button>
-      <button class="icon-btn" data-act="delete" title="Teilstrecke löschen" aria-label="Löschen">${icon('trash', { size: 15 })}</button>
+      <button class="icon-btn" data-act="branch" title="Abzweig" aria-label="Abzweig hinzufügen">${icon('branch', { size: 15 })}</button>
+      <button class="icon-btn" data-act="delete" title="Löschen" aria-label="Löschen">${icon('trash', { size: 15 })}</button>
     </td>
   </tr>`;
   return open ? html`${main}${detailRowHtml(s)}` : main;
@@ -417,7 +400,7 @@ function fittingOptions(selected, shape) {
     const items = fits.filter((f) => (f.group || 'any') === g);
     if (!items.length) return '';
     return html`<optgroup label="${GROUP_LABELS[g]}">${items.map(
-      (f) => html`<option value="${f.id}" ${f.id === selected ? 'selected' : ''}>${f.name}${f.kind === 'transition' ? ' (berechnet)' : ''}</option>`,
+      (f) => html`<option value="${f.id}" ${f.id === selected ? 'selected' : ''}>${f.name}</option>`,
     )}</optgroup>`;
   });
 }
@@ -438,15 +421,15 @@ function detailRowHtml(s) {
             <td><select class="cell-select" data-fit="ref" data-index="${i}" aria-label="Formstück">${cat ? '' : html`<option selected>(nicht im Katalog)</option>`}${fittingOptions(f.ref, s.shape)}</select></td>
             <td class="n"><input class="cell-input num narrow" type="text" inputmode="decimal" data-fit="count" data-index="${i}" value="${toInputValue(f.count)}" aria-label="Anzahl" /></td>
             <td class="n">${computed
-              ? html`<span class="computed" data-out="fit-zeta" data-index="${i}" title="Aus der Querschnittsänderung zum Vorgänger berechnet">–</span>`
-              : html`<input class="cell-input num narrow" type="text" inputmode="decimal" data-fit="zeta" data-index="${i}" value="${toInputValue(f.zeta)}" placeholder="${toInputValue(cat?.zeta)}" title="Leer = Katalogwert" aria-label="Zeta" />`}</td>
+              ? html`<span class="computed" data-out="fit-zeta" data-index="${i}">–</span>`
+              : html`<input class="cell-input num narrow" type="text" inputmode="decimal" data-fit="zeta" data-index="${i}" value="${toInputValue(f.zeta)}" placeholder="${toInputValue(cat?.zeta)}" aria-label="Zeta" />`}</td>
             <td class="n num" data-out="fit-dp" data-index="${i}"></td>
             <td><button class="icon-btn" data-act="fit-del" data-index="${i}" aria-label="Formstück entfernen">${icon('close', { size: 14 })}</button></td>
           </tr>`;
         })}
         <tr class="add-row"><td colspan="5"><select class="cell-select add-select" data-add="fitting" aria-label="Formstück hinzufügen">
-          <option value="" selected>+ Formstück hinzufügen …</option>${fittingOptions(null, s.shape)}</select></td></tr>
-        <tr><td>ζ zusätzlich <span class="muted">(frei)</span></td><td></td>
+          <option value="" selected>+ Formstück</option>${fittingOptions(null, s.shape)}</select></td></tr>
+        <tr><td>ζ zusätzlich</td><td></td>
           <td class="n"><input class="cell-input num narrow" type="text" inputmode="decimal" data-field="zetaExtra" value="${toInputValue(s.zetaExtra)}" placeholder="0" aria-label="Zeta zusätzlich" /></td><td></td><td></td></tr>
         </tbody>
         <tfoot><tr><td>Summe</td><td></td><td class="n num" data-out="zetaSum"></td><td class="n num" data-out="dpFittings"></td><td></td></tr></tfoot>
@@ -454,7 +437,7 @@ function detailRowHtml(s) {
     </section>
 
     <section class="detail-block">
-      <h4>Einbauteile <span class="muted">(fester Druckverlust)</span></h4>
+      <h4>Einbauteile</h4>
       <table class="mini">
         <thead><tr><th>Bezeichnung</th><th class="n">Δp Pa</th><th></th></tr></thead>
         <tbody>
@@ -464,9 +447,9 @@ function detailRowHtml(s) {
           <td><button class="icon-btn" data-act="comp-del" data-index="${i}" aria-label="Einbauteil entfernen">${icon('close', { size: 14 })}</button></td>
         </tr>`)}
         <tr class="add-row"><td colspan="3"><select class="cell-select add-select" data-add="component" aria-label="Einbauteil hinzufügen">
-          <option value="" selected>+ Einbauteil hinzufügen …</option>
+          <option value="" selected>+ Einbauteil</option>
           ${inputs().catalogs.components.map((c) => html`<option value="${c.id}">${c.name} (${fmt(c.dp, 0)} Pa)</option>`)}
-          <option value="__custom">Eigenes Bauteil</option>
+          <option value="__custom">Eigenes</option>
         </select></td></tr>
         </tbody>
         <tfoot><tr><td>Summe</td><td class="n num" data-out="dpComponents"></td><td></td></tr></tfoot>
@@ -474,18 +457,17 @@ function detailRowHtml(s) {
     </section>
 
     <section class="detail-block">
-      <h4>Weitere Angaben</h4>
       <div class="detail-fields">
         <label class="field"><span class="field-label">Lufttemperatur <span class="unit">°C</span></span>
-          <input class="input num" type="text" inputmode="decimal" data-field="temperature" value="${toInputValue(s.temperature)}" placeholder="${toInputValue(sys.temperature)} (Anlage)" /></label>
+          <input class="input num" type="text" inputmode="decimal" data-field="temperature" value="${toInputValue(s.temperature)}" placeholder="${toInputValue(sys.temperature)}" /></label>
         <label class="field field-wide"><span class="field-label">Bemerkung</span>
-          <input class="input" type="text" data-field="note" value="${s.note}" placeholder="z. B. Raum, Geschoss" autocomplete="off" /></label>
+          <input class="input" type="text" data-field="note" value="${s.note}" autocomplete="off" /></label>
       </div>
       <h4 class="sub">Dimensionierung</h4>
       <div class="suggest" data-out-html="suggest"></div>
       <div class="detail-actions">
-        <button class="btn small" data-act="duplicate">${icon('copy', { size: 14 })}Duplizieren</button>
-        <button class="btn small" data-act="branch">${icon('branch', { size: 14 })}Abzweig</button>
+        <button class="btn small icon-only" data-act="duplicate" title="Duplizieren" aria-label="Duplizieren">${icon('copy', { size: 14 })}</button>
+        <button class="btn small icon-only" data-act="branch" title="Abzweig" aria-label="Abzweig hinzufügen">${icon('branch', { size: 14 })}</button>
         <button class="btn small icon-only" data-act="up" title="Nach oben" aria-label="Nach oben">${icon('up', { size: 14 })}</button>
         <button class="btn small icon-only" data-act="down" title="Nach unten" aria-label="Nach unten">${icon('down', { size: 14 })}</button>
       </div>
@@ -515,7 +497,7 @@ function cellText(key, r) {
     case 'zetaSum': return fmt(r.zetaSum, 2);
     case 'dp': return fmt(r.dp, 1);
     case 'cum': return fmt(r.cum, 1);
-    case 'throttle': return r.terminal ? (r.critical ? 'krit.' : fmt(r.throttle, 1)) : '';
+    case 'throttle': return r.terminal ? fmt(r.throttle, 1) : '';
     default: return '';
   }
 }
@@ -562,7 +544,7 @@ function updateResults() {
 }
 
 function valuesHtml(r) {
-  if (r.status !== 'ok') return html`<p class="muted">Werte erscheinen, sobald Volumenstrom, Abmessungen und Material eingetragen sind.</p>`;
+  if (r.status !== 'ok') return html`<p class="muted">–</p>`;
   const regime = r.reynolds < LAMINAR_LIMIT ? 'laminar' : r.reynolds < 4000 ? 'Übergang' : 'turbulent';
   const rows = [
     ['Querschnitt A', `${fmt(r.area, 4)} m²`],
@@ -590,7 +572,7 @@ function expHtml(value, sig = 3) {
 
 function suggestHtml(s, r) {
   const vmax = r.vmax ?? null;
-  if (!(s.flow > 0) || !vmax) return html`<p class="muted">Volumenstrom eintragen, dann erscheinen Vorschläge für v ≤ v<sub>max</sub>.</p>`;
+  if (!(s.flow > 0) || !vmax) return html`<p class="muted">–</p>`;
   const sug = suggestDimensions({ flow: s.flow, vmax, height: s.shape === 'rect' ? s.height : null, diameters: STANDARD_DIAMETERS, rectStep: RECT_STEP });
   if (!sug) return '';
   const options = [];
@@ -607,7 +589,7 @@ function suggestHtml(s, r) {
     add(`${sug.rectKeepHeight.width} × ${sug.rectKeepHeight.height}`, { shape: 'rect', width: sug.rectKeepHeight.width, height: sug.rectKeepHeight.height });
   }
   if (sug.rect) add(`${sug.rect.width} × ${sug.rect.height}`, { shape: 'rect', width: sug.rect.width, height: sug.rect.height });
-  return html`<p class="muted">Kleinste Querschnitte für v ≤ ${fmt(vmax, 1)} m/s:</p><div class="suggest-list">${options}</div>`;
+  return html`<p class="muted">v ≤ ${fmt(vmax, 1)} m/s</p><div class="suggest-list">${options}</div>`;
 }
 
 // ---- summary strip ------------------------------------------------------------------------
@@ -627,7 +609,7 @@ function renderSummary() {
 
   let reserve;
   if (t.available == null) {
-    reserve = html`<div class="rs-reserve is-none"><span class="rs-label">Reserve</span><p class="muted">Verfügbare Pressung des Ventilators eintragen, um die Reserve zu sehen.</p></div>`;
+    reserve = html`<div class="rs-reserve is-none"><span class="rs-label">Reserve</span><span class="rs-value num muted">–</span></div>`;
   } else if (t.reserve >= 0) {
     reserve = html`<div class="rs-reserve is-good"><span class="rs-label">Reserve</span><span class="rs-value num">${icon('check')}${fmt(t.reserve, 0)}<small>Pa</small></span><span class="rs-sub">von ${fmt(t.available, 0)} Pa verfügbar</span></div>`;
   } else {
@@ -665,17 +647,27 @@ function renderIssues() {
     .filter((i) => i.code !== 'flow-missing')
     .sort((a, b) => order[a.severity] - order[b.severity]);
   $('#issues-block').hidden = !list.length;
-  $('#issues').innerHTML = String(html`${list.map(
-    (i) => html`<li class="issue issue-${i.severity}">${icon(i.severity === 'info' ? 'info' : i.severity === 'error' ? 'error' : 'warning', { label: i.severity })}
-      <span>${issueText(i, i.sectionId ? nrOf(i.sectionId) : '')}${i.sectionId ? html` <button class="link" data-goto="${i.sectionId}">anzeigen</button>` : ''}</span></li>`,
-  )}`);
+  const severityIcon = (i) => icon(i.severity === 'info' ? 'info' : i.severity === 'error' ? 'error' : 'warning', { label: SEVERITY_LABELS[i.severity] });
+  $('#issues').innerHTML = String(html`${list.map((i) => {
+    const text = issueText(i, i.sectionId ? nrOf(i.sectionId) : '');
+    return html`<li class="issue issue-${i.severity}">${i.sectionId
+      ? html`<button class="issue-jump" data-goto="${i.sectionId}">${severityIcon(i)}<span>${text}</span>${icon('jump')}</button>`
+      : html`${severityIcon(i)}<span>${text}</span>`}</li>`;
+  })}`);
 }
 
 // ---- charts --------------------------------------------------------------------------------
 
+let chartFrame = 0;
 function renderCharts() {
-  renderProfile($('#profile-chart'), ui.result, inputs(), nrOf);
-  renderNetwork($('#network-chart'), ui.result, inputs(), nrOf, gotoSection);
+  cancelAnimationFrame(chartFrame);
+  chartFrame = requestAnimationFrame(() => {
+    const hasData = ui.result.totals.critical > 0;
+    $('#profile-panel').hidden = !hasData;
+    $('#network-panel').hidden = !ui.result.order.length;
+    if (hasData) renderProfile($('#profile-chart'), ui.result, inputs(), nrOf);
+    if (ui.result.order.length) renderNetwork($('#network-chart'), ui.result, inputs(), nrOf, gotoSection);
+  });
 }
 
 function gotoSection(id) {
@@ -754,7 +746,7 @@ function deleteSection(id) {
   secs.splice(idx, 1);
   ui.expanded.delete(id);
   commitAndRender();
-  toast(`Teilstrecke ${s.nr || idx + 1} gelöscht. Strg+Z stellt sie wieder her.`);
+  toast(`Teilstrecke ${s.nr || idx + 1} gelöscht`, { action: UNDO_ACTION });
 }
 
 function duplicateSection(id) {
@@ -869,7 +861,6 @@ function bindTable() {
       case 'apply-dim':
         Object.assign(s, JSON.parse(btn.dataset.patch));
         commitAndRender();
-        toast('Abmessungen übernommen.', { kind: 'success' });
         break;
     }
   });
@@ -908,7 +899,6 @@ function renderTableKeepFocus() {
 const CATALOGS = {
   materials: {
     title: 'Materialien',
-    note: 'Absolute Rauigkeit k.',
     cols: [
       { key: 'name', label: 'Bezeichnung', type: 'text' },
       { key: 'roughness', label: 'k', unit: 'mm', type: 'num' },
@@ -918,7 +908,6 @@ const CATALOGS = {
   },
   fittings: {
     title: 'Formstücke',
-    note: 'ζ bezogen auf die Geschwindigkeit der Teilstrecke, in der das Formstück steht. Querschnittsänderungen werden aus dem Vorgänger berechnet; dort gilt ein Faktor.',
     cols: [
       { key: 'name', label: 'Bezeichnung', type: 'text' },
       { key: 'group', label: 'Gruppe', type: 'group' },
@@ -928,8 +917,7 @@ const CATALOGS = {
     usedBy: (item) => inputs().sections.filter((s) => s.fittings.some((f) => f.ref === item.id)),
   },
   components: {
-    title: 'Einbauteile (Vorlagen)',
-    note: 'Vorschläge beim Hinzufügen. Der Wert wird in die Teilstrecke kopiert.',
+    title: 'Einbauteile',
     cols: [
       { key: 'name', label: 'Bezeichnung', type: 'text' },
       { key: 'dp', label: 'Δp', unit: 'Pa', type: 'num' },
@@ -938,10 +926,9 @@ const CATALOGS = {
     usedBy: () => [],
   },
   velocityLimits: {
-    title: 'Grenzgeschwindigkeit im Kanal',
-    note: 'v_max gilt für Volumenströme unter dem Grenzwert. Leere Grenze: alle grösseren Volumenströme. Vorgabe aus der Excel-Vorlage nach SIA 382/1.',
+    title: 'Grenzgeschwindigkeit',
     cols: [
-      { key: 'below', label: 'V̇ unter', unit: 'm³/h', type: 'num', placeholder: 'darüber' },
+      { key: 'below', label: 'V̇ <', unit: 'm³/h', type: 'num', placeholder: '∞' },
       { key: 'vmax', label: 'v_max', unit: 'm/s', type: 'num' },
     ],
     blank: () => ({ below: null, vmax: 5 }),
@@ -960,8 +947,7 @@ function renderCatalogs() {
   const blocks = Object.entries(CATALOGS).map(([key, def]) => {
     const list = cats[key];
     return html`<section class="panel catalog" data-cat-block="${key}">
-      <header><h3>${def.title}</h3><button class="btn small ghost" data-cat-reset="${key}">Standardwerte</button></header>
-      <p class="muted">${def.note}</p>
+      <header><h3>${def.title}</h3><button class="btn small ghost icon-only" data-cat-reset="${key}" title="Standardwerte" aria-label="Standardwerte">${icon('reset', { size: 14 })}</button></header>
       <table class="mini">
         <thead><tr>${def.cols.map((c) => html`<th class="${c.type === 'num' ? 'n' : ''}">${c.label}${c.unit ? html` <span class="unit">${c.unit}</span>` : ''}</th>`)}<th></th></tr></thead>
         <tbody>${list.map((item, i) => html`<tr>${def.cols.map((c) => {
@@ -972,19 +958,19 @@ function renderCatalogs() {
           if (c.type === 'num') {
             const k = key === 'fittings' && item.kind === 'transition' ? 'factor' : c.key;
             const a = raw(`data-cat="${key}" data-index="${i}" data-cat-key="${k}"`);
-            return html`<td class="n"><input class="cell-input num narrow" type="text" inputmode="decimal" ${a} value="${toInputValue(item[k])}" placeholder="${c.placeholder ?? ''}" ${k === 'factor' ? raw('title="Faktor auf die berechnete Querschnittsänderung"') : ''} /></td>`;
+            return html`<td class="n"><input class="cell-input num narrow" type="text" inputmode="decimal" ${a} value="${toInputValue(item[k])}" placeholder="${c.placeholder ?? ''}" ${k === 'factor' ? raw('aria-label="Faktor"') : ''} /></td>`;
           }
           return html`<td><input class="cell-input" type="text" ${attrs} value="${item[c.key]}" /></td>`;
         })}<td><button class="icon-btn" data-cat-del="${key}" data-index="${i}" aria-label="Eintrag löschen">${icon('close', { size: 14 })}</button></td></tr>`)}</tbody>
       </table>
-      <button class="btn small" data-cat-add="${key}">${icon('plus', { size: 14 })}Eintrag hinzufügen</button>
+      <button class="btn small icon-only" data-cat-add="${key}" title="Hinzufügen" aria-label="Hinzufügen">${icon('plus', { size: 14 })}</button>
     </section>`;
   });
   const st = inputs().settings;
   blocks.push(html`<section class="panel catalog">
-    <header><h3>Weitere Grenzwerte</h3></header>
+    <header><h3>Seitenverhältnis</h3></header>
     <div class="detail-fields">
-      ${numInput('data-setting="maxAspectRatio"', st.maxAspectRatio, { label: 'Max. Seitenverhältnis eckiger Kanäle', unit: ': 1', placeholder: 'keine Prüfung' })}
+      ${numInput('data-setting="maxAspectRatio"', st.maxAspectRatio, { label: 'max.', unit: ': 1', placeholder: '–' })}
     </div>
   </section>`);
   $('#catalogs').innerHTML = String(html`${blocks}`);
@@ -1017,7 +1003,7 @@ function bindCatalogs() {
     renderTableKeepFocus();
     recalc();
   });
-  root.addEventListener('click', async (e) => {
+  root.addEventListener('click', (e) => {
     const t = e.target.closest('button');
     if (!t) return;
     const cats = inputs().catalogs;
@@ -1033,24 +1019,19 @@ function bindCatalogs() {
       const item = cats[key][Number(t.dataset.index)];
       const used = CATALOGS[key].usedBy(item);
       if (used.length) {
-        toast(`„${item.name}“ wird in Teilstrecke ${used.map((s) => s.nr || '?').join(', ')} verwendet und kann nicht gelöscht werden.`, { kind: 'error', timeout: 7000 });
+        toast(`„${item.name}“ in Gebrauch: Teilstrecke ${used.map((s) => s.nr || '?').join(', ')}`, { kind: 'error', timeout: 7000 });
         return;
       }
       cats[key].splice(Number(t.dataset.index), 1);
       commitAndRender();
     } else if (t.dataset.catReset) {
       const key = t.dataset.catReset;
-      const ok = await confirmDialog({
-        title: `${CATALOGS[key].title} zurücksetzen`,
-        message: 'Eigene Einträge und geänderte Werte gehen verloren. Mit Strg+Z lässt sich das rückgängig machen.',
-        confirmLabel: 'Zurücksetzen',
-      });
-      if (!ok) return;
       const defaults = defaultCatalogs()[key];
       // Keep custom entries that are still in use, so sections stay valid.
       const keep = cats[key].filter((item) => item.id && !defaults.some((d) => d.id === item.id) && CATALOGS[key].usedBy(item).length);
       cats[key] = [...defaults, ...keep];
       commitAndRender();
+      toast(`${CATALOGS[key].title}: Standardwerte`, { action: UNDO_ACTION });
     }
   });
 }
@@ -1071,8 +1052,8 @@ function bindToolbar() {
   };
   setIcon('[data-action="undo"]', 'undo');
   setIcon('[data-action="redo"]', 'redo');
-  setIcon('[data-action="open"]', 'open', 'Öffnen');
-  setIcon('[data-action="export-pdf"]', 'save', 'PDF speichern');
+  setIcon('[data-action="open"]', 'open');
+  setIcon('[data-action="export-pdf"]', 'save', 'PDF');
   setIcon('[data-action="menu"]', 'more');
 
   const menu = $('#more-menu');
@@ -1111,7 +1092,6 @@ function bindToolbar() {
       case 'export-csv': exportCsv(); break;
       case 'new': newDocument(); break;
       case 'example': loadExample(); break;
-      case 'theme': $('#theme-toggle').click(); break;
       case 'add-section': addSection(); break;
       case 'dismiss-banner': showFileBanner([]); break;
     }
@@ -1201,7 +1181,6 @@ function addThemeButton() {
   const b = document.createElement('button');
   b.id = 'theme-toggle';
   b.className = 'btn ghost icon-only';
-  b.innerHTML = String(icon('theme'));
   $('.appbar-actions').prepend(b);
   bindThemeToggle(b);
 }
@@ -1231,7 +1210,6 @@ async function start() {
       updateHistoryButtons();
     },
   });
-  $('#method').innerHTML = methodHtml();
   bindToolbar();
   bindSystem();
   bindTable();
