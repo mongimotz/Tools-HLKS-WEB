@@ -197,3 +197,16 @@ body.is-dragging .drop-overlay { display: grid; }
   .appbar, .no-print { display: none !important; }
   body { background: var(--surface); }
 }
+
+/* ---- combobox list (lib/core/combo.js) ---- */
+.combo-list {
+  position: fixed; z-index: 60; max-height: 240px; overflow-y: auto;
+  margin: 0; padding: 3px 0; list-style: none;
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--r-input); box-shadow: var(--shadow-pop);
+  font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: var(--fs-sm);
+}
+.combo-list[hidden] { display: none; }
+.combo-list li { padding: 3px 10px; text-align: right; cursor: pointer; color: var(--text-strong); }
+.combo-list li:hover { background: var(--surface-hover); }
+.combo-list li.is-active { background: var(--primary-subtle); }
+.combo-list li[aria-selected='true'] { font-weight: 600; }

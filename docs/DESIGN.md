@@ -16,7 +16,7 @@ What these mean in practice:
 | Principle | Do | Don't |
 |---|---|---|
 | 1 | One visual idea per page at most (start page: the duct network) | Decorative accents, ornaments, constant animation |
-| 2 | Labels, units, values, short status messages (`TS 1: v = 6.2 m/s > 6.0 m/s`) | Intro texts, hints under headings, "how to" placeholders (`z. B. …`), chart captions, explanatory toasts or tooltips, a help tab |
+| 2 | Labels, units, values, short status messages (`TS 1: v = 6.2 m/s > 6.0 m/s`), no sub-lines that repeat what is shown elsewhere | Intro texts, hints under headings, "how to" placeholders (`z. B. …`), chart captions, explanatory toasts or tooltips, a help tab |
 | 3 | Icon-only buttons for open, undo/redo, theme, add, delete, branch, duplicate, reset; `→` to jump, `↑` for "over limit" | Text buttons where a common icon exists |
 | 4 | Flat fills; hard-stop patterns (hatching, dashes) are fine | Colour fades |
 | 5 | Status = colour + icon or word; chart series validated for CVD (`--chart-1..3` pass, deutan ΔE ≥ 13.7) | Red vs green as the only cue |
@@ -59,8 +59,10 @@ Only IBM Plex Sans and IBM Plex Mono (SIL OFL). Sources: `assets/fonts/source/` 
 
 - 4 px spacing grid (`--sp-1` … `--sp-8`). Radius: inputs 4, buttons 6, panels 10.
 - App bar on every tool page: brand (back to start), tool name, icon actions; the primary action is "PDF".
-- Shared project header (`lib/core/project-info.js`): Projekt, Projekt-Nr., Bearbeitung, Datum.
-- Result strip directly under the project header: the one number that matters, big.
+- Shared project header (`lib/core/project-info.js`): Projekt, Projekt-Nr., Bearbeiter, Datum.
+- Result strip directly under the project header: the one number that matters, big. No sub-lines under it.
+- Tables with results use fixed column widths (`table-layout: fixed`); a value that does not fit is clipped with `…` instead of moving the layout.
+- Number fields with standard sizes (e.g. Lindab diameters) use the combobox in `lib/core/combo.js`: free entry, list on click, ↑ / ↓ step through the sizes, the list is never filtered.
 - Warnings are listed under "Hinweise"; a row with a section jumps to it (→).
 - Phone width works (16 px gutter, wide tables scroll inside their panel, never the page).
 
@@ -70,4 +72,6 @@ Motion only answers an action: air flows on the start page while a ready tool is
 
 ## Writing
 
-German, Swiss spelling (ss, not ß). In the product: short labels and short status messages, no explanations (principle 2). Errors name what is wrong (`PDF nicht lesbar`). User documentation (`README.md`, `docs/*.md`) is German, plain and active.
+German, Swiss spelling (ss, not ß). In the product: short labels and short status messages, no explanations (principle 2).
+
+Never use the middle dot (·) as a separator in UI text or in PDFs. Use nothing at all (separate lines, own columns) or ` | `. The dot stays only as a multiplication sign (`R·L`, `1.62·10⁻⁵`). Errors name what is wrong (`PDF nicht lesbar`). User documentation (`README.md`, `docs/*.md`) is German, plain and active.

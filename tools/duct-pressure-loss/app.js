@@ -34,6 +34,7 @@ import { readEnvelopeFromFile, pickFile, download, safeFileName, takeHandoff, st
 import { mountProjectInfo, newProject } from '../../lib/core/project-info.js';
 import { findTool, toolUrl } from '../../lib/core/registry.js';
 import { html, raw, icon, toast, bindThemeToggle } from '../../lib/core/ui.js';
+import { enableCombos } from '../../lib/core/combo.js';
 
 const DRAFT_KEY = `hlks-tools:${TOOL_ID}:draft`;
 const UI_KEY = `hlks-tools:${TOOL_ID}:ui`;
@@ -43,7 +44,7 @@ const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 const ui = {
   expanded: new Set(),
-  details: false,
+  view: 'standard', // columns: 'compact' | 'standard' | 'all'
   result: null,
 };
 
@@ -291,34 +292,35 @@ function renderSystem() {
 function updateAirReadout() {
   const s = inputs().system;
   const a = airState(s);
-  $('#air-readout').innerHTML = String(html`ρ <span class="num">${fmt(a.density, 3)}</span> kg/m³ ·
-    p <span class="num">${fmt(a.pressure / 100, 0)}</span> hPa ·
-    ν <span class="num">${expHtml(a.kinematicViscosity)}</span> m²/s`);
+  $('#air-readout').innerHTML = String(html`<span>ρ <span class="num">${fmt(a.density, 3)}</span> kg/m³</span>
+    <span>p <span class="num">${fmt(a.pressure / 100, 0)}</span> hPa</span>
+    <span>ν <span class="num">${expHtml(a.kinematicViscosity)}</span> m²/s</span>`);
 }
 
 // ---- sections table ------------------------------------------------------------------
 
 // Fixed column widths [px] (table-layout: fixed): large or wrong values are clipped instead of moving the layout.
+// Column views: 'std' columns are hidden in "Kompakt", 'det' columns only show in "Alle".
 const COLS = [
   { key: 'exp', cls: 'c-exp', w: 30 },
   { key: 'nr', label: 'Nr.', cls: 'c-nr', w: 84 },
-  { key: 'parent', label: 'Vorgänger', cls: 'c-parent', w: 108 },
+  { key: 'parent', label: 'Vorgänger', cls: 'c-parent', w: 84 },
   { key: 'shape', label: 'Form', cls: 'c-shape', w: 80 },
-  { key: 'material', label: 'Material', cls: 'c-mat', w: 188 },
-  { key: 'flow', label: 'V̇', unit: 'm³/h', cls: 'c-num', w: 82 },
-  { key: 'dim1', label: 'B / Ø', unit: 'mm', cls: 'c-num c-dim', w: 74 },
-  { key: 'dim2', label: 'H', unit: 'mm', cls: 'c-num c-dim', w: 74 },
-  { key: 'length', label: 'L', unit: 'm', cls: 'c-num c-len', w: 66 },
+  { key: 'material', label: 'Material', cls: 'c-mat', w: 150 },
+  { key: 'flow', label: 'V̇', unit: 'm³/h', cls: 'c-num', w: 76 },
+  { key: 'dim1', label: 'B / Ø', unit: 'mm', cls: 'c-num c-dim', w: 70 },
+  { key: 'dim2', label: 'H', unit: 'mm', cls: 'c-num c-dim', w: 70 },
+  { key: 'length', label: 'L', unit: 'm', cls: 'c-num c-len', w: 60 },
   { key: 'zeta', label: 'Formstücke', unit: 'Σζ', cls: 'c-sum', w: 90 },
-  { key: 'comp', label: 'Einbauteile', unit: 'Pa', cls: 'c-sum', w: 90 },
-  { key: 'dh', label: 'd<sub>h</sub>', unit: 'mm', cls: 'c-out first-out', out: true, w: 60 },
+  { key: 'comp', label: 'Einbauteile', unit: 'Pa', cls: 'c-sum last-in', w: 90 },
+  { key: 'dh', label: 'd<sub>h</sub>', unit: 'mm', cls: 'c-out std', out: true, w: 60 },
   { key: 'velocity', label: 'v', unit: 'm/s', cls: 'c-out', out: true, w: 72 },
   { key: 'dynamicPressure', label: 'p<sub>d</sub>', unit: 'Pa', cls: 'c-out det', out: true, w: 66 },
   { key: 'reynolds', label: 'Re', unit: '–', cls: 'c-out det', out: true, w: 80 },
   { key: 'lambda', label: 'λ', unit: '–', cls: 'c-out det', out: true, w: 66 },
-  { key: 'gradient', label: 'R', unit: 'Pa/m', cls: 'c-out', out: true, w: 62 },
-  { key: 'dpFriction', label: 'Δp R·L', unit: 'Pa', cls: 'c-out', out: true, w: 70 },
-  { key: 'dpFittings', label: 'Δp Z', unit: 'Pa', cls: 'c-out', out: true, w: 66 },
+  { key: 'gradient', label: 'R', unit: 'Pa/m', cls: 'c-out std', out: true, w: 62 },
+  { key: 'dpFriction', label: 'Δp R·L', unit: 'Pa', cls: 'c-out std', out: true, w: 70 },
+  { key: 'dpFittings', label: 'Δp Z', unit: 'Pa', cls: 'c-out std', out: true, w: 66 },
   { key: 'dp', label: 'Δp TS', unit: 'Pa', cls: 'c-out', out: true, w: 70 },
   { key: 'cum', label: 'Δp kum.', unit: 'Pa', cls: 'c-out c-cum', out: true, w: 80 },
   { key: 'throttle', label: 'Drossel', unit: 'Pa', cls: 'c-out', out: true, w: 70 },
@@ -327,7 +329,7 @@ const COLS = [
 
 function renderTable() {
   const table = $('#sections-table');
-  table.classList.toggle('show-details', ui.details);
+  setViewClass(table);
   const secs = inputs().sections;
   const head = html`<thead><tr>${COLS.map(
     (c) => html`<th class="${c.cls}" scope="col" style="width:${c.w}px">${c.label ? raw(c.label) : ''}${c.unit ? html`<span class="unit">${c.unit}</span>` : ''}</th>`,
@@ -340,7 +342,7 @@ function renderTable() {
 function parentOptions(s) {
   const blocked = descendantsOf(inputs().sections, s.id);
   blocked.add(s.id);
-  const opts = [html`<option value="" ${!s.parent ? 'selected' : ''}>Ventilator</option>`];
+  const opts = [html`<option value="" ${!s.parent ? 'selected' : ''}>Venti</option>`];
   inputs().sections.forEach((o, i) => {
     if (blocked.has(o.id)) return;
     opts.push(html`<option value="${o.id}" ${o.id === s.parent ? 'selected' : ''}>${o.nr || `Zeile ${i + 1}`}</option>`);
@@ -357,16 +359,6 @@ function materialOptions(selected) {
 
 function inputCell(s, field, value, { cls = '', placeholder = '' } = {}) {
   return html`<input class="cell-input num ${cls}" type="text" inputmode="decimal" autocomplete="off" data-field="${field}" value="${toInputValue(value)}" placeholder="${placeholder}" aria-label="${field}" />`;
-}
-
-/** Lindab diameters; a value from an older file that is not in the list stays selectable. */
-function diameterOptions(selected) {
-  const list = [...ROUND_DIAMETERS];
-  if (selected > 0 && !list.includes(selected)) list.push(selected);
-  list.sort((a, b) => a - b);
-  const opts = list.map((d) => html`<option value="${d}" ${d === selected ? 'selected' : ''}>${d}</option>`);
-  if (!(selected > 0)) opts.unshift(html`<option value="" selected></option>`);
-  return opts;
 }
 
 /** Indentation level of a row (branch level, capped). */
@@ -390,11 +382,11 @@ function rowHtml(s, index) {
     <td class="c-mat"><select class="cell-select" data-field="material" aria-label="Material">${materialOptions(s.material)}</select></td>
     <td class="c-num">${inputCell(s, 'flow', s.flow)}</td>
     ${s.shape === 'round'
-      ? html`<td class="c-num c-dim"><span class="dia"><select class="cell-select num" data-field="diameter" aria-label="Durchmesser">${diameterOptions(s.diameter)}</select></span></td><td class="c-num c-dim na">–</td>`
+      ? html`<td class="c-num c-dim"><span class="dia"><input class="cell-input num" type="text" inputmode="decimal" autocomplete="off" data-field="diameter" data-combo="diameters" role="combobox" aria-expanded="false" aria-controls="combo-list" aria-label="Durchmesser" value="${toInputValue(s.diameter)}" /></span></td><td class="c-num c-dim na">–</td>`
       : html`<td class="c-num c-dim">${inputCell(s, 'width', s.width, { placeholder: 'B' })}</td><td class="c-num c-dim">${inputCell(s, 'height', s.height, { placeholder: 'H' })}</td>`}
     <td class="c-num c-len">${inputCell(s, 'length', s.length)}</td>
     <td class="c-sum"><button class="sum-btn" data-act="toggle" data-out="zetaSum" aria-label="Formstücke">–</button>${zetaCount ? html`<span class="count">${zetaCount}</span>` : ''}</td>
-    <td class="c-sum"><button class="sum-btn" data-act="toggle" aria-label="Einbauteile">${s.components.length ? fmt(compSum, 0) : '–'}</button>${s.components.length ? html`<span class="count">${s.components.length}</span>` : ''}</td>
+    <td class="c-sum last-in"><button class="sum-btn" data-act="toggle" aria-label="Einbauteile">${s.components.length ? fmt(compSum, 0) : '–'}</button>${s.components.length ? html`<span class="count">${s.components.length}</span>` : ''}</td>
     ${COLS.filter((c) => c.out).map((c) => html`<td class="${c.cls}" data-out="${c.key}"></td>`)}
     <td class="c-act">
       <button class="icon-btn" data-act="branch" title="Abzweig" aria-label="Abzweig hinzufügen">${icon('branch', { size: 15 })}</button>
@@ -591,7 +583,7 @@ function suggestHtml(s) {
     if (!e) return;
     const same = probe.shape === s.shape && probe.width === s.width && probe.height === s.height && probe.diameter === s.diameter;
     options.push(html`<button class="suggest-btn ${same ? 'is-current' : ''}" data-act="apply-dim" data-patch="${JSON.stringify(patch)}" ${same ? 'disabled' : ''}>
-      <strong>${labelText}</strong><span class="num">${fmt(e.velocity, 2)} m/s · ${fmt(e.gradient, 2)} Pa/m</span></button>`);
+      <strong>${labelText}</strong><span class="num">${fmt(e.velocity, 2)} m/s | ${fmt(e.gradient, 2)} Pa/m</span></button>`);
   };
   if (sug.round) add(`Ø ${sug.round.diameter}`, { shape: 'round', diameter: sug.round.diameter });
   if (sug.rectKeepHeight && !(sug.rect && sug.rect.width === sug.rectKeepHeight.width && sug.rect.height === sug.rectKeepHeight.height)) {
@@ -605,9 +597,9 @@ function suggestHtml(s) {
 
 function renderSummary() {
   const t = ui.result.totals;
-  const path = ui.result.path.map(nrOf);
   const marginDp = t.required - t.critical;
-  const scaleMax = Math.max(t.required, t.available ?? 0) * 1.06 || 1;
+  // The grey track is the available pressure: its empty rest is the reserve. Without a value it is the full bar.
+  const scaleMax = Math.max(t.required, t.available ?? 0) || 1;
   const pct = (v) => `${Math.max(0, (v / scaleMax) * 100).toFixed(3)}%`;
   const parts = [
     { key: 'friction', label: 'Reibung', value: t.friction, cls: 's1' },
@@ -620,22 +612,22 @@ function renderSummary() {
   if (t.available == null) {
     reserve = html`<div class="rs-reserve is-none"><span class="rs-label">Reserve</span><span class="rs-value num muted">–</span></div>`;
   } else if (t.reserve >= 0) {
-    reserve = html`<div class="rs-reserve is-good"><span class="rs-label">Reserve</span><span class="rs-value num">${icon('check')}${fmt(t.reserve, 0)}<small>Pa</small></span><span class="rs-sub">von ${fmt(t.available, 0)} Pa verfügbar</span></div>`;
+    reserve = html`<div class="rs-reserve is-good"><span class="rs-label">Reserve</span><span class="rs-value num">${icon('check')}${fmt(t.reserve, 0)}<small>Pa</small></span></div>`;
   } else {
-    reserve = html`<div class="rs-reserve is-bad"><span class="rs-label">Fehlbetrag</span><span class="rs-value num">${icon('error')}${fmt(-t.reserve, 0)}<small>Pa</small></span><span class="rs-sub">nur ${fmt(t.available, 0)} Pa verfügbar</span></div>`;
+    reserve = html`<div class="rs-reserve is-bad"><span class="rs-label">Fehlbetrag</span><span class="rs-value num">${icon('error')}${fmt(-t.reserve, 0)}<small>Pa</small></span></div>`;
   }
 
   $('#summary').innerHTML = String(html`
     <div class="rs-main">
-      <span class="rs-label">${t.margin > 0 ? `Erforderlich inkl. ${fmt(t.margin, 0)} % Zuschlag` : 'Druckverlust kritischer Strang'}</span>
+      <span class="rs-label">Erforderlich</span>
       <span class="rs-value num">${fmt(t.required, 0)}<small>Pa</small></span>
-      <span class="rs-sub">${path.length ? html`Strang ${path.join(' → ')}${t.margin > 0 ? html` · ohne Zuschlag ${fmt(t.critical, 1)} Pa` : ''}` : 'Noch kein Strang'}</span>
     </div>
-    <div class="rs-bar" role="img" aria-label="Zusammensetzung: Reibung ${fmt(t.friction, 0)} Pa, Formstücke ${fmt(t.fittings, 0)} Pa, Einbauteile ${fmt(t.components, 0)} Pa">
-      <div class="bar-track">
+    <div class="rs-bar" role="img" aria-label="Zusammensetzung: Reibung ${fmt(t.friction, 0)} Pa, Formstücke ${fmt(t.fittings, 0)} Pa, Einbauteile ${fmt(t.components, 0)} Pa${t.available != null ? `, verfügbar ${fmt(t.available, 0)} Pa` : ''}">
+      <div class="bar">
+        <span class="bar-track" style="width:${t.available != null ? pct(t.available) : '100%'}" title="${t.available != null ? `Verfügbar: ${fmt(t.available, 0)} Pa` : ''}"></span>
         ${parts.map((p) => (p.value > 0 ? html`<span class="bar-seg ${p.cls}" style="width:${pct(p.value)}" title="${p.label}: ${fmt(p.value, 1)} Pa${share(p.value)}"></span>` : ''))}
         ${marginDp > 0 ? html`<span class="bar-seg margin" style="width:${pct(marginDp)}" title="Zuschlag: ${fmt(marginDp, 1)} Pa"></span>` : ''}
-        ${t.available != null ? html`<span class="bar-mark ${t.reserve < 0 ? 'is-bad' : ''}" style="left:${pct(t.available)}" title="Verfügbar: ${fmt(t.available, 0)} Pa"><span>verfügbar ${fmt(t.available, 0)}</span></span>` : ''}
+        ${t.reserve < 0 ? html`<span class="bar-over" style="left:${pct(t.available)}" title="Fehlbetrag: ${fmt(-t.reserve, 0)} Pa"></span>` : ''}
       </div>
       <ul class="bar-legend">
         ${parts.map((p) => html`<li><i class="sw ${p.cls}"></i>${p.label} <span class="num">${fmt(p.value, 1)} Pa</span><span class="muted">${share(p.value)}</span></li>`)}
@@ -1167,19 +1159,27 @@ function bindSystem() {
   });
 }
 
-function bindDetailsToggle() {
-  const box = $('#toggle-details');
+const VIEWS = ['compact', 'standard', 'all'];
+
+function setViewClass(table) {
+  for (const v of VIEWS) table.classList.toggle(`view-${v}`, ui.view === v);
+}
+
+function bindColumnsView() {
+  const sel = $('#columns-view');
+  sel.before(document.createRange().createContextualFragment(String(icon('columns', { size: 15 }))));
   try {
-    ui.details = JSON.parse(localStorage.getItem(UI_KEY) || '{}').details === true;
+    const saved = JSON.parse(localStorage.getItem(UI_KEY) || '{}');
+    ui.view = VIEWS.includes(saved.view) ? saved.view : saved.details === true ? 'all' : 'standard';
   } catch {
-    ui.details = false;
+    ui.view = 'standard';
   }
-  box.checked = ui.details;
-  box.addEventListener('change', () => {
-    ui.details = box.checked;
-    $('#sections-table').classList.toggle('show-details', ui.details);
+  sel.value = ui.view;
+  sel.addEventListener('change', () => {
+    ui.view = sel.value;
+    setViewClass($('#sections-table'));
     try {
-      localStorage.setItem(UI_KEY, JSON.stringify({ details: ui.details }));
+      localStorage.setItem(UI_KEY, JSON.stringify({ view: ui.view }));
     } catch {
       /* ignore */
     }
@@ -1236,7 +1236,8 @@ async function start() {
   bindSystem();
   bindTable();
   bindCatalogs();
-  bindDetailsToggle();
+  bindColumnsView();
+  enableCombos($('#sections-table'), (name) => (name === 'diameters' ? ROUND_DIAMETERS : []));
   bindStickyResult();
   bindResize();
   enableFileDrop(openFile);

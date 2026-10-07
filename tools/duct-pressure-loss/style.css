@@ -13,7 +13,7 @@
 
 .result-strip {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr) 220px;
+  grid-template-columns: 200px minmax(0, 1fr) 200px;
   gap: var(--sp-6);
   align-items: center;
   padding: var(--sp-4) var(--sp-5);
@@ -25,24 +25,22 @@
 .rs-label { display: block; font-size: var(--fs-xs); color: var(--text); font-weight: 500; }
 .rs-value { display: flex; align-items: baseline; gap: 6px; font-size: var(--fs-2xl); font-weight: 500; line-height: 1.1; letter-spacing: -0.02em; }
 .rs-value small { font-size: var(--fs-md); color: var(--text-muted); font-weight: 400; letter-spacing: 0; }
-.rs-sub { display: block; font-size: var(--fs-xs); color: var(--text-muted); margin-top: 2px; }
 .rs-reserve .rs-value { font-size: var(--fs-xl); }
 .rs-reserve .rs-value .icon { align-self: center; width: 18px; height: 18px; }
 .rs-reserve.is-good .rs-value { color: var(--success); }
 .rs-reserve.is-bad .rs-value { color: var(--danger); }
 
 .rs-bar { min-width: 0; }
-.bar-track { position: relative; display: flex; gap: 2px; height: 18px; background: var(--surface-sunken); border-radius: 4px; }
-.bar-seg { height: 100%; min-width: 2px; }
-.bar-seg:first-child { border-radius: 4px 0 0 4px; }
-.bar-seg:last-of-type { border-radius: 0 4px 4px 0; }
+/* grey track = available pressure (its empty rest is the reserve); hatched end = deficit */
+.bar { position: relative; display: flex; gap: 2px; height: 18px; border-radius: 4px; overflow: hidden; }
+.bar-track { position: absolute; inset: 0 auto 0 0; background: var(--surface-sunken); border-radius: 4px; }
+.bar-seg { position: relative; height: 100%; min-width: 2px; }
+.bar-seg:last-child { border-radius: 0 4px 4px 0; }
+.bar-over { position: absolute; top: 0; bottom: 0; right: 0; background: repeating-linear-gradient(45deg, var(--surface) 0 2px, transparent 2px 6px); }
 .bar-seg.s1, .sw.s1 { background: var(--chart-1); }
 .bar-seg.s2, .sw.s2 { background: var(--chart-2); }
 .bar-seg.s3, .sw.s3 { background: var(--chart-3); }
 .bar-seg.margin, .sw.margin { background: repeating-linear-gradient(135deg, var(--border-strong) 0 2px, transparent 2px 5px); }
-.bar-mark { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; background: var(--text-strong); }
-.bar-mark span { position: absolute; bottom: calc(100% + 2px); right: 0; font-size: 11px; color: var(--text); white-space: nowrap; }
-.bar-mark.is-bad { background: var(--danger); }
 .bar-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; list-style: none; padding: 0; margin: 10px 0 0; font-size: var(--fs-xs); color: var(--text); }
 .bar-legend li { display: flex; align-items: center; gap: 6px; }
 .bar-legend .num { color: var(--text-strong); }
@@ -57,15 +55,15 @@
 
 .system-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: var(--sp-3); align-items: end; }
 .system-grid .field-wide { grid-column: span 2; }
-.air-readout { grid-column: 1 / -1; font-size: var(--fs-xs); color: var(--text-muted); }
+.air-readout { display: grid; align-self: end; font-size: var(--fs-xs); line-height: 1.35; color: var(--text-muted); white-space: nowrap; }
 .air-readout .num { color: var(--text); }
 @media (max-width: 520px) { .system-grid .field-wide { grid-column: 1 / -1; } }
 
 /* ---- sections table -------------------------------------------------------- */
 
 .table-tools { margin-left: auto; }
-.toggle { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--text); cursor: pointer; }
-.toggle input { accent-color: var(--primary); }
+.view-select { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); }
+.view-select .select { height: 28px; width: auto; font-size: var(--fs-sm); }
 
 .table-wrap { overflow-x: auto; }
 table.sections { border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed; font-size: var(--fs-sm); }
@@ -81,8 +79,11 @@ table.sections { border-collapse: separate; border-spacing: 0; width: 100%; tabl
 .sections td { padding: 3px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sections tr.sec-row:hover td { background: var(--surface-hover); }
 
+/* column views: Kompakt hides .std, only Alle shows .det */
 .sections .det { display: none; }
-.sections.show-details .det { display: table-cell; }
+.sections.view-all .det { display: table-cell; }
+.sections.view-compact .std { display: none; }
+.sections .last-in { border-right: 1px solid var(--border-strong); }
 
 .c-exp { padding-left: 8px !important; }
 .c-dim.na { text-align: center; color: var(--text-muted); }
@@ -99,10 +100,9 @@ td.c-nr { position: relative; }
 /* round: Lindab diameters, Ø in front, number right-aligned like the other inputs */
 .dia { position: relative; display: block; }
 .dia::before { content: 'Ø'; position: absolute; left: 7px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
-.dia .cell-select { padding: 0 6px 0 20px; background-image: none; text-align: right; text-align-last: right; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.dia .cell-input { padding-left: 20px; }
 td.c-out { text-align: right; font-family: var(--font-num); font-variant-numeric: tabular-nums; color: var(--text-strong); }
-td.first-out, th.first-out { border-left: 1px solid var(--border-strong); }
-td.c-cum { font-weight: 500; }
+td.c-cum { color: var(--text-muted); }
 td.c-out.over { color: var(--danger); font-weight: 500; }
 td.c-out.over::after { content: ' ↑'; }
 .sections .c-act { text-align: right; text-overflow: clip; }
@@ -144,7 +144,7 @@ td.c-out.over::after { content: ' ↑'; }
 
 /* critical path: bar on the left of the row */
 tr.sec-row.is-critical td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
-tr.sec-row.is-critical td.c-cum { color: var(--primary); }
+tr.sec-row.is-critical td.c-cum { color: var(--primary); font-weight: 600; background: var(--primary-subtle); }
 tr.sec-row.is-incomplete td.c-out { color: var(--text-muted); }
 tr.sec-row.has-error td:first-child { box-shadow: inset 3px 0 0 var(--danger); }
 tr.sec-row.flash td { animation: flash 900ms ease-out; }
@@ -227,7 +227,7 @@ svg .hit { fill: transparent; cursor: crosshair; }
 .tooltip .num { color: var(--text-inverse); text-align: right; }
 .tooltip[hidden] { display: none; }
 
-svg.network .duct { fill: none; stroke: var(--border-strong); stroke-linecap: butt; stroke-linejoin: miter; }
+svg.network .duct { fill: none; stroke: var(--border-strong); stroke-linecap: butt; stroke-linejoin: round; }
 svg.network .duct.is-critical { stroke: var(--primary); }
 svg.network .duct.is-incomplete { stroke-dasharray: 4 3; }
 svg.network .node { fill: var(--surface); stroke: var(--text-muted); stroke-width: 1.5; }

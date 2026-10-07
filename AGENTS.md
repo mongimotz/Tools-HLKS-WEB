@@ -5,7 +5,7 @@ In-Chat responses should be kept concise and to the point.
 - **Language:** code, identifiers, comments, file and folder names in English. Everything the user sees (UI, PDF, error messages, `README.md`, `docs/*-method.md`) in German (Swiss spelling, no ß). Agent/developer docs (`AGENTS.md`, `docs/DESIGN.md`) in English.
 - **No build step.** Plain HTML, CSS and ES modules. A `git push` is the deploy (GitHub Pages). Use relative paths only, the site may live under a sub-path. The same files must run unchanged on any static host (e.g. Hetzner, Cloudflare).
 - **No CDN.** Third-party code goes into `lib/vendor/` with its license. Fonts live in `assets/fonts/`.
-- **Design:** follow `docs/DESIGN.md`, especially its owner-set principles: minimal decoration, no explanations in the product (they go to `README.md` / `docs/`), symbols over words, no harsh gradients, red-green colourblind safe, simplicity and speed first. Colours only from `docs/dragon-ink.md`, fonts only IBM Plex Sans + Mono, always via the tokens in `assets/css/tokens.css`.
+- **Design:** follow `docs/DESIGN.md`, especially its owner-set principles: minimal decoration, no explanations in the product (they go to `README.md` / `docs/`), symbols over words, no harsh gradients, red-green colourblind safe, simplicity and speed first. Never use the middle dot (·) as a separator in UI or PDF text; use nothing or " | ". Colours only from `docs/dragon-ink.md`, fonts only IBM Plex Sans + Mono, always via the tokens in `assets/css/tokens.css`.
 - **Consistency:** colours, fonts and sizes are shared by all tools; layouts may differ where practical. Only the start page may carry a visual idea (the duct network), and it must never slow anything down.
 
 ## Structure
@@ -15,7 +15,7 @@ index.html                 start page (tool list as duct network + open any PDF)
 assets/css/                tokens.css, base.css (shared), home.css
 assets/js/home.js          start page logic
 assets/fonts/              Plex subsets: variable WOFF2 (web), pdf/*.ttf (PDF), source/ (original variable TTFs + license)
-lib/core/                  shared core: envelope, pdf (export/import), files, store (undo + draft), ui, format, registry, project-info
+lib/core/                  shared core: envelope, pdf (export/import), files, store (undo + draft), ui, combo (number field with standard sizes), format, registry, project-info
 lib/vendor/pdf-lib/        pdf-lib 1.17.1 (MIT)
 lib/vendor/fontkit/        @pdf-lib/fontkit 1.1.1 + pako, one ES module (MIT), for Plex in PDFs
 tools/<tool-id>/           one folder per tool: index.html, app.js (UI), calc.js (pure maths), defaults.js, labels.js, report.js (PDF), csv.js, charts.js, style.css

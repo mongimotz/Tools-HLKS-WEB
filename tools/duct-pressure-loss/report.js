@@ -38,7 +38,7 @@ export async function buildReport(doc, result, envelope) {
       [
         ['Projekt', project.name],
         ['Projekt-Nr.', project.number],
-        ['Bearbeitung', project.author],
+        ['Bearbeiter', project.author],
         ['Datum', fmtDate(project.date)],
         ['Strömungsrichtung', DIRECTION_LABELS[system.direction]],
         ['Höhe / Luft', `${fmt(system.altitude, 0)} m ü. M., ${fmt(system.temperature, 1)} °C, ${fmt(system.humidity, 0)} % r. F.`],
@@ -66,7 +66,7 @@ export async function buildReport(doc, result, envelope) {
     w.y = boxTop + boxH + 8;
     const share = (v) => (t.critical > 0 ? ` (${fmt((v / t.critical) * 100, 0)} %)` : '');
     w.text(
-      `Kritischer Strang: ${result.path.map((id) => nr.get(id)).join(' → ') || '–'}   ·   Reibung ${fmt(t.friction, 1)} Pa${share(t.friction)}   ·   Formstücke ${fmt(t.fittings, 1)} Pa${share(t.fittings)}   ·   Einbauteile ${fmt(t.components, 1)} Pa${share(t.components)}`,
+      `Kritischer Strang: ${result.path.map((id) => nr.get(id)).join(' → ') || '–'}   |   Reibung ${fmt(t.friction, 1)} Pa${share(t.friction)}   |   Formstücke ${fmt(t.fittings, 1)} Pa${share(t.fittings)}   |   Einbauteile ${fmt(t.components, 1)} Pa${share(t.components)}`,
       w.left,
       w.y + 8,
       { size: 8, color: INK.text, maxWidth: w.contentWidth },
@@ -224,13 +224,13 @@ export async function buildReport(doc, result, envelope) {
     const top = 30;
     w.text('HLKS-Tools', w.left, top, { size: 8, bold: true, color: INK.primary });
     w.text(TOOL_NAME, w.left + w.measure('HLKS-Tools', 8, true) + 8, top, { size: 8, color: INK.text });
-    const right = [project.name, project.number].filter(Boolean).join(' · ');
+    const right = [project.name, project.number].filter(Boolean).join(' | ');
     w.text(right, w.right, top, { size: 8, color: INK.text, align: 'right', maxWidth: w.contentWidth / 2 });
     w.line(w.left, top + 7, w.right, top + 7, { color: INK.border, width: 0.6 });
     const fy = w.pageH - 24;
     w.line(w.left, fy - 10, w.right, fy - 10, { color: INK.border, width: 0.4 });
     w.text(
-      `Berechnungsversion ${CALC_VERSION} · Eingaben eingebettet (data.json)`,
+      `Berechnungsversion ${CALC_VERSION} | Eingaben eingebettet (data.json)`,
       w.left,
       fy,
       { size: 6.5, color: INK.muted, maxWidth: w.contentWidth - 80 },

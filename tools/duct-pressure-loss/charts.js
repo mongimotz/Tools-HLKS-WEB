@@ -34,7 +34,7 @@ export function renderProfile(el, result, inputs, nrOf) {
   }
   const W = Math.max(320, el.clientWidth || 640);
   const H = 260;
-  const m = { top: 14, right: 18, bottom: 40, left: 52 };
+  const m = { top: 26, right: 18, bottom: 40, left: 52 };
   const iw = W - m.left - m.right;
   const ih = H - m.top - m.bottom;
 
@@ -73,7 +73,7 @@ export function renderProfile(el, result, inputs, nrOf) {
     svg += `<line class="grid" x1="${m.left}" x2="${W - m.right}" y1="${sy(t)}" y2="${sy(t)}"/>`;
     svg += `<text class="tick" x="${m.left - 8}" y="${sy(t) + 4}" text-anchor="end">${fmt(t, 0)}</text>`;
   }
-  svg += `<text class="axis-title" x="${m.left - 8}" y="${m.top - 2}" text-anchor="end" dy="-2">Pa</text>`;
+  svg += `<text class="axis-title" x="${m.left - 8}" y="${m.top - 14}" text-anchor="end">Pa</text>`;
   // section boundaries + labels
   let lastLabelX = -Infinity;
   for (const s of segs) {
@@ -84,8 +84,7 @@ export function renderProfile(el, result, inputs, nrOf) {
       lastLabelX = xm;
     }
   }
-  svg += `<text class="axis-title" x="${W - m.right}" y="${H - 4}" text-anchor="end">${useLength ? 'm ab Ventilator' : 'Teilstrecken'}</text>`;
-  if (useLength) svg += `<text class="tick" x="${sx(xMax)}" y="${sy(0) + 30}" text-anchor="end">${fmt(xMax, 0)} m</text>`;
+  if (useLength) svg += `<text class="axis-title" x="${sx(xMax)}" y="${sy(0) + 32}" text-anchor="end">${fmt(xMax, 0)} m</text>`;
   // reference line: available pressure
   if (showAvailable) {
     svg += `<line class="ref" x1="${m.left}" x2="${W - m.right}" y1="${sy(available)}" y2="${sy(available)}"/>`;
@@ -181,28 +180,23 @@ export function renderNetwork(el, result, inputs, nrOf, onSelect) {
   const fy = ys(0);
   svg += `<g class="fan" transform="translate(${x0 - 26},${fy})"><circle r="13"/><path d="M-7,-7.5 L9,0 L-7,7.5"/></g>`;
 
-  // connectors first (under the ducts)
-  for (const id of ids) {
-    const r = res.get(id);
-    const parentRow = r.parent ? row.get(r.parent) : 0;
-    if (row.get(id) !== parentRow) {
-      const x = startX(r);
-      svg += `<path class="duct ${r.critical ? 'is-critical' : ''}" stroke-width="${width(r)}" d="M${x},${ys(parentRow)} V${ys(row.get(id))}"/>`;
-    }
-  }
-  for (const id of ids) {
+  // Children first, so a parent duct covers the start of its branches. A branch is one path
+  // (down from the parent's end node, then along its row), which gives a clean corner.
+  for (const id of [...ids].reverse()) {
     const r = res.get(id);
     const y = ys(row.get(id));
+    const parentRow = r.parent ? row.get(r.parent) : 0;
     const xa = startX(r);
     const xb = endX(r);
     const cls = `duct ${r.critical ? 'is-critical' : ''} ${r.status !== 'ok' ? 'is-incomplete' : ''}`;
+    const d = row.get(id) !== parentRow ? `M${xa},${ys(parentRow)} V${y} H${xb}` : `M${xa},${y} H${xb}`;
     svg += `<g class="seg" data-id="${esc(id)}" tabindex="0" role="button" aria-label="Teilstrecke ${esc(label(nrOf, id))} öffnen">`;
-    svg += `<path class="${cls}" stroke-width="${width(r)}" d="M${xa},${y} H${xb}"/>`;
+    svg += `<path class="${cls}" stroke-width="${width(r)}" d="${d}"/>`;
     svg += `<circle class="node ${r.critical ? 'is-critical' : ''}" cx="${xb}" cy="${y}" r="3.5"/>`;
     svg += `<text class="seg-nr" x="${(xa + xb) / 2}" y="${y - 10}" text-anchor="middle">${esc(label(nrOf, id))}</text>`;
     svg += `<text class="seg-val" x="${(xa + xb) / 2}" y="${y + 19}" text-anchor="middle">${r.status === 'ok' ? `${fmt(r.flow, 0)} m³/h` : '–'}</text>`;
     if (r.terminal) {
-      const t = r.critical ? `${fmt(r.cum, 0)} Pa` : `${fmt(r.cum, 0)} Pa · Drossel ${fmt(r.throttle, 0)} Pa`;
+      const t = r.critical ? `${fmt(r.cum, 0)} Pa` : `${fmt(r.cum, 0)} Pa | Drossel ${fmt(r.throttle, 0)} Pa`;
       svg += `<text class="seg-end ${r.critical ? 'is-critical' : ''}" x="${xb + 10}" y="${y + 4}">${t}</text>`;
     }
     svg += `<rect class="hit" x="${xa}" y="${y - 24}" width="${xb - xa + 4}" height="48"/>`;
