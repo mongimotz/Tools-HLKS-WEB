@@ -1,5 +1,7 @@
 # HLKS-Tools
 
+**Online:** https://mongimotz.github.io/Tools-HLKS-WEB/
+
 Rechenwerkzeuge für Heizung, Lüftung, Klima und Sanitär. Die Werkzeuge laufen im Browser. Es gibt keinen Server und keine Anmeldung. Die Daten bleiben auf deinem Gerät, nichts wird hochgeladen.
 
 ## Werkzeuge
@@ -27,10 +29,14 @@ Auf der Startseite zeigt eine Lüftungsleitung die Werkzeuge. Ein Werkzeug mit L
 
 ### Eingabe
 
-1. Trage die Anlage ein: Strömungsrichtung, Höhe, Lufttemperatur, Feuchte, verfügbare Pressung des Ventilators und Zuschlag.
+1. Trage die Anlage ein: Strömungsrichtung, Höhe, Lufttemperatur, Feuchte, verfügbarer Druck des Ventilators und Zuschlag.
 2. Erfasse die Teilstrecken vom Ventilator weg. Jede Teilstrecke hat einen Vorgänger in Richtung Ventilator.
-3. Für einen Abzweig drücke das Abzweig-Symbol in der Zeile. Die neue Teilstrecke hängt an dieser Zeile.
+3. Für einen Abzweig drücke das Abzweig-Symbol in der Zeile. Die neue Teilstrecke hängt an dieser Zeile und bekommt deren Nummer plus .1, .2 … (Abzweig von 2: 2.1). Ein Abzweig ist in der Spalte Nr. eingerückt. Die Einrückung folgt der Nummer: 2.1 eine Stufe, 2.1.1 zwei Stufen.
 4. Öffne mit dem Pfeil links die Details einer Teilstrecke: Formstücke, Einbauteile, eigene Temperatur, Bemerkung, Dimensionierung und Zwischenwerte.
+
+Ein runder Kanal zeigt Ø vor dem Durchmesser. Zur Auswahl stehen die Durchmesser von Lindab (Wickelfalzrohr SR, 63 bis 1600 mm). Tippe die Zahl, um schneller zu wählen. Eckige Kanäle nehmen freie Masse.
+
+Der **Zuschlag** ist ein Sicherheitszuschlag in Prozent auf den Druckverlust des kritischen Strangs. Er deckt Unsicherheiten ab: ζ-Werte als Richtwerte, Formstücke, die erst auf der Baustelle dazukommen, Undichtheiten und Verschmutzung. Üblich sind 10 bis 20 %. 0 % schaltet ihn aus.
 
 Die Strömungsrichtung „Ventilator → Auslass“ gilt für Zuluft und Fortluft (Überdruck). „Einlass → Ventilator“ gilt für Abluft und Aussenluft (Unterdruck). Die Richtung bestimmt, wie das Werkzeug Querschnittsänderungen rechnet.
 
@@ -48,6 +54,7 @@ Die Strömungsrichtung „Ventilator → Auslass“ gilt für Zuluft und Fortluf
 | ↺ | Katalog auf Standardwerte setzen |
 | → in den Hinweisen | Springt zur Teilstrecke |
 | ↑ hinter v | Geschwindigkeit über dem Grenzwert |
+| Ø | Runder Kanal, Durchmesser aus der Lindab-Reihe |
 | TS | Teilstrecke |
 
 ### Tastatur
@@ -61,10 +68,11 @@ Die Strömungsrichtung „Ventilator → Auslass“ gilt für Zuluft und Fortluf
 
 ### Ergebnisse
 
-- Der Balken oben zeigt den Druckverlust im kritischen Strang, aufgeteilt in Reibung, Formstücke, Einbauteile und Zuschlag. Der Strich im Balken ist die verfügbare Pressung.
+- Der Balken oben zeigt den Druckverlust im kritischen Strang, aufgeteilt in Reibung, Formstücke, Einbauteile und Zuschlag. Der Strich im Balken ist der verfügbare Druck.
 - Der Druckverlauf zeigt den kritischen Strang. Die Reibung steigt linear über die Länge. Formstücke und Einbauteile erscheinen als Sprung am Ende der Teilstrecke.
 - Das Strangschema zeigt das Netz. Die Linienstärke folgt dem Volumenstrom. Der kritische Strang ist farbig. An den übrigen Enden steht der Drosselbedarf. Ein Klick auf eine Teilstrecke öffnet ihre Zeile.
 - Ein farbiger Strich links in der Tabelle markiert den kritischen Strang. Ein roter Strich markiert eine Teilstrecke mit Fehler.
+- Die Spalten haben eine feste Breite. Ein Wert, der nicht Platz hat, endet mit „…“. Meist steckt dahinter ein Eingabefehler, zum Beispiel ein zu kleiner Durchmesser.
 
 ### Kataloge
 
@@ -96,7 +104,7 @@ Regeln für Mitwirkende und Agenten: [AGENTS.md](AGENTS.md). Gestaltung: [docs/D
 
 ### Veröffentlichen
 
-GitHub Pages veröffentlicht den Zweig `main` (Ordner root). Die Datei `.nojekyll` ist vorhanden. Pages braucht ein öffentliches Repository oder GitHub Pro. Für eine eigene Domain kommt später eine Datei `CNAME` dazu.
+Die Seite läuft unter https://mongimotz.github.io/Tools-HLKS-WEB/. GitHub Pages veröffentlicht den Zweig `main` (Ordner root) nach jedem Push, meist innerhalb von ein bis zwei Minuten. Die Datei `.nojekyll` ist vorhanden. Für eine eigene Domain kommt später eine Datei `CNAME` dazu.
 
 ## Lizenzen
 

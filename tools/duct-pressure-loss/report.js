@@ -3,7 +3,7 @@
 import { buildPdf, INK } from '../../lib/core/pdf.js';
 import { fmt, fmtSig, fmtDate } from '../../lib/core/format.js';
 import { CALC_VERSION, airState } from './calc.js';
-import { TOOL_NAME, METHOD_LABELS, DIRECTION_LABELS, issueText } from './labels.js';
+import { TOOL_NAME, DIRECTION_LABELS, issueText } from './labels.js';
 
 function nrMap(sections) {
   const m = new Map();
@@ -43,7 +43,6 @@ export async function buildReport(doc, result, envelope) {
         ['Strömungsrichtung', DIRECTION_LABELS[system.direction]],
         ['Höhe / Luft', `${fmt(system.altitude, 0)} m ü. M., ${fmt(system.temperature, 1)} °C, ${fmt(system.humidity, 0)} % r. F.`],
         ['Luftdichte (Anlage)', `${fmt(air.density, 3)} kg/m³ bei ${fmt(air.pressure / 100, 0)} hPa`],
-        ['Reibungsbeiwert λ', METHOD_LABELS[system.frictionMethod] ?? system.frictionMethod],
       ],
       { columns: 4 },
     );
@@ -61,7 +60,7 @@ export async function buildReport(doc, result, envelope) {
     };
     big('Druckverlust kritischer Strang', `${fmt(t.critical, 1)} Pa`, 0);
     big(t.margin > 0 ? `Erforderlich inkl. ${fmt(t.margin, 0)} % Zuschlag` : 'Erforderlich', `${fmt(t.required, 0)} Pa`, 1);
-    big('Verfügbare Pressung', t.available != null ? `${fmt(t.available, 0)} Pa` : '–', 2);
+    big('Verfügbarer Druck', t.available != null ? `${fmt(t.available, 0)} Pa` : '–', 2);
     if (t.reserve != null) big(t.reserve >= 0 ? 'Reserve' : 'Fehlbetrag', `${fmt(Math.abs(t.reserve), 0)} Pa`, 3, t.reserve >= 0 ? INK.strong : INK.danger);
     else big('Reserve', '–', 3);
     w.y = boxTop + boxH + 8;
@@ -213,7 +212,7 @@ export async function buildReport(doc, result, envelope) {
       ],
       rows: [
         ['Luftdichte', 'feuchte Luft, Luftdruck nach Normatmosphäre, Viskosität nach Sutherland'],
-        ['Reibung', `Darcy-Weisbach mit dh, λ nach ${METHOD_LABELS[system.frictionMethod] ?? system.frictionMethod}, laminar 64/Re (Re < 2320)`],
+        ['Reibung', 'Darcy-Weisbach mit dh, λ nach Colebrook-White, laminar 64/Re (Re < 2320)'],
         ['Formstücke', 'Δp = Σζ · ρ/2 · v² mit v der Teilstrecke; Querschnittsänderung nach Borda-Carnot / Einschnürung'],
         ['Rauigkeit', usedMaterials.map((m) => `${m.name} k = ${fmtSig(m.roughness, 3)} mm`).join('; ') || '–'],
         ['ζ, Δp Einbauteile', 'Richtwerte, Herstellerangaben massgebend'],

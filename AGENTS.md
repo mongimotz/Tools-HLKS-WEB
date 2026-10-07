@@ -57,11 +57,11 @@ Open technical items:
 - PWA / service worker so the site works offline and can be installed.
 - Permanent storage beyond the browser draft, e.g. a Google Drive integration (undecided).
 - Excel export as `.xlsx` (CSV exists).
-- Ads (undecided).
 - Own domain: buy it, add `CNAME`, set the DNS record, enable HTTPS in the Pages settings.
 
 Done from the plan: shared core, PDF export/import with embedded data, start page import, calcVersion warning, reference PDFs, first tool (Druckverlust Lüftung).
 
 ## Repository
 
-- GitHub: `mongimotz/Tools-HLKS-WEB` (private, branch `main`). GitHub Pages needs a public repo or GitHub Pro.
+- GitHub: `mongimotz/Tools-HLKS-WEB` (public, branch `main`).
+- Live site (GitHub Pages, deploys from `main` / root on every push): https://mongimotz.github.io/Tools-HLKS-WEB/

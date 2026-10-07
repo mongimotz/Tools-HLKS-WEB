@@ -13,7 +13,7 @@
 
 .result-strip {
   display: grid;
-  grid-template-columns: minmax(220px, auto) 1fr minmax(180px, auto);
+  grid-template-columns: 280px minmax(0, 1fr) 220px;
   gap: var(--sp-6);
   align-items: center;
   padding: var(--sp-4) var(--sp-5);
@@ -21,6 +21,7 @@
   border: 1px solid var(--border);
   border-radius: var(--r-panel);
 }
+.rs-main, .rs-reserve { min-width: 0; overflow: hidden; }
 .rs-label { display: block; font-size: var(--fs-xs); color: var(--text); font-weight: 500; }
 .rs-value { display: flex; align-items: baseline; gap: 6px; font-size: var(--fs-2xl); font-weight: 500; line-height: 1.1; letter-spacing: -0.02em; }
 .rs-value small { font-size: var(--fs-md); color: var(--text-muted); font-weight: 400; letter-spacing: 0; }
@@ -48,7 +49,7 @@
 .sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
 
 @media (max-width: 900px) {
-  .result-strip { grid-template-columns: 1fr auto; gap: var(--sp-4); }
+  .result-strip { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-4); }
   .rs-bar { grid-column: 1 / -1; grid-row: 2; }
 }
 
@@ -67,38 +68,44 @@
 .toggle input { accent-color: var(--primary); }
 
 .table-wrap { overflow-x: auto; }
-table.sections { border-collapse: separate; border-spacing: 0; width: 100%; font-size: var(--fs-sm); }
+table.sections { border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed; font-size: var(--fs-sm); }
 .sections th {
   position: sticky; top: 0; z-index: 2;
   background: var(--surface-sunken);
   font-size: var(--fs-xs); font-weight: 600; color: var(--text);
-  text-align: left; padding: 8px 6px 6px; vertical-align: bottom; white-space: nowrap;
+  text-align: left; padding: 8px 6px 6px; vertical-align: bottom; white-space: nowrap; overflow: hidden;
   border-bottom: 1px solid var(--border-strong);
 }
 .sections th .unit { display: block; font-weight: 400; color: var(--text-muted); }
 .sections th.c-num, .sections th.c-out { text-align: right; }
-.sections td { padding: 3px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
+.sections td { padding: 3px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sections tr.sec-row:hover td { background: var(--surface-hover); }
 
 .sections .det { display: none; }
 .sections.show-details .det { display: table-cell; }
 
-.c-exp { width: 28px; padding-left: 8px !important; }
-.c-nr { width: 74px; }
-.c-nr .cell-input { min-width: 64px; padding-left: calc(6px + var(--depth, 0) * 8px); }
-.c-parent .cell-select { min-width: 104px; }
-.c-shape .cell-select { min-width: 76px; }
-.c-mat .cell-select { min-width: 184px; }
-.c-num .cell-input { width: 74px; }
-.c-dim .cell-input { width: 64px; }
-.c-len .cell-input { width: 56px; }
+.c-exp { padding-left: 8px !important; }
 .c-dim.na { text-align: center; color: var(--text-muted); }
+
+/* branch level (2.1, 2.1.1 …): the field moves right, an elbow links it to the row above */
+td.c-nr { position: relative; }
+.c-nr .cell-input { margin-left: calc(var(--level, 0) * 12px); width: calc(100% - var(--level, 0) * 12px); }
+.c-nr.is-branch::before {
+  content: ''; position: absolute; top: 0; height: 50%;
+  left: calc(var(--level) * 12px - 4px); width: 6px;
+  border-left: 1px solid var(--border-strong); border-bottom: 1px solid var(--border-strong);
+}
+
+/* round: Lindab diameters, Ø in front, number right-aligned like the other inputs */
+.dia { position: relative; display: block; }
+.dia::before { content: 'Ø'; position: absolute; left: 7px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+.dia .cell-select { padding: 0 6px 0 20px; background-image: none; text-align: right; text-align-last: right; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 td.c-out { text-align: right; font-family: var(--font-num); font-variant-numeric: tabular-nums; color: var(--text-strong); }
 td.first-out, th.first-out { border-left: 1px solid var(--border-strong); }
 td.c-cum { font-weight: 500; }
 td.c-out.over { color: var(--danger); font-weight: 500; }
 td.c-out.over::after { content: ' ↑'; }
-.c-act { width: 64px; text-align: right; }
+.sections .c-act { text-align: right; text-overflow: clip; }
 
 .cell-input, .cell-select {
   height: 28px; width: 100%;
@@ -126,9 +133,8 @@ td.c-out.over::after { content: ' ↑'; }
 .exp-btn[aria-expanded='true'] .icon { transform: rotate(90deg); }
 .icon-btn[data-act='delete']:hover { color: var(--danger); }
 
-.c-sum { width: 92px; }
 .sum-btn {
-  min-width: 52px; height: 28px; padding: 0 8px;
+  min-width: 52px; max-width: calc(100% - 16px); overflow: hidden; text-overflow: ellipsis; height: 28px; padding: 0 8px;
   border: 1px dashed var(--border-strong); border-radius: var(--r-input);
   background: none; cursor: pointer; text-align: right;
   font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: var(--fs-sm);

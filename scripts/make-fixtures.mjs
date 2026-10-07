@@ -18,7 +18,7 @@ const cases = {
   excel: {
     project: { name: 'Excel-Vorlage Zeile 1', number: 'FX-2', author: 'Fixture', date: '2026-10-06' },
     inputs: normalizeInputs({
-      system: { name: 'Vergleich Excel', altitude: 540, temperature: 21, humidity: 0, frictionMethod: 'zanke', availablePressure: 500 },
+      system: { name: 'Vergleich Excel', altitude: 540, temperature: 21, humidity: 0, availablePressure: 500 },
       sections: [{ id: 's1', nr: '1', shape: 'rect', width: 800, height: 400, material: 'galvanized', flow: 6000, length: 10, zetaExtra: 0.6 }],
     }),
   },

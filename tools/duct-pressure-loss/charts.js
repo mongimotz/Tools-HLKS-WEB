@@ -1,6 +1,7 @@
 // SVG charts for the duct tool: pressure profile along the critical path and the network schematic.
 
 import { fmt } from '../../lib/core/format.js';
+import { branchLevel } from './calc.js';
 import { esc } from '../../lib/core/ui.js';
 
 function niceMax(v) {
@@ -137,8 +138,8 @@ export function renderProfile(el, result, inputs, nrOf) {
 // ---- network schematic ----------------------------------------------------------------
 
 /**
- * Orthogonal duct schematic. The first child continues straight, further children branch below.
- * Line width follows the volume flow.
+ * Orthogonal duct schematic. The child with the parent's branch level (3 after 2, 2.2 after 2.1)
+ * continues straight, branches (2.1 after 2) go below. Line width follows the volume flow.
  */
 export function renderNetwork(el, result, inputs, nrOf, onSelect) {
   const ids = result.order;
@@ -152,13 +153,15 @@ export function renderNetwork(el, result, inputs, nrOf, onSelect) {
   const x0 = 46;
   const top = 34;
 
-  // rows: depth-first, first child keeps the parent's row
+  // rows: depth-first, the continuation keeps the parent's row
   const row = new Map();
   let nextRow = 0;
   const roots = ids.filter((id) => !res.get(id).parent);
+  const level = (id) => branchLevel(nrOf(id));
   const place = (id, r) => {
     row.set(id, r);
-    res.get(id).children.forEach((c, i) => place(c, i === 0 ? r : ++nextRow));
+    const kids = [...res.get(id).children].sort((a, b) => (level(a) > level(id)) - (level(b) > level(id)));
+    kids.forEach((c, i) => place(c, i === 0 ? r : ++nextRow));
   };
   roots.forEach((id, i) => place(id, i === 0 ? 0 : ++nextRow));
   const rows = nextRow + 1;

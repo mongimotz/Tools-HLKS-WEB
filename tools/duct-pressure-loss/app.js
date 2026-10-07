@@ -4,17 +4,18 @@ import {
   compute,
   snapshotOf,
   descendantsOf,
+  branchLevel,
   airState,
   suggestDimensions,
   evaluateCrossSection,
+  velocityLimit,
   CALC_VERSION,
-  FRICTION_METHODS,
   LAMINAR_LIMIT,
 } from './calc.js';
 import {
   TOOL_ID,
   INPUT_VERSION,
-  STANDARD_DIAMETERS,
+  ROUND_DIAMETERS,
   RECT_STEP,
   normalizeInputs,
   emptyInputs,
@@ -23,7 +24,7 @@ import {
   defaultCatalogs,
   normalizeSection,
 } from './defaults.js';
-import { METHOD_LABELS, DIRECTION_LABELS, GROUP_LABELS, SEVERITY_LABELS, issueText } from './labels.js';
+import { DIRECTION_LABELS, GROUP_LABELS, SEVERITY_LABELS, issueText } from './labels.js';
 import { renderProfile, renderNetwork } from './charts.js';
 import { buildCsv } from './csv.js';
 import { DocumentStore } from '../../lib/core/store.js';
@@ -282,14 +283,8 @@ function renderSystem() {
     ${numInput('data-sys="altitude"', s.altitude, { label: 'Höhe', unit: 'm ü. M.' })}
     ${numInput('data-sys="temperature"', s.temperature, { label: 'Lufttemperatur', unit: '°C' })}
     ${numInput('data-sys="humidity"', s.humidity, { label: 'Rel. Feuchte', unit: '%' })}
-    ${numInput('data-sys="availablePressure"', s.availablePressure, { label: 'Verfügbare Pressung', unit: 'Pa', placeholder: '–' })}
+    ${numInput('data-sys="availablePressure"', s.availablePressure, { label: 'Verfügbarer Druck', unit: 'Pa', placeholder: '–' })}
     ${numInput('data-sys="safetyMargin"', s.safetyMargin, { label: 'Zuschlag', unit: '%' })}
-    <label class="field field-wide">
-      <span class="field-label">Reibungsbeiwert λ</span>
-      <select class="select" data-sys="frictionMethod">
-        ${FRICTION_METHODS.map((k) => html`<option value="${k}" ${k === s.frictionMethod ? 'selected' : ''}>${METHOD_LABELS[k]}</option>`)}
-      </select>
-    </label>
     <p class="air-readout" id="air-readout"></p>`);
 }
 
@@ -303,30 +298,31 @@ function updateAirReadout() {
 
 // ---- sections table ------------------------------------------------------------------
 
+// Fixed column widths [px] (table-layout: fixed): large or wrong values are clipped instead of moving the layout.
 const COLS = [
-  { key: 'exp', cls: 'c-exp' },
-  { key: 'nr', label: 'Nr.', cls: 'c-nr' },
-  { key: 'parent', label: 'Vorgänger', cls: 'c-parent' },
-  { key: 'shape', label: 'Form', cls: 'c-shape' },
-  { key: 'material', label: 'Material', cls: 'c-mat' },
-  { key: 'flow', label: 'V̇', unit: 'm³/h', cls: 'c-num' },
-  { key: 'dim1', label: 'B / Ø', unit: 'mm', cls: 'c-num c-dim' },
-  { key: 'dim2', label: 'H', unit: 'mm', cls: 'c-num c-dim' },
-  { key: 'length', label: 'L', unit: 'm', cls: 'c-num c-len' },
-  { key: 'zeta', label: 'Formstücke', unit: 'Σζ', cls: 'c-sum' },
-  { key: 'comp', label: 'Einbauteile', unit: 'Pa', cls: 'c-sum' },
-  { key: 'dh', label: 'd<sub>h</sub>', unit: 'mm', cls: 'c-out first-out', out: true },
-  { key: 'velocity', label: 'v', unit: 'm/s', cls: 'c-out', out: true },
-  { key: 'dynamicPressure', label: 'p<sub>d</sub>', unit: 'Pa', cls: 'c-out det', out: true },
-  { key: 'reynolds', label: 'Re', unit: '–', cls: 'c-out det', out: true },
-  { key: 'lambda', label: 'λ', unit: '–', cls: 'c-out det', out: true },
-  { key: 'gradient', label: 'R', unit: 'Pa/m', cls: 'c-out', out: true },
-  { key: 'dpFriction', label: 'Δp R·L', unit: 'Pa', cls: 'c-out', out: true },
-  { key: 'dpFittings', label: 'Δp Z', unit: 'Pa', cls: 'c-out', out: true },
-  { key: 'dp', label: 'Δp TS', unit: 'Pa', cls: 'c-out', out: true },
-  { key: 'cum', label: 'Δp kum.', unit: 'Pa', cls: 'c-out c-cum', out: true },
-  { key: 'throttle', label: 'Drossel', unit: 'Pa', cls: 'c-out', out: true },
-  { key: 'act', cls: 'c-act' },
+  { key: 'exp', cls: 'c-exp', w: 30 },
+  { key: 'nr', label: 'Nr.', cls: 'c-nr', w: 84 },
+  { key: 'parent', label: 'Vorgänger', cls: 'c-parent', w: 108 },
+  { key: 'shape', label: 'Form', cls: 'c-shape', w: 80 },
+  { key: 'material', label: 'Material', cls: 'c-mat', w: 188 },
+  { key: 'flow', label: 'V̇', unit: 'm³/h', cls: 'c-num', w: 82 },
+  { key: 'dim1', label: 'B / Ø', unit: 'mm', cls: 'c-num c-dim', w: 74 },
+  { key: 'dim2', label: 'H', unit: 'mm', cls: 'c-num c-dim', w: 74 },
+  { key: 'length', label: 'L', unit: 'm', cls: 'c-num c-len', w: 66 },
+  { key: 'zeta', label: 'Formstücke', unit: 'Σζ', cls: 'c-sum', w: 90 },
+  { key: 'comp', label: 'Einbauteile', unit: 'Pa', cls: 'c-sum', w: 90 },
+  { key: 'dh', label: 'd<sub>h</sub>', unit: 'mm', cls: 'c-out first-out', out: true, w: 60 },
+  { key: 'velocity', label: 'v', unit: 'm/s', cls: 'c-out', out: true, w: 72 },
+  { key: 'dynamicPressure', label: 'p<sub>d</sub>', unit: 'Pa', cls: 'c-out det', out: true, w: 66 },
+  { key: 'reynolds', label: 'Re', unit: '–', cls: 'c-out det', out: true, w: 80 },
+  { key: 'lambda', label: 'λ', unit: '–', cls: 'c-out det', out: true, w: 66 },
+  { key: 'gradient', label: 'R', unit: 'Pa/m', cls: 'c-out', out: true, w: 62 },
+  { key: 'dpFriction', label: 'Δp R·L', unit: 'Pa', cls: 'c-out', out: true, w: 70 },
+  { key: 'dpFittings', label: 'Δp Z', unit: 'Pa', cls: 'c-out', out: true, w: 66 },
+  { key: 'dp', label: 'Δp TS', unit: 'Pa', cls: 'c-out', out: true, w: 70 },
+  { key: 'cum', label: 'Δp kum.', unit: 'Pa', cls: 'c-out c-cum', out: true, w: 80 },
+  { key: 'throttle', label: 'Drossel', unit: 'Pa', cls: 'c-out', out: true, w: 70 },
+  { key: 'act', cls: 'c-act', w: 72 },
 ];
 
 function renderTable() {
@@ -334,7 +330,7 @@ function renderTable() {
   table.classList.toggle('show-details', ui.details);
   const secs = inputs().sections;
   const head = html`<thead><tr>${COLS.map(
-    (c) => html`<th class="${c.cls}" scope="col">${c.label ? raw(c.label) : ''}${c.unit ? html`<span class="unit">${c.unit}</span>` : ''}</th>`,
+    (c) => html`<th class="${c.cls}" scope="col" style="width:${c.w}px">${c.label ? raw(c.label) : ''}${c.unit ? html`<span class="unit">${c.unit}</span>` : ''}</th>`,
   )}</tr></thead>`;
   const body = secs.map((s, i) => rowHtml(s, i));
   table.innerHTML = String(html`${head}<tbody>${body}</tbody>`);
@@ -359,18 +355,33 @@ function materialOptions(selected) {
   return opts;
 }
 
-function inputCell(s, field, value, { cls = '', placeholder = '', list = '' } = {}) {
-  return html`<input class="cell-input num ${cls}" type="text" inputmode="decimal" autocomplete="off" data-field="${field}" value="${toInputValue(value)}" placeholder="${placeholder}" ${list ? raw(`list="${list}"`) : ''} aria-label="${field}" />`;
+function inputCell(s, field, value, { cls = '', placeholder = '' } = {}) {
+  return html`<input class="cell-input num ${cls}" type="text" inputmode="decimal" autocomplete="off" data-field="${field}" value="${toInputValue(value)}" placeholder="${placeholder}" aria-label="${field}" />`;
+}
+
+/** Lindab diameters; a value from an older file that is not in the list stays selectable. */
+function diameterOptions(selected) {
+  const list = [...ROUND_DIAMETERS];
+  if (selected > 0 && !list.includes(selected)) list.push(selected);
+  list.sort((a, b) => a - b);
+  const opts = list.map((d) => html`<option value="${d}" ${d === selected ? 'selected' : ''}>${d}</option>`);
+  if (!(selected > 0)) opts.unshift(html`<option value="" selected></option>`);
+  return opts;
+}
+
+/** Indentation level of a row (branch level, capped). */
+function levelOf(s) {
+  return Math.min(3, branchLevel(s.nr));
 }
 
 function rowHtml(s, index) {
   const open = ui.expanded.has(s.id);
-  const depth = ui.result?.sections.get(s.id)?.depth ?? 0;
+  const level = levelOf(s);
   const zetaCount = s.fittings.length + (s.zetaExtra ? 1 : 0);
   const compSum = s.components.reduce((a, c) => a + (c.dp || 0), 0);
   const main = html`<tr class="sec-row" data-id="${s.id}">
     <td class="c-exp"><button class="exp-btn" data-act="toggle" aria-expanded="${open}" aria-label="Details zu Teilstrecke ${s.nr || index + 1}" title="Details">${icon('chevron', { size: 14 })}</button></td>
-    <td class="c-nr" style="--depth:${Math.min(depth, 6)}"><input class="cell-input" type="text" data-field="nr" value="${s.nr}" placeholder="${index + 1}" aria-label="Nummer" autocomplete="off" /></td>
+    <td class="c-nr ${level ? 'is-branch' : ''}" style="--level:${level}"><input class="cell-input" type="text" data-field="nr" value="${s.nr}" placeholder="${index + 1}" aria-label="Nummer" autocomplete="off" /></td>
     <td class="c-parent"><select class="cell-select" data-field="parent" aria-label="Vorgänger">${parentOptions(s)}</select></td>
     <td class="c-shape"><select class="cell-select" data-field="shape" aria-label="Form">
       <option value="rect" ${s.shape === 'rect' ? 'selected' : ''}>eckig</option>
@@ -379,7 +390,7 @@ function rowHtml(s, index) {
     <td class="c-mat"><select class="cell-select" data-field="material" aria-label="Material">${materialOptions(s.material)}</select></td>
     <td class="c-num">${inputCell(s, 'flow', s.flow)}</td>
     ${s.shape === 'round'
-      ? html`<td class="c-num c-dim">${inputCell(s, 'diameter', s.diameter, { placeholder: 'Ø', list: 'std-diameters' })}</td><td class="c-num c-dim na">–</td>`
+      ? html`<td class="c-num c-dim"><span class="dia"><select class="cell-select num" data-field="diameter" aria-label="Durchmesser">${diameterOptions(s.diameter)}</select></span></td><td class="c-num c-dim na">–</td>`
       : html`<td class="c-num c-dim">${inputCell(s, 'width', s.width, { placeholder: 'B' })}</td><td class="c-num c-dim">${inputCell(s, 'height', s.height, { placeholder: 'H' })}</td>`}
     <td class="c-num c-len">${inputCell(s, 'length', s.length)}</td>
     <td class="c-sum"><button class="sum-btn" data-act="toggle" data-out="zetaSum" aria-label="Formstücke">–</button>${zetaCount ? html`<span class="count">${zetaCount}</span>` : ''}</td>
@@ -512,8 +523,6 @@ function updateResults() {
       row.classList.toggle('is-critical', r.critical);
       row.classList.toggle('is-incomplete', r.status !== 'ok');
       row.classList.toggle('has-error', r.issues.some((i) => i.severity === 'error'));
-      const nrCell = row.querySelector('.c-nr');
-      nrCell.style.setProperty('--depth', Math.min(r.depth, 6));
     }
     for (const cell of row.querySelectorAll('[data-out]')) {
       const key = cell.dataset.out;
@@ -538,7 +547,7 @@ function updateResults() {
       const values = row.querySelector('[data-out-html="values"]');
       if (values) values.innerHTML = String(valuesHtml(r));
       const suggest = row.querySelector('[data-out-html="suggest"]');
-      if (suggest) suggest.innerHTML = String(suggestHtml(sectionById(r.id), r));
+      if (suggest) suggest.innerHTML = String(suggestHtml(sectionById(r.id)));
     }
   }
 }
@@ -570,10 +579,10 @@ function expHtml(value, sig = 3) {
   return p ? html`${p.mantissa}·10<sup>${p.exponent}</sup>` : '–';
 }
 
-function suggestHtml(s, r) {
-  const vmax = r.vmax ?? null;
+function suggestHtml(s) {
+  const vmax = velocityLimit(s.flow, inputs().catalogs.velocityLimits); // also before the section has a valid size
   if (!(s.flow > 0) || !vmax) return html`<p class="muted">–</p>`;
-  const sug = suggestDimensions({ flow: s.flow, vmax, height: s.shape === 'rect' ? s.height : null, diameters: STANDARD_DIAMETERS, rectStep: RECT_STEP });
+  const sug = suggestDimensions({ flow: s.flow, vmax, height: s.shape === 'rect' ? s.height : null, diameters: ROUND_DIAMETERS, rectStep: RECT_STEP });
   if (!sug) return '';
   const options = [];
   const add = (labelText, patch) => {
@@ -711,12 +720,22 @@ function nextIntegerNr() {
   return String(max + 1);
 }
 
+/** Next free number after a section: 4 → 5, 2.1 → 2.2. */
+function nextNrAfter(s) {
+  const m = /^(.*?)(\d+)$/.exec(s?.nr.trim() ?? '');
+  if (!m) return nextIntegerNr();
+  const used = new Set(inputs().sections.map((x) => x.nr.trim()));
+  let n = Number(m[2]) + 1;
+  while (used.has(`${m[1]}${n}`)) n++;
+  return `${m[1]}${n}`;
+}
+
 function addSection({ parent, after, nr } = {}) {
   const secs = inputs().sections;
   const last = secs[secs.length - 1];
   const base = parent ? sectionById(parent) : last;
   const s = newSection(secs, {
-    nr: nr ?? nextIntegerNr(),
+    nr: nr ?? nextNrAfter(last),
     parent: parent !== undefined ? parent : last?.id ?? null,
     shape: base?.shape ?? 'rect',
     material: base?.material ?? 'galvanized',
@@ -731,10 +750,17 @@ function addSection({ parent, after, nr } = {}) {
 
 function addBranch(id) {
   const p = sectionById(id);
-  const used = new Set(inputs().sections.map((s) => s.nr));
+  const secs = inputs().sections;
+  const nr = p.nr.trim();
+  const used = new Set(secs.map((s) => s.nr.trim()));
   let k = 1;
-  while (used.has(`${p.nr}.${k}`)) k++;
-  addSection({ parent: id, after: id, nr: p.nr ? `${p.nr}.${k}` : '' });
+  while (used.has(`${nr}.${k}`)) k++;
+  // Below the parent and the rows of its existing branches (descendants with a deeper level).
+  const level = levelOf(p);
+  const desc = descendantsOf(secs, id);
+  let after = secs.findIndex((s) => s.id === id);
+  for (let i = after + 1; i < secs.length && desc.has(secs[i].id) && levelOf(secs[i]) > level; i++) after = i;
+  addSection({ parent: id, after: secs[after].id, nr: nr ? `${nr}.${k}` : '' });
 }
 
 function deleteSection(id) {
@@ -752,7 +778,7 @@ function deleteSection(id) {
 function duplicateSection(id) {
   const secs = inputs().sections;
   const idx = secs.findIndex((s) => s.id === id);
-  const copy = normalizeSection({ ...structuredClone(secs[idx]), id: newSection(secs).id, nr: nextIntegerNr() });
+  const copy = normalizeSection({ ...structuredClone(secs[idx]), id: newSection(secs).id, nr: nextNrAfter(secs[idx]) });
   secs.splice(idx + 1, 0, copy);
   commitAndRender();
 }
@@ -867,14 +893,18 @@ function bindTable() {
 
   // Enter / Shift+Enter: same column, next / previous row (like a spreadsheet)
   table.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter' || e.target.tagName !== 'INPUT') return;
+    if (e.key !== 'Enter' || !['INPUT', 'SELECT'].includes(e.target.tagName)) return;
     const field = e.target.dataset.field;
     const row = e.target.closest('tr.sec-row');
     if (!field || !row) return;
     e.preventDefault();
     const rows = $$('#sections-table tr.sec-row');
     const i = rows.indexOf(row) + (e.shiftKey ? -1 : 1);
-    const target = rows[i]?.querySelector(`[data-field="${field}"]`) ?? rows[i]?.querySelector('[data-field="flow"]');
+    const twin = { width: 'diameter', diameter: 'width' }[field];
+    const target =
+      rows[i]?.querySelector(`[data-field="${field}"]`) ??
+      (twin && rows[i]?.querySelector(`[data-field="${twin}"]`)) ??
+      rows[i]?.querySelector('[data-field="flow"]');
     if (target) {
       target.focus();
       target.select?.();
@@ -1122,7 +1152,7 @@ function bindSystem() {
   root.addEventListener('input', (e) => {
     const key = e.target.dataset.sys;
     if (!key) return;
-    const isNum = !['name', 'direction', 'frictionMethod'].includes(key);
+    const isNum = !['name', 'direction'].includes(key);
     if (setFromInput(e.target, inputs().system, key, isNum)) {
       if (isNum && inputs().system[key] == null && ['altitude', 'temperature', 'humidity', 'safetyMargin'].includes(key)) {
         inputs().system[key] = key === 'temperature' ? 20 : 0;
@@ -1185,13 +1215,6 @@ function addThemeButton() {
   bindThemeToggle(b);
 }
 
-function addDiameterList() {
-  const dl = document.createElement('datalist');
-  dl.id = 'std-diameters';
-  dl.innerHTML = STANDARD_DIAMETERS.map((d) => `<option value="${d}"></option>`).join('');
-  document.body.append(dl);
-}
-
 // ============================================================================
 // Start
 // ============================================================================
@@ -1201,7 +1224,6 @@ async function start() {
   store = new DocumentStore(loadInitialDoc(), { draftKey: DRAFT_KEY });
 
   addThemeButton();
-  addDiameterList();
   projectView = mountProjectInfo($('#project'), {
     getProject: () => doc().project,
     onInput: () => store.touch(),

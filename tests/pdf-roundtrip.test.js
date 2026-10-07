@@ -1,5 +1,6 @@
-// Export → import → export must keep the data identical. Saved fixture PDFs must still
-// import and reproduce the result stored in their snapshot (regression check).
+// Export → import → export must keep the data identical. Saved fixture PDFs must still import.
+// Fixtures of the current calculation version must reproduce their snapshot exactly (regression check);
+// older ones may differ, because a new calculation version is allowed to change results.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -67,7 +68,10 @@ test('fixture PDFs still import and reproduce their snapshot', async () => {
     const text = await extractDataJson(bytes);
     const env = parseEnvelope(text);
     if (env.tool !== TOOL_ID) continue;
+    checkCompatibility(env, { tool: TOOL_ID, version: INPUT_VERSION, calcVersion: CALC_VERSION });
     const result = compute(normalizeInputs(env.inputs));
+    assert.ok(Number.isFinite(result.totals.critical), `${f}: no result`);
+    if (env.calcVersion !== CALC_VERSION) continue;
     assert.ok(
       Math.abs(result.totals.critical - env.snapshot.critical) < 0.01,
       `${f}: saved ${env.snapshot.critical} Pa, now ${result.totals.critical.toFixed(3)} Pa (calc ${env.calcVersion} → ${CALC_VERSION})`,

@@ -5,14 +5,6 @@ import { fmt } from '../../lib/core/format.js';
 
 export const TOOL_NAME = 'Druckverlust Lüftung';
 
-export const METHOD_LABELS = {
-  colebrook: 'Colebrook-White',
-  churchill: 'Churchill',
-  haaland: 'Haaland',
-  swameeJain: 'Swamee-Jain',
-  zanke: 'Zanke',
-};
-
 export const DIRECTION_LABELS = {
   supply: 'Ventilator → Auslass',
   extract: 'Einlass → Ventilator',

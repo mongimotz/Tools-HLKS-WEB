@@ -2,10 +2,13 @@
 // Catalogue names are user-facing (German). Values are guide values ("Richtwerte").
 
 export const TOOL_ID = 'duct-pressure-loss';
-export const INPUT_VERSION = 1;
+export const INPUT_VERSION = 2;
 
-/** Nominal diameters of round ducts (EN 1506 series, common sizes) [mm]. */
-export const STANDARD_DIAMETERS = [80, 100, 125, 150, 160, 200, 250, 315, 355, 400, 450, 500, 560, 630, 710, 800, 900, 1000, 1120, 1250];
+/** Nominal diameters of round ducts [mm]: Lindab SR circular duct, data sheet 17.11.002 (2024-05-30). */
+export const ROUND_DIAMETERS = [
+  63, 80, 100, 112, 125, 140, 150, 160, 180, 200, 224, 250, 280, 300, 315, 355, 400, 450, 500, 560, 600, 630, 710, 800, 900,
+  1000, 1120, 1250, 1400, 1500, 1600,
+];
 
 /** Rectangular duct sizes are rounded to this step [mm]. */
 export const RECT_STEP = 50;
@@ -93,7 +96,6 @@ export function defaultSystem() {
     humidity: 50,
     availablePressure: null,
     safetyMargin: 0,
-    frictionMethod: 'colebrook',
   };
 }
 
@@ -141,7 +143,10 @@ export function normalizeSection(s = {}) {
   };
 }
 
-/** Bring any (older / partial) input object into the current schema. Idempotent. */
+/**
+ * Bring any (older / partial) input object into the current schema. Idempotent.
+ * Version 1 → 2: system.frictionMethod dropped (always Colebrook-White).
+ */
 export function normalizeInputs(raw = {}) {
   const sys = { ...defaultSystem(), ...(raw.system ?? {}) };
   const cat = raw.catalogs ?? {};
@@ -162,7 +167,6 @@ export function normalizeInputs(raw = {}) {
       humidity: num(sys.humidity) ?? 0,
       availablePressure: num(sys.availablePressure),
       safetyMargin: num(sys.safetyMargin) ?? 0,
-      frictionMethod: str(sys.frictionMethod) || 'colebrook',
     },
     sections,
     catalogs: {
@@ -196,8 +200,20 @@ export function exampleInputs() {
         note: 'Ab Monoblock',
       },
       {
+        id: 's6', nr: '1.1', parent: 's1', shape: 'rect', width: 500, height: 300, material: 'galvanized', flow: 2000, length: 15,
+        fittings: [{ ref: 'tee-branch', count: 1 }, { ref: 'bend90-rect-r1', count: 2 }],
+        components: [{ name: 'Brandschutzklappe', dp: 15 }, { name: 'Luftdurchlass', dp: 30 }],
+        note: 'Korridor Süd',
+      },
+      {
         id: 's2', nr: '2', parent: 's1', shape: 'rect', width: 600, height: 400, material: 'galvanized', flow: 4000, length: 8,
         fittings: [{ ref: 'tee-straight', count: 1 }, { ref: 'transition-conical', count: 1 }],
+      },
+      {
+        id: 's5', nr: '2.1', parent: 's2', shape: 'round', diameter: 400, material: 'galvanized', flow: 2000, length: 5,
+        fittings: [{ ref: 'tee-branch', count: 1 }],
+        components: [{ name: 'Volumenstromregler (min. Δp)', dp: 50 }, { name: 'Luftdurchlass', dp: 30 }],
+        note: 'Grossraumbüro Nord',
       },
       {
         id: 's3', nr: '3', parent: 's2', shape: 'round', diameter: 400, material: 'galvanized', flow: 2000, length: 12,
@@ -208,18 +224,6 @@ export function exampleInputs() {
         fittings: [{ ref: 'bend90-round-r1', count: 1 }],
         components: [{ name: 'Volumenstromregler (min. Δp)', dp: 50 }, { name: 'Luftdurchlass', dp: 30 }],
         note: 'Sitzungszimmer',
-      },
-      {
-        id: 's5', nr: '2.1', parent: 's2', shape: 'round', diameter: 400, material: 'galvanized', flow: 2000, length: 5,
-        fittings: [{ ref: 'tee-branch', count: 1 }],
-        components: [{ name: 'Volumenstromregler (min. Δp)', dp: 50 }, { name: 'Luftdurchlass', dp: 30 }],
-        note: 'Grossraumbüro Nord',
-      },
-      {
-        id: 's6', nr: '1.1', parent: 's1', shape: 'rect', width: 500, height: 300, material: 'galvanized', flow: 2000, length: 15,
-        fittings: [{ ref: 'tee-branch', count: 1 }, { ref: 'bend90-rect-r1', count: 2 }],
-        components: [{ name: 'Brandschutzklappe', dp: 15 }, { name: 'Luftdurchlass', dp: 30 }],
-        note: 'Korridor Süd',
       },
     ],
   });

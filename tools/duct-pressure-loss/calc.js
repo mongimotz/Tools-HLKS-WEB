@@ -3,7 +3,7 @@
 // Units inside this module: lengths of ducts in mm (inputs) and m (calculation), flow in m³/h,
 // pressure in Pa, temperature in °C, roughness in mm.
 
-export const CALC_VERSION = '1.0.0';
+export const CALC_VERSION = '1.1.0';
 
 export const LAMINAR_LIMIT = 2320;
 export const TURBULENT_LIMIT = 4000;
@@ -46,53 +46,22 @@ export function airState({ temperature, altitude, humidity }) {
 
 // ---- friction factor (Darcy λ) --------------------------------------------------
 
-export const FRICTION_METHODS = ['colebrook', 'churchill', 'haaland', 'swameeJain', 'zanke'];
-
-function colebrook(Re, rr) {
-  // Solve 1/√λ = -2 log10(k/(3.71 d) + 2.51/(Re √λ)) by fixed-point iteration on x = 1/√λ.
-  let x = -1.8 * Math.log10(Math.pow(rr / 3.7, 1.11) + 6.9 / Re); // Haaland as start value
+/**
+ * Darcy friction factor λ for Reynolds number Re and relative roughness rr = k/d.
+ * Laminar (Re < 2320): 64/Re. Otherwise Colebrook-White, solved iteratively
+ * (1/√λ = −2 log10(k/(3.71 d) + 2.51/(Re √λ)), fixed point on x = 1/√λ, Haaland as start value).
+ */
+export function frictionFactor(Re, rr) {
+  if (!(Re > 0)) return NaN;
+  if (Re < LAMINAR_LIMIT) return 64 / Re;
+  rr = Math.max(0, rr || 0);
+  let x = -1.8 * Math.log10(Math.pow(rr / 3.7, 1.11) + 6.9 / Re);
   for (let i = 0; i < 100; i++) {
     const next = -2 * Math.log10(rr / 3.71 + (2.51 * x) / Re);
     if (Math.abs(next - x) < 1e-12) return 1 / (next * next);
     x = next;
   }
   return 1 / (x * x);
-}
-
-function haaland(Re, rr) {
-  const x = -1.8 * Math.log10(Math.pow(rr / 3.7, 1.11) + 6.9 / Re);
-  return 1 / (x * x);
-}
-
-function swameeJain(Re, rr) {
-  return 0.25 / Math.pow(Math.log10(rr / 3.7 + 5.74 / Math.pow(Re, 0.9)), 2);
-}
-
-function zanke(Re, rr) {
-  // Explicit approximation used in the original Excel sheet.
-  const t = (2.7 * Math.pow(Math.log10(Re), 1.2)) / Re + rr / 3.71;
-  return Math.pow(1 / (-2 * Math.log10(t)), 2);
-}
-
-function churchill(Re, rr) {
-  // Churchill (1977): one equation for laminar, transition and turbulent flow.
-  const A = Math.pow(2.457 * Math.log(1 / (Math.pow(7 / Re, 0.9) + 0.27 * rr)), 16);
-  const B = Math.pow(37530 / Re, 16);
-  return 8 * Math.pow(Math.pow(8 / Re, 12) + 1 / Math.pow(A + B, 1.5), 1 / 12);
-}
-
-/** Darcy friction factor λ for Reynolds number Re and relative roughness rr = k/d. */
-export function frictionFactor(Re, rr, method = 'colebrook') {
-  if (!(Re > 0)) return NaN;
-  rr = Math.max(0, rr || 0);
-  if (method === 'churchill') return churchill(Re, rr);
-  if (Re < LAMINAR_LIMIT) return 64 / Re;
-  switch (method) {
-    case 'haaland': return haaland(Re, rr);
-    case 'swameeJain': return swameeJain(Re, rr);
-    case 'zanke': return zanke(Re, rr);
-    default: return colebrook(Re, rr);
-  }
 }
 
 // ---- geometry -----------------------------------------------------------------
@@ -183,6 +152,11 @@ export function resolveTree(sections) {
   };
   for (const s of sections) if (parent.get(s.id) === null) visit(s.id, 0);
   return { parent, children, order, depth, issues };
+}
+
+/** Branch level from the section number: 1, 2 → 0; 2.1 → 1; 2.1.1 → 2. */
+export function branchLevel(nr) {
+  return (String(nr ?? '').trim().match(/\./g) ?? []).length;
 }
 
 /** Ids of all descendants of a section (to prevent cycles when choosing a parent). */
@@ -278,7 +252,7 @@ export function compute(inputs) {
       r.dynamicPressure = (a.density * r.velocity ** 2) / 2;
       r.reynolds = (r.velocity * geom.dh) / a.kinematicViscosity;
       r.relRoughness = material.roughness / 1000 / geom.dh;
-      r.lambda = frictionFactor(r.reynolds, r.relRoughness, system.frictionMethod);
+      r.lambda = frictionFactor(r.reynolds, r.relRoughness);
       r.gradient = (r.lambda / geom.dh) * r.dynamicPressure; // R [Pa/m]
       r.dpFriction = r.gradient * r.length;
 

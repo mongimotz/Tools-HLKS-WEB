@@ -1,6 +1,6 @@
 # Druckverlust Lüftung: Rechenweg
 
-Berechnungsversion 1.0.0. Jede gespeicherte Datei enthält die Berechnungsversion. Öffnest du eine Datei aus einer anderen Version, zeigt das Werkzeug die alte und die neue Version. Weicht der Druckverlust im kritischen Strang ab, zeigt es auch den alten und den neuen Wert.
+Berechnungsversion 1.1.0. Jede gespeicherte Datei enthält die Berechnungsversion. Öffnest du eine Datei aus einer anderen Version, zeigt das Werkzeug die alte und die neue Version. Weicht der Druckverlust im kritischen Strang ab, zeigt es auch den alten und den neuen Wert.
 
 ## 1. Luftzustand
 
@@ -45,14 +45,15 @@ Re  = v · d_h / ν
 R    = λ / d_h · p_d
 ```
 
-Für λ gibt es fünf Ansätze. Unter Re = 2320 gilt bei allen ausser Churchill λ = 64 / Re.
+λ folgt aus der Gleichung von Colebrook-White. Das Werkzeug löst sie iterativ und exakt:
 
-| Ansatz | Beschreibung |
-|---|---|
-| Colebrook-White (Standard) | 1/√λ = −2 · log₁₀(k / (3.71 · d_h) + 2.51 / (Re · √λ)). Das Werkzeug löst die Gleichung iterativ und exakt. In Excel war das umständlich, deshalb nahm die Vorlage eine Näherung. |
-| Churchill (1977) | Eine Gleichung für laminar, Übergang und turbulent. Sie hat keinen Sprung bei Re = 2320. |
-| Haaland, Swamee-Jain | Explizite Näherungen. Die Abweichung zu Colebrook liegt meist unter 2 %. |
-| Zanke | Die Näherung aus der Excel-Vorlage. Sie dient zum Vergleich mit alten Berechnungen. |
+```
+1/√λ = −2 · log₁₀(k / (3.71 · d_h) + 2.51 / (Re · √λ))
+```
+
+Unter Re = 2320 gilt λ = 64 / Re (laminar).
+
+Die Excel-Vorlage nahm die Näherung nach Zanke, weil die Iteration in Excel umständlich ist. Näherungen wie Zanke, Haaland oder Swamee-Jain weichen in Lüftungskanälen (Re 10⁴ bis 10⁶) höchstens etwa 1.5 % von Colebrook ab. Am Druckverlust eines ganzen Strangs ändert das meist weniger als 0.5 %. Die Unsicherheit der ζ-Werte und der Rauigkeit ist viel grösser. Bis Berechnungsversion 1.0.0 liess sich der Ansatz wählen. Eine ältere Datei mit einem anderen Ansatz rechnet jetzt mit Colebrook-White.
 
 ## 4. Formstücke
 
@@ -83,10 +84,11 @@ Filter, Schalldämpfer, Klappen, Regler und Luftdurchlässe gehen mit einem fest
 
 Jede Teilstrecke hat einen Vorgänger in Richtung Ventilator. So entsteht ein Baum. Der kumulierte Druckverlust einer Teilstrecke ist ihr eigener Druckverlust plus der kumulierte Druckverlust des Vorgängers.
 
-- **Kritischer Strang:** der Weg vom Ventilator zum Strangende mit dem grössten kumulierten Druckverlust. Er bestimmt die nötige Pressung.
+- **Kritischer Strang:** der Weg vom Ventilator zum Strangende mit dem grössten kumulierten Druckverlust. Er bestimmt den nötigen Druck des Ventilators.
 - **Drosselbedarf:** die Differenz zwischen dem kritischen Strang und einem anderen Strangende. Um diesen Betrag muss eine Klappe oder ein Regler dort zusätzlich drosseln, damit sich die geplanten Volumenströme einstellen.
+- **Zuschlag:** ein Sicherheitszuschlag in Prozent auf den kritischen Strang. Er deckt ab, was die Rechnung nicht genau kennt: ζ-Werte als Richtwerte (vor allem T-Stücke), Formstücke und Umwege, die erst auf der Baustelle dazukommen, Undichtheiten, Verschmutzung und Toleranzen. Üblich sind 10 bis 20 %. 0 % schaltet ihn aus.
 - **Erforderlich** = kritischer Strang · (1 + Zuschlag).
-- **Reserve** = verfügbare Pressung − erforderlich. Ein negativer Wert erscheint als Fehlbetrag.
+- **Reserve** = verfügbarer Druck − erforderlich. Ein negativer Wert erscheint als Fehlbetrag.
 
 ## 7. Prüfungen
 
@@ -101,7 +103,7 @@ Jede Teilstrecke hat einen Vorgänger in Richtung Ventilator. So entsteht ein Ba
 
 Die Vorschläge zeigen die kleinsten Querschnitte, bei denen v ≤ v_max gilt:
 
-- Rund: der kleinste Normdurchmesser aus der Reihe 80 bis 1250 mm.
+- Rund: der kleinste Durchmesser aus der Reihe von Lindab (Wickelfalzrohr SR, Datenblatt 17.11.002 vom 30.05.2024): 63, 80, 100, 112, 125, 140, 150, 160, 180, 200, 224, 250, 280, 300, 315, 355, 400, 450, 500, 560, 600, 630, 710, 800, 900, 1000, 1120, 1250, 1400, 1500 und 1600 mm. Einige Zwischengrössen sind je nach Land nur auf Bestellung erhältlich.
 - Eckig, Höhe bleibt: die Breite auf 50 mm aufgerundet.
 - Eckig, kompakt: das Rechteck mit dem kleinsten Umfang bei einem Seitenverhältnis bis 2 : 1, Masse in Schritten von 50 mm.
 
