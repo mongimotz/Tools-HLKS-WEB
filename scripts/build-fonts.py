@@ -1,12 +1,13 @@
-"""Build the font files used by the site from the IBM Plex package.
+"""Build the font files used by the site from the IBM Plex package (or any other variable font pair).
 
 Run once when the fonts change (needs Python with fonttools and brotli):
     python scripts/build-fonts.py
 
 Input: assets/fonts/source/ (variable IBM Plex Sans and Mono, roman, from the official IBM Plex package).
 Output:
-  assets/fonts/plex-sans-var.woff2, plex-mono-var.woff2   web fonts (variable weight; Sans also width)
-  assets/fonts/pdf/plex-sans-{400,600}.ttf, plex-mono-{400,600}.ttf   static fonts embedded in PDF reports
+  assets/fonts/sans.woff2, mono.woff2   web fonts (variable weight; Sans also width)
+  assets/fonts/pdf/sans-{400,600}.ttf, mono-{400,600}.ttf   static fonts embedded in PDF reports
+The output names are generic, so another font only needs new SANS / MONO sources below.
 All files are subset to Latin, Greek, punctuation, arrows and maths symbols.
 """
 
@@ -54,7 +55,7 @@ def main() -> None:
     (OUT / "pdf").mkdir(exist_ok=True)
 
     # web: variable fonts as WOFF2
-    for src, name in ((SANS, "plex-sans-var.woff2"), (MONO, "plex-mono-var.woff2")):
+    for src, name in ((SANS, "sans.woff2"), (MONO, "mono.woff2")):
         font = subset_font(TTFont(src), "woff2")
         font.save(OUT / name)
         print(f"{name}: {(OUT / name).stat().st_size // 1024} KB")
@@ -64,7 +65,7 @@ def main() -> None:
         for weight in (400, 600):
             font = instancer.instantiateVariableFont(TTFont(src), {"wght": weight, **axes})
             font = subset_font(font, None)
-            path = OUT / "pdf" / f"plex-{family}-{weight}.ttf"
+            path = OUT / "pdf" / f"{family}-{weight}.ttf"
             font.save(path)
             print(f"pdf/{path.name}: {path.stat().st_size // 1024} KB")
 

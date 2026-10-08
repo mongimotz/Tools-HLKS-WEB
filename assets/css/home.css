@@ -1,9 +1,11 @@
-/* Start page. The tool list is drawn as a duct network: the fan feeds a main duct,
-   every tool is a branch. Ready tools carry air; planned tools sit behind a closed damper.
-   The air only moves while a ready tool is hovered or focused (feedback, not decoration). */
+/* Start page. Every discipline is drawn as a small network in its own idiom: a source symbol,
+   the distribution and one branch per tool with a terminal unit (radiator, diffuser, wall unit, tap).
+   Everything is still. Hovering or focusing a ready tool opens its valve or damper, starts the source
+   and lets the medium run from the source to the terminal (feedback, not decoration).
+   The geometry is built in assets/js/home.js, which also sets --row, --head and --net. */
 
 .home-wrap {
-  max-width: 760px;
+  max-width: 1040px;
   margin: 0 auto;
   padding: clamp(24px, 6vw, 72px) var(--gutter) var(--sp-7);
   display: grid;
@@ -14,7 +16,7 @@
 .home-actions { display: flex; align-items: center; gap: var(--sp-2); }
 .wordmark {
   font-family: var(--font-sans);
-  font-stretch: 85%;
+  font-stretch: var(--stretch-brand);
   font-weight: 600;
   color: var(--text-strong);
   font-size: var(--fs-3xl);
@@ -22,133 +24,120 @@
   letter-spacing: -0.015em;
 }
 
-/* ---- duct network --------------------------------------------------------- */
+/* ---- layout ---------------------------------------------------------------- */
 
-.network {
-  --fan: 64px;
-  --duct: 20px;
-  --wall: 2px;
-  --main-x: calc(var(--fan) / 2 - var(--duct) / 2);
-  --branch-end: 136px;
-  --steel: var(--text-muted);
-  --air: var(--primary);
-  position: relative;
+.disciplines { display: grid; gap: var(--sp-6) var(--sp-7); }
+@media (min-width: 880px) { .disciplines { grid-template-columns: 1fr 1fr; } }
+
+.discipline { position: relative; min-width: 0; }
+.net { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+
+.discipline-name {
+  height: var(--head);
+  display: flex;
+  align-items: center;
+  padding-left: 60px;
+  font-stretch: var(--stretch-brand);
+  font-size: var(--fs-lg);
+  color: var(--text-muted);
 }
-@media (max-width: 520px) {
-  .network { --fan: 52px; --duct: 16px; --branch-end: 96px; }
-}
 
-.fan { width: var(--fan); height: calc(var(--fan) - 5px); }
-.fan svg { width: var(--fan); height: var(--fan); overflow: visible; display: block; }
-.fan circle { fill: var(--surface); stroke: var(--text-strong); stroke-width: 2.5; }
-.fan path { fill: none; stroke: var(--text-strong); stroke-width: 2.5; stroke-linejoin: round; transform-origin: 32px 32px; transform: rotate(90deg); }
-
-.branches { list-style: none; margin: 0; padding: 0; }
-.branch { position: relative; }
-.branch > a, .branch > div {
-  position: relative;
-  display: block;
-  min-height: 84px;
-  padding: var(--sp-5) 0 var(--sp-5) calc(var(--branch-end) + var(--sp-5));
+.tools { list-style: none; margin: 0; padding: 0; }
+.tool > a, .tool > div {
+  height: var(--row);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding-left: calc(var(--net) + var(--sp-4));
   color: inherit;
   text-decoration: none;
 }
+.tool-name {
+  font-stretch: var(--stretch-brand);
+  font-weight: 600;
+  color: var(--text-strong);
+  font-size: var(--fs-xl);
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tool-meta { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; overflow: hidden; }
+.is-planned .tool-name { color: var(--text-muted); }
 
-/* main duct piece running through every row (two walls, air down the middle) */
-.branch::before {
-  content: '';
-  position: absolute;
-  left: var(--main-x);
-  top: 0;
-  bottom: 0;
-  width: var(--duct);
-  border-left: var(--wall) solid var(--steel);
-  border-right: var(--wall) solid var(--steel);
-  background: repeating-linear-gradient(to bottom, var(--air) 0 7px, transparent 7px 16px) center 0 / 2px 16px repeat-y;
-}
-.branch:last-child::before {
-  bottom: calc(50% - var(--duct) / 2);
-  border-bottom: var(--wall) solid var(--steel);
-}
-/* opening in the right wall where the branch leaves */
-.branch::after {
-  content: '';
-  position: absolute;
-  left: calc(var(--main-x) + var(--duct) - var(--wall));
-  top: calc(50% - var(--duct) / 2 + var(--wall));
-  width: var(--wall);
-  height: calc(var(--duct) - 2 * var(--wall));
-  background: var(--bg);
-}
-
-/* branch duct */
-.duct {
-  position: absolute;
-  left: calc(var(--main-x) + var(--duct));
-  width: calc(var(--branch-end) - var(--main-x) - var(--duct));
-  top: calc(50% - var(--duct) / 2);
-  height: var(--duct);
-  border-top: var(--wall) solid var(--steel);
-  border-bottom: var(--wall) solid var(--steel);
-}
-.air {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(50% - 1px);
-  height: 2px;
-  background: repeating-linear-gradient(to right, var(--air) 0 7px, transparent 7px 16px) 0 0 / 16px 2px repeat-x;
-}
-
-/* supply diffuser at the end of the branch */
-.outlet {
-  position: absolute;
-  left: calc(var(--branch-end) - 1px);
-  top: calc(50% - 20px);
-  width: 9px;
-  height: 40px;
-  border: var(--wall) solid var(--steel);
-  border-radius: 1px;
-  background: repeating-linear-gradient(to bottom, transparent 0 4px, var(--steel) 4px 5px) center / 3px 100% no-repeat, var(--surface);
-}
-
-.tool-text { display: grid; gap: 4px; max-width: 52ch; }
-.tool-name { font-family: var(--font-sans); font-stretch: 85%; font-weight: 600; color: var(--text-strong); font-size: 1.5rem; line-height: 1.15; }
-.tool-meta { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--text-muted); }
-
-/* ready tool: link; air flows while hovered/focused */
-.is-ready a { cursor: pointer; }
 .is-ready a:hover .tool-name, .is-ready a:focus-visible .tool-name { color: var(--primary); }
-.is-ready a:hover .duct, .is-ready a:focus-visible .duct, .is-ready a:hover .outlet, .is-ready a:focus-visible .outlet { border-color: var(--primary); }
-.is-ready a:hover .air, .is-ready a:focus-visible .air { animation: air-right 0.5s linear infinite; }
-.branches:has(.is-ready a:hover, .is-ready a:focus-visible) .branch::before { animation: air-down 0.5s linear infinite; }
 .is-ready a:focus-visible { outline: none; }
 .is-ready a:focus-visible .tool-name { text-decoration: underline; }
 
-/* planned tool: closed damper, no air */
-.is-planned .air { display: none; }
-.is-planned .duct::before {
-  content: '';
-  position: absolute;
-  left: 22px;
-  top: calc(-1 * var(--wall) - 6px);
-  width: var(--wall);
-  height: calc(100% + 2 * var(--wall) + 12px);
-  background: var(--text);
+@media (max-width: 520px) {
+  .tool-name { font-size: var(--fs-lg); }
 }
-.is-planned .duct::after {
-  content: '';
-  position: absolute;
-  left: 19px;
-  top: calc(50% - 4px);
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--bg);
-  border: var(--wall) solid var(--text);
-  box-sizing: border-box;
-}
-.is-planned .tool-name { color: var(--text-muted); }
 
-@keyframes air-down { to { background-position: center 16px; } }
-@keyframes air-right { to { background-position: 16px 0; } }
+/* ---- drawing ---------------------------------------------------------------- */
+
+.net {
+  --line: var(--text-muted);          /* built parts */
+  --line-planned: var(--border-strong);
+  --flow: var(--primary);             /* moving medium, running source, reached terminal */
+  fill: none;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+}
+.net .is-planned { --line: var(--line-planned); }
+
+.pipe { stroke: var(--line); stroke-width: 2; }
+.manifold { stroke: var(--line); stroke-width: 4; stroke-linecap: round; }
+.duct-wall { stroke: var(--line); stroke-width: 20; }
+.duct-in { stroke: var(--bg); stroke-width: 16; }
+
+.term { stroke: var(--line); stroke-width: 2; transition: stroke 0.2s; }
+.term rect { fill: var(--bg); }
+.term path { stroke-width: 1.5; }
+
+.valve { stroke: var(--line); stroke-width: 1.5; stroke-linejoin: round; fill: var(--line); transition: fill 0.2s; }
+.damper, .flap, .lever { stroke: var(--line); stroke-width: 2; stroke-linecap: round; transform-box: fill-box; transition: transform 0.25s ease-out; }
+.damper { transform-origin: center; }
+.damper circle { fill: var(--bg); stroke-width: 1.5; }
+.lever { stroke-width: 2.5; transform-origin: right center; }
+
+/* source symbol */
+.src-ring { fill: var(--bg); stroke: var(--text); stroke-width: 2; transition: stroke 0.2s; }
+.src { stroke: var(--text); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.2s, fill 0.2s; }
+.spin { transform-box: fill-box; transform-origin: center; animation: spin 0.7s linear infinite paused; }
+.flake { animation-duration: 6s; }
+.flame { transform-box: fill-box; transform-origin: center bottom; }
+
+/* medium: revealed along its path from the source (mask), then moving */
+.reveal { stroke: white; stroke-width: 6; stroke-dasharray: var(--len) var(--len); stroke-dashoffset: var(--len); transition: stroke-dashoffset 0s 0.2s; } /* mask luminance, not a colour */
+.flow { stroke: var(--flow); opacity: 0; transition: opacity 0.2s; animation: flow-16 0.35s linear infinite paused; }
+.flow-air { stroke-width: 2; stroke-dasharray: 7 9; }
+.flow-water { stroke-width: 3; stroke-dasharray: 5 5; animation-name: flow-10; animation-duration: 0.45s; }
+.flow-gas { stroke-width: 3.5; stroke-linecap: round; stroke-dasharray: 0 8; animation-name: flow-8; animation-duration: 0.3s; }
+.flow.out { stroke-width: 2; }
+
+/* active branch */
+.run.is-active .reveal { stroke-dashoffset: 0; transition: stroke-dashoffset var(--reveal) linear; }
+.run.is-active .flow { opacity: 1; animation-play-state: running; transition: none; }
+.run.is-active .out { transition: opacity 0.2s var(--reveal); }
+.run.is-active .valve { fill: var(--bg); }
+.run.is-active .damper { transform: rotate(90deg); }
+.run.is-active .lever { transform: rotate(25deg); }
+.run.is-active .flap { transform: translateY(4px); transition-delay: var(--reveal); }
+.run.is-active .term { stroke: var(--flow); transition-delay: var(--reveal); }
+
+.is-on .src-ring, .is-on .src { stroke: var(--flow); }
+.is-on .spin { animation-play-state: running; }
+.is-on .flame { fill: var(--flow); animation: flicker 0.5s ease-in-out infinite alternate; }
+.is-on .drop { fill: var(--flow); animation: drip 0.9s ease-in infinite; }
+
+@keyframes flow-16 { to { stroke-dashoffset: -16; } }
+@keyframes flow-10 { to { stroke-dashoffset: -10; } }
+@keyframes flow-8 { to { stroke-dashoffset: -8; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes flicker { to { transform: scale(0.94, 1.06); } }
+@keyframes drip {
+  0% { transform: translateY(-3px); opacity: 0; }
+  25% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(7px); opacity: 0; }
+}

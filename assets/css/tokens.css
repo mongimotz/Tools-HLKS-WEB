@@ -1,18 +1,21 @@
-/* Design tokens shared by every page.
-   Colours: Dragon Ink (dragon-ink.md). Fonts: IBM Plex Sans + Mono only (built by scripts/build-fonts.py).
-   See docs/DESIGN.md. */
+/* Design tokens: the single source for colours, fonts and sizes of every page.
+   The PDF reports read their colours from this file too (light column, lib/core/pdf.js),
+   and tests/theme.test.js checks that the favicon uses --primary / --on-primary.
+   Colours: Dragon Ink (docs/dragon-ink.md). Fonts: IBM Plex Sans + Mono, built from assets/fonts/source/
+   by scripts/build-fonts.py into generic file names (sans.woff2, mono.woff2, pdf/*.ttf).
+   To change the font: replace the source files, run the script, nothing else changes. See docs/DESIGN.md. */
 
 @font-face {
-  font-family: 'IBM Plex Sans';
-  src: url('../fonts/plex-sans-var.woff2') format('woff2');
+  font-family: 'HLKS Sans'; /* IBM Plex Sans */
+  src: url('../fonts/sans.woff2') format('woff2');
   font-weight: 100 700;
   font-stretch: 85% 100%;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
-  font-family: 'IBM Plex Mono';
-  src: url('../fonts/plex-mono-var.woff2') format('woff2');
+  font-family: 'HLKS Mono'; /* IBM Plex Mono */
+  src: url('../fonts/mono.woff2') format('woff2');
   font-weight: 100 700;
   font-style: normal;
   font-display: swap;
@@ -22,12 +25,15 @@
   color-scheme: light;
 
   /* type */
-  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
-  --font-num: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-sans: 'HLKS Sans', system-ui, sans-serif;
+  --font-num: 'HLKS Mono', ui-monospace, monospace;
+  --stretch-brand: 85%;  /* condensed width for the wordmark and tool names */
 
+  --fs-2xs: 0.6875rem;  /* 11px  chart labels, counters */
   --fs-xs: 0.75rem;     /* 12px  units, captions */
   --fs-sm: 0.8125rem;   /* 13px  table cells, labels */
   --fs-md: 0.9375rem;   /* 15px  body */
+  --fs-brand: 1.0625rem; /* 17px  wordmark in the app bar */
   --fs-lg: 1.125rem;    /* 18px  section titles */
   --fs-xl: 1.5rem;      /* 24px  page title */
   --fs-2xl: 2.25rem;    /* 36px  key result */

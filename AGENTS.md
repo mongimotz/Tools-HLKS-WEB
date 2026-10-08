@@ -5,16 +5,16 @@ In-Chat responses should be kept concise and to the point.
 - **Language:** code, identifiers, comments, file and folder names in English. Everything the user sees (UI, PDF, error messages, `README.md`, `docs/*-method.md`) in German (Swiss spelling, no ß). Agent/developer docs (`AGENTS.md`, `docs/DESIGN.md`) in English.
 - **No build step.** Plain HTML, CSS and ES modules. A `git push` is the deploy (GitHub Pages). Use relative paths only, the site may live under a sub-path. The same files must run unchanged on any static host (e.g. Hetzner, Cloudflare).
 - **No CDN.** Third-party code goes into `lib/vendor/` with its license. Fonts live in `assets/fonts/`.
-- **Design:** follow `docs/DESIGN.md`, especially its owner-set principles: minimal decoration, no explanations in the product (they go to `README.md` / `docs/`), symbols over words, no harsh gradients, red-green colourblind safe, simplicity and speed first. Never use the middle dot (·) as a separator in UI or PDF text; use nothing or " | ". Colours only from `docs/dragon-ink.md`, fonts only IBM Plex Sans + Mono, always via the tokens in `assets/css/tokens.css`.
-- **Consistency:** colours, fonts and sizes are shared by all tools; layouts may differ where practical. Only the start page may carry a visual idea (the duct network), and it must never slow anything down.
+- **Design:** follow `docs/DESIGN.md`, especially its owner-set principles: minimal decoration, no explanations in the product (they go to `README.md` / `docs/`), symbols over words, no harsh gradients, red-green colourblind safe, simplicity and speed first. Never use the middle dot (·) as a separator in UI or PDF text; use nothing or " | ". Colours only from `docs/dragon-ink.md`, fonts only IBM Plex Sans + Mono, always via the tokens in `assets/css/tokens.css` (single source; the PDF reads its colours from it, see "Changing the look" in `docs/DESIGN.md`).
+- **Consistency:** colours, fonts and sizes are shared by all tools; layouts may differ where practical. Only the start page may carry a visual idea (one small network per discipline), and it must never slow anything down.
 
 ## Structure
 
 ```
-index.html                 start page (tool list as duct network + open any PDF)
+index.html                 start page (tools as one network per discipline H, L, K, S + open any PDF)
 assets/css/                tokens.css, base.css (shared), home.css
 assets/js/home.js          start page logic
-assets/fonts/              Plex subsets: variable WOFF2 (web), pdf/*.ttf (PDF), source/ (original variable TTFs + license)
+assets/fonts/              font subsets with generic names: sans/mono.woff2 (web), pdf/*.ttf (PDF), source/ (original variable TTFs + license)
 lib/core/                  shared core: envelope, pdf (export/import), files, store (undo + draft), ui, combo (number field with standard sizes), format, registry, project-info
 lib/vendor/pdf-lib/        pdf-lib 1.17.1 (MIT)
 lib/vendor/fontkit/        @pdf-lib/fontkit 1.1.1 + pako, one ES module (MIT), for Plex in PDFs
@@ -28,7 +28,7 @@ scripts/                   serve.mjs (dev server), make-fixtures.mjs, build-font
 
 - `calc.js`, `defaults.js`, `labels.js`, `report.js` and `csv.js` must not touch the DOM, so Node tests can run them.
 - Import `report.js` / `lib/core/pdf.js` lazily (`await import()`): pdf-lib and fontkit are large and only needed for PDF work.
-- Register every tool in `lib/core/registry.js` and describe it in the tool table of `README.md`.
+- Register every tool in `lib/core/registry.js` with its discipline (`group`: heating, ventilation, cooling, plumbing) and describe it in the tool table of `README.md`.
 - Every tool gets a German `docs/<tool-id>-method.md` (formulas, assumptions, limits) linked from `README.md`. Usage hints for the tool go into `README.md`, not into the page.
 - Saved data is the envelope from `lib/core/envelope.js`: `{ format, envelopeVersion, tool, version, calcVersion, savedAt, project, inputs, snapshot }`. Only `inputs` and `project` are authoritative; results are always recalculated. `snapshot` holds key results for regression checks. The PDF report embeds the envelope as `data.json`; the start page opens any tool's PDF via the registry.
 - Bump `INPUT_VERSION` when the input schema changes (and migrate in `normalizeInputs`). Bump `CALC_VERSION` when results can change, then run `npm run fixtures` to add new reference PDFs. Never delete old fixtures.

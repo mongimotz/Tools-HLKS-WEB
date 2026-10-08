@@ -41,7 +41,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   border-bottom: 1px solid var(--border);
 }
 .brand {
-  font-family: var(--font-sans); font-stretch: 85%; font-weight: 600; font-size: 1.0625rem;
+  font-family: var(--font-sans); font-stretch: var(--stretch-brand); font-weight: 600; font-size: var(--fs-brand);
   letter-spacing: 0.01em; color: var(--text-strong); text-decoration: none;
   display: flex; align-items: center; gap: var(--sp-2); white-space: nowrap; flex: none;
 }

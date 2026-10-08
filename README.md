@@ -6,15 +6,24 @@ Rechenwerkzeuge für Heizung, Lüftung, Klima und Sanitär. Die Werkzeuge laufen
 
 ## Werkzeuge
 
-| Werkzeug | Inhalt | Stand |
-|---|---|---|
-| Druckverlust Lüftung | Teilstrecken mit Formstücken und Einbauteilen, kritischer Strang, Drosselbedarf, Reserve des Ventilators | Testversion |
-| Kanalrechner | Kanal- und Rohrdimensionen aus Volumenstrom und Geschwindigkeit | geplant |
-| Schalldämpfer | Auslegung mit Schallpegel im Oktavband | geplant |
-| Monoblock | Ventilatorleistung, Heiz- und Kühlleistung, Befeuchtung, Filter | geplant |
-| Dämmung | Abschätzung der Dämmstärke für Leitungen und Kanäle | geplant |
+| Fachrichtung | Werkzeug | Inhalt | Stand |
+|---|---|---|---|
+| Lüftung | Druckverlust Lüftung | Teilstrecken mit Formstücken und Einbauteilen, kritischer Strang, Drosselbedarf, Reserve des Ventilators | Testversion |
+| Lüftung | Kanalrechner | Kanal- und Rohrdimensionen aus Volumenstrom und Geschwindigkeit | geplant |
+| Lüftung | Schalldämpfer | Auslegung mit Schallpegel im Oktavband | geplant |
+| Lüftung | Monoblock | Ventilatorleistung, Heiz- und Kühlleistung, Befeuchtung, Filter | geplant |
+| Heizung | Heizlast | Heizlast eines Raums oder Gebäudes | geplant |
+| Heizung | Rohrnetz Heizung | Rohrdimensionen und Druckverlust im Heiznetz | geplant |
+| Heizung | Ausdehnungsgefäss | Auslegung von Ausdehnungsgefäss und Vordruck | geplant |
+| Heizung | Dämmung | Abschätzung der Dämmstärke für Leitungen und Kanäle | geplant |
+| Klima | Kühllast-Check | Grobe Prüfung der Kühllast eines Raums | geplant |
+| Klima | h,x-Diagramm | Luftzustände und Zustandsänderungen | geplant |
+| Klima | Kältemittel | Kältemittelmenge und Grenzwerte für den Raum | geplant |
+| Sanitär | Trinkwasser | Leitungsdimensionen für Trinkwasser | geplant |
+| Sanitär | Warmwasser | Speicher und Leistung für Warmwasser | geplant |
+| Sanitär | Entwässerung | Leitungsdimensionen für Schmutzwasser | geplant |
 
-Auf der Startseite zeigt eine Lüftungsleitung die Werkzeuge. Ein Werkzeug mit Luft im Abzweig ist bereit. Ein Werkzeug hinter einer geschlossenen Klappe ist geplant. Unter einem Werkzeug steht der Name der letzten Berechnung, wenn dieser Browser einen Entwurf gespeichert hat.
+Die Startseite zeigt die Werkzeuge nach Fachrichtung: Heizung, Lüftung, Klima und Sanitär. Jede Fachrichtung ist ein kleines Netz, jedes Werkzeug ein Abzweig. Ein geplantes Werkzeug ist grau. Zeigst du auf ein bereites Werkzeug, öffnet sich sein Ventil oder seine Klappe und das Medium fliesst bis zum Endgerät. Unter einem Werkzeug steht der Name der letzten Berechnung, wenn dieser Browser einen Entwurf gespeichert hat.
 
 ## Speichern und öffnen
 
