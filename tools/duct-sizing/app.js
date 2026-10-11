@@ -19,7 +19,7 @@ import {
   modeFor,
 } from './defaults.js';
 import { SHAPE_LABELS, SHAPE_BUTTONS, SEVERITY_LABELS, modeLabel, ratioText, sizeText, issueText } from './labels.js';
-import { crossSectionSvg } from './drawing.js';
+import { crossSectionLayout, crossSectionSvg, sizeForDrawn } from './drawing.js';
 import { buildCsv } from './csv.js';
 import { DocumentStore } from '../../lib/core/store.js';
 import { fmt, parseNum, toInputValue, todayIso } from '../../lib/core/format.js';
@@ -38,7 +38,6 @@ const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const ui = {
   result: null,
   flhOpen: false, // the operating stages are expanded
-  dragScale: null, // drawing scale held while a handle is dragged
   keyStep: false, // ↑ / ↓ changed a value; one history step on key release
 };
 
@@ -209,7 +208,7 @@ function renderAll() {
 
 function recalc() {
   ui.result = compute(inputs());
-  $('#drawing').innerHTML = crossSectionSvg(ui.result.current, { scale: ui.dragScale });
+  $('#drawing').innerHTML = crossSectionSvg(ui.result.current);
   renderResults();
   renderNotes();
   renderPins();
@@ -294,22 +293,24 @@ function stepList(list, v, dir) {
   return [...list].reverse().find((x) => x < v - 1e-9) ?? list[0];
 }
 
-/** Diameters and oval heights follow their series (catalogue), sides the grid. */
+/**
+ * The dragged edge follows the pointer: the drawn size at the start plus the pointer movement, back to mm
+ * through the drawing scale. Diameters and oval heights then snap to their series (catalogue), sides to the grid.
+ */
 function sizeFromDrag(drag, pt) {
-  const { kind, scale, dims0, p0, center } = drag;
+  const { kind, shape, dims0, drawn0, p0, center } = drag;
   const cat = inputs().catalogs;
-  const oval = current().shape === 'oval';
+  const oval = shape === 'oval';
   if (kind === 'diameter') {
     const grow = Math.hypot(pt.x - center.x, pt.y - center.y) - Math.hypot(p0.x - center.x, p0.y - center.y);
-    const raw = dims0.diameter + (2 * grow) / scale;
+    const raw = sizeForDrawn(shape, kind, { width: drawn0.width + 2 * grow }, dims0).diameter;
     return { diameter: cat.diameters.length ? nearest(cat.diameters, raw) : gridSide(raw) };
   }
+  const drawn = { width: drawn0.width + 2 * (pt.x - p0.x), height: drawn0.height + 2 * (pt.y - p0.y) };
+  const raw = sizeForDrawn(shape, kind, drawn, dims0);
   let { width, height } = dims0;
-  if (kind !== 'height') width = gridSide(width + (2 * (pt.x - p0.x)) / scale);
-  if (kind !== 'width') {
-    const raw = height + (2 * (pt.y - p0.y)) / scale;
-    height = oval && cat.ovalHeights.length ? nearest(cat.ovalHeights, raw) : gridSide(raw);
-  }
+  if (kind !== 'height') width = gridSide(raw.width);
+  if (kind !== 'width') height = oval && cat.ovalHeights.length ? nearest(cat.ovalHeights, raw.height) : gridSide(raw.height);
   return { width: oval ? Math.max(width, height) : width, height };
 }
 
@@ -422,7 +423,7 @@ function renderInputs() {
         ${MODES[p.shape].map((m) => html`<button type="button" data-mode="${m}" aria-pressed="${m === p.mode}">${modeLabel(p.shape, m)}</button>`)}
       </div>
       ${modeFields(p)}
-      ${p.shape === 'round' || p.mode === 'check'
+      ${p.shape === 'round'
         ? ''
         : html`<label class="field"><span class="field-label">Raster <span class="unit">mm</span></span>
             <select class="select" data-sys="rectStep">${options(RECT_STEPS.map((v) => [v, v || 1]), s.rectStep)}</select></label>`}
@@ -697,16 +698,16 @@ function bindDrawing() {
     const r = ui.result.current;
     if (!handle || e.button !== 0 || r.status !== 'ok') return;
     e.preventDefault();
-    const svg = box.querySelector('svg');
+    const L = crossSectionLayout(r.shape, dimsOf(r));
     drag = {
       kind: handle.dataset.handle,
+      shape: r.shape,
       pointer: e.pointerId,
-      scale: Number(svg.dataset.scale),
-      center: { x: Number(svg.dataset.cx), y: Number(svg.dataset.cy) },
+      center: { x: L.cx, y: L.cy },
       p0: toSvg(e),
       dims0: dimsOf(r),
+      drawn0: { width: (r.width ?? r.diameter) * L.scale, height: (r.height ?? r.diameter) * L.scale },
     };
-    ui.dragScale = drag.scale; // keep the scale, so the edge stays under the pointer
     box.setPointerCapture(e.pointerId);
     box.dataset.drag = drag.kind;
   });
@@ -723,10 +724,9 @@ function bindDrawing() {
   const end = (e) => {
     if (!drag || e.pointerId !== drag.pointer) return;
     drag = null;
-    ui.dragScale = null;
     delete box.dataset.drag;
     store.commit();
-    recalc(); // fit the drawing again
+    updateHistoryButtons();
   };
   box.addEventListener('pointerup', end);
   box.addEventListener('pointercancel', end);

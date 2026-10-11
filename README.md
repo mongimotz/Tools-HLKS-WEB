@@ -109,15 +109,15 @@ Der Kanalrechner bestimmt die Abmessung eines Lüftungsrohrs oder -kanals nach S
 4. **Querschnitt:** Form (Rund, Eckig, Oval) und Vorgabe:
    - Rund: **Auslegen** wählt den Durchmesser, **Prüfen** prüft einen gegebenen Durchmesser Ø.
    - Eckig, oval: **Verhältnis** rechnet Breite B und Höhe H zum gewählten Seitenverhältnis, **Höhe** rechnet B zu einer gegebenen Höhe H (zum Beispiel wegen der Deckenhöhe), **Prüfen** prüft gegebene B und H.
-   - **Raster** rundet die Seiten eckiger Kanäle und die Breite ovaler Kanäle auf (1 bis 100 mm).
+   - **Raster** rundet die Seiten eckiger Kanäle und die Breite ovaler Kanäle auf (1 bis 100 mm). Bei „Prüfen“ gibt das Raster die Schritte beim Ziehen und mit ↑ und ↓ vor.
 
 Ein Klick ins Feld Ø zeigt die Normreihe, ↑ und ↓ gehen zum nächsten Durchmesser. Bei ovalen Kanälen gilt das Gleiche für H. In den Feldern B und H gehen ↑ und ↓ einen Rasterschritt weiter. Wechselst du zu einer Vorgabe mit leerem Feld, übernimmt das Feld die bisher gerechnete Abmessung. Wechselst du die Form und fehlen für die neue Form die Masse, rechnet das Werkzeug sie aus (Auslegen oder Verhältnis).
 
-**Grösse in der Zeichnung ziehen:** Die Kreise am Querschnitt sind Griffe. Rund: Griff unten rechts am Rand ändert Ø entlang der Normreihe. Eckig und oval: Griff rechts ändert B, Griff unten ändert H, Griff unten rechts beide. Die Masse stehen oben (B) und links (H), damit sie den Griffen nicht im Weg sind. B und eckige H springen im Raster, ovale H über die Standardhöhen. Die Vorgabe wechselt dabei auf „Prüfen“, v und die Ausnutzung laufen mit. Beim Loslassen passt sich die Zeichnung wieder ein. Mit der Tastatur: Griff mit Tab wählen, Pfeiltasten gehen einen Schritt.
+**Grösse in der Zeichnung ziehen:** Die Kreise am Querschnitt sind Griffe. Rund: Griff unten rechts am Rand ändert Ø entlang der Normreihe. Eckig und oval: Griff rechts ändert B, Griff unten ändert H, Griff unten rechts beide. Die Masse stehen oben (B) und links (H), damit sie den Griffen nicht im Weg sind. B und eckige H springen im Raster, ovale H über die Standardhöhen. Die Vorgabe wechselt dabei auf „Prüfen“, v und die Ausnutzung laufen mit. Die Kante bleibt unter dem Zeiger. Mit der Tastatur: Griff mit Tab wählen, Pfeiltasten gehen einen Schritt.
 
 ### Resultat
 
-- Die Zeichnung zeigt den Querschnitt mit Massen in mm.
+- Die Zeichnung zeigt den Querschnitt mit Massen in mm. Sie ist nicht massstäblich: Die gezeichnete Grösse wächst mit der Quadratwurzel der Kanalgrösse. Ø 80 bleibt erkennbar, 2'000 mm füllen die Zeichenfläche, das Seitenverhältnis stimmt immer.
 - Meldungen stehen über dem Resultat: Grenzwert überschritten (mit der nötigen Grösse), Seitenverhältnis schlanker als 1/5, Normreihe überschritten und Ähnliches.
 - **Abmessung:** die Normgrösse.
 - **v:** Geschwindigkeit mit Ausnutzung v / v_max. Haken: bis 92 %. Warnzeichen: über 92 %. Fehlerzeichen und rote Zahl: über dem Grenzwert.

@@ -115,7 +115,7 @@ Die erste Version rundete Breite und Höhe unabhängig auf. Das ergab oft einen 
 
 **Normreihe:** Die Durchmesser stammen aus der Firmenliste der ersten Version: 80, 100, 125, 160, 180, 200, 224, 250, 280, 300, 315, 355, 400, 450, 500, 560, 630, 710, 800, 900, 1'000, 1'120, 1'250, 1'400, 1'500, 1'600, 1'800 und 2'000 mm. Sie lassen sich im Katalog ändern. „Druckverlust Lüftung“ nimmt dagegen die ganze Reihe von Lindab (63 bis 1'600 mm). Das ist Absicht: Beim Auslegen soll das Werkzeug nur gängige Grössen vorschlagen. Zwischengrössen wie 112, 140, 150 oder 600 mm sind oft nur auf Bestellung erhältlich. Beim Druckverlust gibst du bestehende Rohre ein, dort braucht es alle Grössen.
 
-**Ziehen in der Zeichnung:** Die Griffe ändern die Abmessung in den gleichen Schritten wie oben: Ø zum nächstgelegenen Durchmesser der Normreihe, eckige Seiten und die Breite ovaler Kanäle auf das Raster, die Höhe ovaler Kanäle zur nächstgelegenen Standardhöhe (B bleibt ≥ H). Eine gezogene Abmessung ist eine Vorgabe: Die Vorgabe wechselt auf „Prüfen“.
+**Ziehen in der Zeichnung:** Die Griffe ändern die Abmessung in den gleichen Schritten wie oben: Ø zum nächstgelegenen Durchmesser der Normreihe, eckige Seiten und die Breite ovaler Kanäle auf das Raster, die Höhe ovaler Kanäle zur nächstgelegenen Standardhöhe (B bleibt ≥ H). Eine gezogene Abmessung ist eine Vorgabe: Die Vorgabe wechselt auf „Prüfen“. Die Zeichnung ist nicht massstäblich. Ihr Massstab ist (Rahmenhöhe / G) × √(G / 2'000 mm), höchstens die Rahmenhöhe / G. G ist die Grösse, die den Rahmen begrenzt: Ø, H oder B × Rahmenhöhe / Rahmenbreite. So wächst die Zeichnung stetig mit dem Kanal, ohne beim Ziehen neu einzupassen.
 
 ## 7. Druckgefälle
 

@@ -24,6 +24,7 @@ import {
   TOOL_ID,
   INPUT_VERSION,
 } from '../tools/duct-sizing/defaults.js';
+import { drawingScale, sizeForDrawn, FRAME, FULL_SIZE } from '../tools/duct-sizing/drawing.js';
 import { buildReport } from '../tools/duct-sizing/report.js';
 import { buildCsv } from '../tools/duct-sizing/csv.js';
 import { extractDataJson, isPdf } from '../lib/core/pdf.js';
@@ -193,6 +194,29 @@ async function importPdf(bytes) {
   assert.deepEqual(checkCompatibility(env, { tool: TOOL_ID, version: INPUT_VERSION, calcVersion: CALC_VERSION }), []);
   return { env, doc: { project: env.project, inputs: normalizeInputs(env.inputs) } };
 }
+
+test('drawing grows with the duct, keeps the aspect ratio and inverts for dragging', () => {
+  const drawn = (shape, dims) => (dims.width ?? dims.diameter) * drawingScale(shape, dims);
+  let last = 0;
+  for (const d of [80, 100, 200, 400, 800, 1600, FULL_SIZE]) {
+    const now = drawn('round', { diameter: d });
+    assert.ok(now > last, `Ø ${d} larger than the one before`);
+    last = now;
+  }
+  close(drawn('round', { diameter: 80 }), FRAME.maxH * Math.sqrt(80 / FULL_SIZE), 1e-9, 'Ø 80 still legible');
+  close(drawn('round', { diameter: FULL_SIZE }), FRAME.maxH, 1e-9, 'largest fills the frame');
+  close(drawn('rect', { width: 500, height: 500 }), drawn('round', { diameter: 500 }), 1e-9, 'square like the circle');
+  close(drawn('rect', { width: 10000, height: 1000 }), FRAME.maxW, 1e-9, 'oversize fits');
+  for (const [kind, dims, target] of [['width', { width: 650, height: 375 }, { width: 300, height: 0 }], ['height', { width: 650, height: 375 }, { width: 0, height: 150 }], ['both', { width: 650, height: 375 }, { width: 320, height: 160 }]]) {
+    const back = sizeForDrawn('rect', kind, target, dims);
+    const s = drawingScale('rect', back);
+    if (kind !== 'height') close(back.width * s, target.width, 1e-6, `${kind}: width`);
+    if (kind !== 'width') close(back.height * s, target.height, 1e-6, `${kind}: height`);
+  }
+  const d = sizeForDrawn('round', 'diameter', { width: 150 }, { diameter: 400 }).diameter;
+  close(d * drawingScale('round', { diameter: d }), 150, 1e-6, 'diameter');
+  close(sizeForDrawn('rect', 'width', { width: 5000 }, { width: 650, height: 375 }).width, (FULL_SIZE * FRAME.maxW) / FRAME.maxH, 1, 'stops at the frame');
+});
 
 test('PDF round trip keeps project and inputs identical', async () => {
   const inputs = exampleInputs();

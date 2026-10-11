@@ -188,10 +188,10 @@ function drawCrossSections(w, positions, resultOf, nr) {
       const roomLeft = 40; // height label and dimension
       const roomTop = 24; // width label and dimension
       const L = crossSectionLayout(r.shape, dimsOf(r), r.shape === 'round'
-        ? { width: cw, height: drawH, cx: cw / 2, cy: drawH / 2 - 2, radius: (drawH - 12) / 2, label: 4, arrow: 5 }
+        ? { width: cw, height: drawH, cx: cw / 2, cy: drawH / 2 - 2, maxW: cw, maxH: drawH - 12, fit: true, label: 4, arrow: 5, minInside: 0 }
         : {
             width: cw, height: drawH, cx: roomLeft + (cw - roomLeft - 6) / 2, cy: roomTop + (drawH - roomTop - 4) / 2,
-            maxW: cw - roomLeft - 10, maxH: drawH - roomTop - 8, gap: 3, over: 4, off: 12, label: 4, arrow: 5, rotate: false,
+            maxW: cw - roomLeft - 10, maxH: drawH - roomTop - 8, fit: true, gap: 3, over: 4, off: 12, label: 4, arrow: 5, rotate: false,
           });
       w.path(L.outline, ox, oy, { fill: INK.primarySubtle, stroke: INK.strong, width: 0.8 });
       for (const l of L.lines) w.line(ox + l.x1, oy + l.y1, ox + l.x2, oy + l.y2, { color: INK.muted, width: l.kind === 'dim' ? 0.5 : 0.3 });
