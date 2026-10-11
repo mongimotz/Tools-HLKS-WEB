@@ -50,7 +50,7 @@ export function issueText(issue, nr) {
       const need = issue.needed ? `, nötig ${issue.shape === 'round' ? sizeText('round', issue.needed) : `B ≥ ${fmt(issue.needed.width, 0)}`}` : '';
       return `${at}v = ${fmt(issue.value, 2)} m/s > ${fmt(issue.limit, 2)} m/s${need}`;
     }
-    case 'ratio-high': return `${at}Seitenverhältnis ${ratioText(issue.value)} schlanker als ${ratioText(issue.limit)}`;
+    case 'ratio-high': return `${at}Seitenverhältnis ${ratioText(issue.value)} schlanker als ${ratioText(issue.limit)}${issue.clamped != null ? ` | f aus Tab. 50 für ${ratioText(issue.clamped)}` : ''}`;
     case 'ratio-outside-table': return `${at}Seitenverhältnis ${ratioText(issue.value)} ausserhalb Tab. 50, f für ${ratioText(issue.limit)}`;
     case 'hours-missing': return `Volllaststunden fehlen, Spalte ${fmt(issue.limit, 0)} h/a`;
     case 'hours-high': return `Volllaststunden ${fmt(issue.value, 0)} h/a > ${fmt(issue.limit, 0)} h/a, Spalte ${fmt(issue.limit, 0)} h/a`;

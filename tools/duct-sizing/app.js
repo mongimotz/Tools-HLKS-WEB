@@ -19,7 +19,7 @@ import {
   modeFor,
 } from './defaults.js';
 import { SHAPE_LABELS, SHAPE_BUTTONS, SEVERITY_LABELS, modeLabel, ratioText, sizeText, issueText } from './labels.js';
-import { crossSectionLayout, crossSectionSvg, sizeForDrawn } from './drawing.js';
+import { crossSectionLayout, crossSectionSvg, sizeForDrawn, HANDLE_HIT } from './drawing.js';
 import { buildCsv } from './csv.js';
 import { DocumentStore } from '../../lib/core/store.js';
 import { fmt, parseNum, toInputValue, todayIso } from '../../lib/core/format.js';
@@ -694,17 +694,21 @@ function bindDrawing() {
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
   box.addEventListener('pointerdown', (e) => {
-    const handle = e.target.closest('[data-handle]');
     const r = ui.result.current;
-    if (!handle || e.button !== 0 || r.status !== 'ok') return;
+    if (!e.target.closest('[data-handle]') || e.button !== 0 || r.status !== 'ok') return;
     e.preventDefault();
     const L = crossSectionLayout(r.shape, dimsOf(r));
+    const p0 = toSvg(e);
+    // hit areas overlap on small or flat ducts: the nearest handle wins
+    const dist = (h) => Math.hypot(h.x - p0.x, h.y - p0.y);
+    const handle = L.handles.filter((h) => dist(h) <= HANDLE_HIT + 1).sort((a, b) => dist(a) - dist(b))[0];
+    if (!handle) return;
     drag = {
-      kind: handle.dataset.handle,
+      kind: handle.kind,
       shape: r.shape,
       pointer: e.pointerId,
       center: { x: L.cx, y: L.cy },
-      p0: toSvg(e),
+      p0,
       dims0: dimsOf(r),
       drawn0: { width: (r.width ?? r.diameter) * L.scale, height: (r.height ?? r.diameter) * L.scale },
     };

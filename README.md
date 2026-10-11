@@ -113,7 +113,7 @@ Der Kanalrechner bestimmt die Abmessung eines Lüftungsrohrs oder -kanals nach S
 
 Ein Klick ins Feld Ø zeigt die Normreihe, ↑ und ↓ gehen zum nächsten Durchmesser. Bei ovalen Kanälen gilt das Gleiche für H. In den Feldern B und H gehen ↑ und ↓ einen Rasterschritt weiter. Wechselst du zu einer Vorgabe mit leerem Feld, übernimmt das Feld die bisher gerechnete Abmessung. Wechselst du die Form und fehlen für die neue Form die Masse, rechnet das Werkzeug sie aus (Auslegen oder Verhältnis).
 
-**Grösse in der Zeichnung ziehen:** Die Kreise am Querschnitt sind Griffe. Rund: Griff unten rechts am Rand ändert Ø entlang der Normreihe. Eckig und oval: Griff rechts ändert B, Griff unten ändert H, Griff unten rechts beide. Die Masse stehen oben (B) und links (H), damit sie den Griffen nicht im Weg sind. B und eckige H springen im Raster, ovale H über die Standardhöhen. Die Vorgabe wechselt dabei auf „Prüfen“, v und die Ausnutzung laufen mit. Die Kante bleibt unter dem Zeiger. Mit der Tastatur: Griff mit Tab wählen, Pfeiltasten gehen einen Schritt.
+**Grösse in der Zeichnung ziehen:** Die Kreise am Querschnitt sind Griffe. Rund: Griff unten rechts am Rand ändert Ø entlang der Normreihe. Eckig und oval: Griff rechts ändert B, Griff unten ändert H, der Griff schräg neben der Ecke unten rechts beide. Die Masse stehen oben (B) und links (H), damit sie den Griffen nicht im Weg sind. B und eckige H springen im Raster, ovale H über die Standardhöhen. Die Vorgabe wechselt dabei auf „Prüfen“, v und die Ausnutzung laufen mit. Die Kante bleibt unter dem Zeiger. Mit der Tastatur: Griff mit Tab wählen, Pfeiltasten gehen einen Schritt.
 
 ### Resultat
 

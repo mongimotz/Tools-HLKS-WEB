@@ -108,6 +108,7 @@ export function crossSectionLayout(shape, dims, opts = {}) {
     arrow = 7,
     rotate = true, // height label along its dimension line
     minInside = 50, // round: smallest radius with the label inside the circle
+    grip = 18, // corner handle: distance from the corner
   } = opts;
   const s = drawingScale(shape, dims, { maxW, maxH, fit });
   const out = { outline: '', lines: [], arrows: [], texts: [], handles: [], scale: s, cx, cy };
@@ -154,12 +155,21 @@ export function crossSectionLayout(shape, dims, opts = {}) {
       ? { kind: 'dim', x: x - off - label, y: cy, text: fmt(dims.height, 0), anchor: 'middle', rotate: -90 }
       : { kind: 'dim', x: x - off - label + 2, y: cy + 3, text: fmt(dims.height, 0), anchor: 'end' },
   );
-  // both: bottom right corner, on a flat oval the point of the arc at 45°
+  // both: outside the bottom right corner (flat oval: the point of the arc at 45°), along the diagonal,
+  // so it stays clear of the width handle on flat ducts
   const r = Math.min(w, h) / 2;
-  const both = shape === 'oval' ? { x: x + w - r + r * Math.SQRT1_2, y: cy + r * Math.SQRT1_2 } : { x: x + w, y: y + h };
-  out.handles.push({ kind: 'width', x: x + w, y: cy }, { kind: 'height', x: cx, y: y + h }, { kind: 'both', ...both });
+  const corner = shape === 'oval' ? { x: x + w - r + r * Math.SQRT1_2, y: cy + r * Math.SQRT1_2 } : { x: x + w, y: y + h };
+  const d = grip * Math.SQRT1_2;
+  out.handles.push(
+    { kind: 'width', x: x + w, y: cy },
+    { kind: 'height', x: cx, y: y + h },
+    { kind: 'both', x: corner.x + d, y: corner.y + d },
+  );
   return out;
 }
+
+/** Radius of the hit area around a handle, in drawing units. */
+export const HANDLE_HIT = 28;
 
 const HANDLE_LABELS = { diameter: 'Durchmesser', width: 'Breite', height: 'Höhe', both: 'Breite und Höhe' };
 
@@ -176,7 +186,7 @@ export function crossSectionSvg(r) {
   const value = { diameter: r.diameter, width: r.width, height: r.height };
   const handle = (hd) => `<g class="xs-handle" data-handle="${hd.kind}" tabindex="0" role="slider" aria-label="${HANDLE_LABELS[hd.kind]}"
       aria-valuenow="${value[hd.kind] ?? r.width}" aria-valuetext="${hd.kind === 'both' ? label : `${fmt(value[hd.kind], 0)} mm`}">
-      <circle class="xs-hit" cx="${r2(hd.x)}" cy="${r2(hd.y)}" r="28"/><circle class="xs-knob" cx="${r2(hd.x)}" cy="${r2(hd.y)}" r="6"/></g>`;
+      <circle class="xs-hit" cx="${r2(hd.x)}" cy="${r2(hd.y)}" r="${HANDLE_HIT}"/><circle class="xs-knob" cx="${r2(hd.x)}" cy="${r2(hd.y)}" r="6"/></g>`;
   const text = (t) => {
     const rot = t.rotate ? ` transform="rotate(${t.rotate} ${r2(t.x)} ${r2(t.y)})"` : '';
     return `<text class="xs-t-${t.kind}" x="${r2(t.x)}" y="${r2(t.y)}" text-anchor="${t.anchor}"${rot}>${t.text}</text>`;

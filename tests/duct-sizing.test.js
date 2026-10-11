@@ -159,6 +159,8 @@ test('example: no warnings, aspect warning beyond 1/5', () => {
   assert.equal(all.filter((i) => i.severity !== 'info').length, 0);
   const r = one({ flow: 5000, shape: 'rect', mode: 'size', ratio: 8 });
   assert.ok(r.issues.some((i) => i.code === 'ratio-high'));
+  const flat = one({ shape: 'rect', mode: 'check', flow: 3000, width: 1840, height: 80 });
+  assert.deepEqual(flat.issues.filter((i) => i.code.startsWith('ratio')).map((i) => [i.code, i.clamped]), [['ratio-high', 10]], 'one note beyond Tab. 50');
 });
 
 test('normalizeInputs is idempotent and fixes modes that do not fit the shape', () => {

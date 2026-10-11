@@ -290,8 +290,9 @@ export function sizePosition(p, ctx) {
   r.gradient = (r.lambda / e.dh) * r.dynamicPressure;
 
   if (nonRound) {
-    if (e.ratio > RECOMMENDED_MAX_RATIO + EPS) issue('warning', 'ratio-high', { value: e.ratio, limit: RECOMMENDED_MAX_RATIO });
-    if (e.clamped != null) issue('info', 'ratio-outside-table', { value: e.ratio, limit: e.clamped });
+    // one note: beyond the end of Tab. 50 (1/10) a duct is always more slender than 1/5
+    if (e.ratio > RECOMMENDED_MAX_RATIO + EPS) issue('warning', 'ratio-high', { value: e.ratio, limit: RECOMMENDED_MAX_RATIO, clamped: e.clamped });
+    else if (e.clamped != null) issue('info', 'ratio-outside-table', { value: e.ratio, limit: e.clamped });
     if (!ctx.simple && e.factor == null) issue('error', 'factor-missing');
   }
   if (!ok(e)) issue('warning', 'velocity-high', { value: e.velocity, limit: e.vmax, needed: r.needed ?? null, shape: p.shape });
