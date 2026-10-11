@@ -3,7 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 
 import { parseLightTokens, loadInk, INK } from '../lib/core/pdf.js';
 
@@ -36,7 +36,8 @@ test('favicon uses --primary and --on-primary (light and dark)', async () => {
 });
 
 test('no hard-coded colours or font names outside tokens.css', async () => {
-  const files = ['assets/css/base.css', 'assets/css/home.css', 'tools/duct-pressure-loss/style.css'];
+  const tools = await readdir(new URL('../tools/', import.meta.url));
+  const files = ['assets/css/base.css', 'assets/css/home.css', ...tools.map((t) => `tools/${t}/style.css`)];
   for (const f of files) {
     const css = await read(f);
     assert.doesNotMatch(css, /#[0-9a-fA-F]{3,8}\b/, `${f}: colour literal, use a token`);

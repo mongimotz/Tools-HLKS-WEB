@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kanalrechner – HLKS-Tools</title>
+  <meta name="description" content="Dimensionierung von Lüftungsrohren und -kanälen nach SIA 382/1, Tabellen 49 und 50." />
+  <script>try { const t = localStorage.getItem('hlks-tools:theme'); if (t && t !== 'system') document.documentElement.dataset.theme = t; } catch {}</script>
+  <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="../../assets/css/tokens.css" />
+  <link rel="stylesheet" href="../../assets/css/base.css" />
+  <link rel="stylesheet" href="style.css" />
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="appbar">
+    <a class="brand" href="../../" title="Zur Startseite">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5.2 7.6 18.8 12 5.2 16.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      HLKS-Tools
+    </a>
+    <span class="appbar-title">Kanalrechner</span>
+    <div class="appbar-actions">
+      <button class="btn ghost icon-only" data-action="undo" title="Rückgängig (Strg+Z)" aria-label="Rückgängig"></button>
+      <button class="btn ghost icon-only" data-action="redo" title="Wiederholen (Strg+Y)" aria-label="Wiederholen"></button>
+      <span class="appbar-sep"></span>
+      <button class="btn ghost icon-only" data-action="open" title="Öffnen (Strg+O)" aria-label="Öffnen"></button>
+      <button class="btn primary" data-action="export-pdf" title="PDF speichern (Strg+S)"></button>
+      <div class="menu" id="more-menu">
+        <button class="btn ghost icon-only" data-action="menu" aria-haspopup="true" aria-expanded="false" aria-label="Weitere Aktionen"></button>
+        <ul class="menu-list" role="menu">
+          <li><button data-action="new" role="menuitem">Neue Berechnung</button></li>
+          <li><button data-action="example" role="menuitem">Beispiel laden</button></li>
+          <li><hr /></li>
+          <li><button data-action="export-json" role="menuitem">JSON speichern</button></li>
+          <li><button data-action="export-csv" role="menuitem">CSV speichern</button></li>
+        </ul>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <div id="file-banner" hidden></div>
+
+    <section class="block" aria-label="Projekt">
+      <div id="project"></div>
+    </section>
+
+    <nav class="tabs" role="tablist" aria-label="Ansicht">
+      <button class="tab" role="tab" data-tab="calc" aria-selected="true">Berechnung</button>
+      <button class="tab" role="tab" data-tab="catalogs" aria-selected="false">Kataloge</button>
+    </nav>
+
+    <div class="tab-panel calc-layout" data-panel="calc" id="calc-layout">
+      <section class="panel inputs" id="inputs" aria-label="Eingaben"></section>
+
+      <section class="stage" aria-label="Resultat">
+        <div class="panel canvas" id="drawing"></div>
+        <ul class="issues" id="notes"></ul>
+        <div class="tiles" id="results"></div>
+      </section>
+
+      <aside class="panel pins" id="pins" aria-label="Gepinnt" hidden>
+        <div class="pins-head">
+          <h2 class="pins-h">Gepinnt</h2>
+          <button class="icon-btn" data-action="pins-clear" title="Alle löschen" aria-label="Alle löschen"></button>
+        </div>
+        <ul id="pin-list"></ul>
+      </aside>
+    </div>
+
+    <div class="tab-panel" data-panel="catalogs" hidden>
+      <div id="catalogs" class="catalog-grid"></div>
+    </div>
+  </main>
+
+  <div class="drop-overlay" aria-hidden="true"><span>PDF / JSON öffnen</span></div>
+</body>
+</html>

@@ -9,7 +9,7 @@ Rechenwerkzeuge für Heizung, Lüftung, Klima und Sanitär. Die Werkzeuge laufen
 | Fachrichtung | Werkzeug | Inhalt | Stand |
 |---|---|---|---|
 | Lüftung | Druckverlust Lüftung | Teilstrecken mit Formstücken und Einbauteilen, kritischer Strang, Drosselbedarf, Reserve des Ventilators | Testversion |
-| Lüftung | Kanalrechner | Kanal- und Rohrdimensionen aus Volumenstrom und Geschwindigkeit | geplant |
+| Lüftung | Kanalrechner | Rohre und Kanäle (rund, eckig, flachoval) nach SIA 382/1, Tabellen 49 und 50: Abmessung oder Prüfung, Druckgefälle, Pins | Testversion |
 | Lüftung | Schalldämpfer | Auslegung mit Schallpegel im Oktavband | geplant |
 | Lüftung | Monoblock | Ventilatorleistung, Heiz- und Kühlleistung, Befeuchtung, Filter | geplant |
 | Heizung | Heizlast | Heizlast eines Raums oder Gebäudes | geplant |
@@ -96,6 +96,62 @@ Alle Werte sind Richtwerte. Massgebend sind die Herstellerangaben.
 ### Rechenweg
 
 Formeln, Ansätze und Grenzen der Berechnung: [docs/duct-pressure-loss-method.md](docs/duct-pressure-loss-method.md).
+
+## Kanalrechner
+
+Der Kanalrechner bestimmt die Abmessung eines Lüftungsrohrs oder -kanals nach SIA 382/1:2025, Tabellen 49 und 50, oder prüft eine gegebene Abmessung. Links steht die Eingabe, in der Mitte Zeichnung und Resultat, rechts die gepinnten Resultate.
+
+### Eingabe
+
+1. **Luftmenge:** Bezeichnung (frei, erscheint im Pin und in der PDF) und Auslegungs-Volumenstrom. Den Volumenstrom änderst du schnell mit dem Schieber darunter (10 bis 100'000 m³/h, logarithmisch, runde Werte) oder mit ↑ und ↓ im Feld (zwei gültige Ziffern, mit Umschalt eine: 5'800 → 5'900, mit Umschalt 7'000).
+2. **Betrieb:** Der einfache Modus nimmt nur Tabelle 49, Spalte 2'000 h/a, ohne Reduktionsfaktor. Ohne einfachen Modus gibst du die Elektro-Volllaststunden ein. Ein Klick ins Feld zeigt 2'000, 4'000 und 8'000 h/a, Zwischenwerte tippst du direkt ein.
+3. **Betriebsstufen** (aufklappen): Je Stufe Volumenstrom V̇ in % des Auslegungs-Volumenstroms und Dauer t in h/a. n ist der Exponent: 2.5 als Standard, 1.5 bei Anlagen mit Volumenstromreglern. Der Knopf mit ↑ zeigt das Ergebnis und setzt es ins Feld Volllaststunden.
+4. **Querschnitt:** Form (Rund, Eckig, Oval) und Vorgabe:
+   - Rund: **Auslegen** wählt den Durchmesser, **Prüfen** prüft einen gegebenen Durchmesser Ø.
+   - Eckig, oval: **Verhältnis** rechnet Breite B und Höhe H zum gewählten Seitenverhältnis, **Höhe** rechnet B zu einer gegebenen Höhe H (zum Beispiel wegen der Deckenhöhe), **Prüfen** prüft gegebene B und H.
+   - **Raster** rundet die Seiten eckiger Kanäle und die Breite ovaler Kanäle auf (1 bis 100 mm).
+
+Ein Klick ins Feld Ø zeigt die Normreihe, ↑ und ↓ gehen zum nächsten Durchmesser. Bei ovalen Kanälen gilt das Gleiche für H. In den Feldern B und H gehen ↑ und ↓ einen Rasterschritt weiter. Wechselst du zu einer Vorgabe mit leerem Feld, übernimmt das Feld die bisher gerechnete Abmessung. Wechselst du die Form und fehlen für die neue Form die Masse, rechnet das Werkzeug sie aus (Auslegen oder Verhältnis).
+
+**Grösse in der Zeichnung ziehen:** Die Kreise am Querschnitt sind Griffe. Rund: Griff unten rechts am Rand ändert Ø entlang der Normreihe. Eckig und oval: Griff rechts ändert B, Griff unten ändert H, Griff unten rechts beide. Die Masse stehen oben (B) und links (H), damit sie den Griffen nicht im Weg sind. B und eckige H springen im Raster, ovale H über die Standardhöhen. Die Vorgabe wechselt dabei auf „Prüfen“, v und die Ausnutzung laufen mit. Beim Loslassen passt sich die Zeichnung wieder ein. Mit der Tastatur: Griff mit Tab wählen, Pfeiltasten gehen einen Schritt.
+
+### Resultat
+
+- Die Zeichnung zeigt den Querschnitt mit Massen in mm.
+- Meldungen stehen über dem Resultat: Grenzwert überschritten (mit der nötigen Grösse), Seitenverhältnis schlanker als 1/5, Normreihe überschritten und Ähnliches.
+- **Abmessung:** die Normgrösse.
+- **v:** Geschwindigkeit mit Ausnutzung v / v_max. Haken: bis 92 %. Warnzeichen: über 92 %. Fehlerzeichen und rote Zahl: über dem Grenzwert.
+- **v_max:** Grenzgeschwindigkeit nach Tabelle 49, bei eckigen und ovalen Kanälen mal f.
+- **f_va,du:** Reduktionsfaktor nach Tabelle 50 mit dem tatsächlichen Seitenverhältnis (nur eckig und oval, nicht im einfachen Modus).
+- **R:** Druckgefälle einer geraden Strecke in Pa/m.
+- **erforderlich:** Abmessung vor dem Runden.
+
+### Pins
+
+- Die Stecknadel neben der Abmessung pinnt das Resultat. Die Pins stehen rechts, nummeriert. Der Pin mit Strich links entspricht der aktuellen Eingabe.
+- Ein Klick auf einen Pin lädt ihn in die Eingabe. × entfernt einen Pin, der Papierkorb alle. Die Meldung danach hat ein Symbol für Rückgängig.
+- Die Pins sind Teil der Datei. Die PDF und die CSV enthalten alle Pins, dazu die aktuelle Eingabe, wenn sie nicht gepinnt ist.
+
+### Kataloge
+
+Der Reiter Kataloge enthält Tabelle 49, Tabelle 50, die Normreihe der runden Rohre, die Standardhöhen der flachovalen Kanäle sowie Rauigkeit und Lufttemperatur für das Druckgefälle R. Die Listen trennst du mit Leerzeichen. ↺ setzt einen Katalog auf die Standardwerte. Jede Datei speichert ihre Kataloge mit.
+
+### Symbole und Tastatur
+
+| Symbol, Taste | Bedeutung |
+|---|---|
+| Kreis am Querschnitt | Griff: ziehen ändert die Grösse |
+| Stecknadel | Resultat pinnen |
+| ×, Papierkorb | Pin entfernen, alle Pins entfernen |
+| + bei den Betriebsstufen | Stufe hinzufügen |
+| ↑ bei den Betriebsstufen | Ergebnis als Volllaststunden übernehmen |
+| ↺ | Katalog auf Standardwerte setzen |
+| ↑ hinter v im Pin | Geschwindigkeit über dem Grenzwert |
+| Strg+Z, Strg+Y, Strg+S, Strg+O | Rückgängig, Wiederholen, PDF speichern, Öffnen |
+
+### Rechenweg
+
+Formeln, Ansätze, Rundung und Grenzen: [docs/duct-sizing-method.md](docs/duct-sizing-method.md).
 
 ## Entwicklung
 

@@ -15,10 +15,10 @@ index.html                 start page (tools as one network per discipline H, L,
 assets/css/                tokens.css, base.css (shared), home.css
 assets/js/home.js          start page logic
 assets/fonts/              font subsets with generic names: sans/mono.woff2 (web), pdf/*.ttf (PDF), source/ (original variable TTFs + license)
-lib/core/                  shared core: envelope, pdf (export/import), files, store (undo + draft), ui, combo (number field with standard sizes), format, registry, project-info
+lib/core/                  shared core: envelope, pdf (export/import), files, store (undo + draft), ui, combo (number field with standard sizes), format, registry, project-info, air (air properties, friction factor λ)
 lib/vendor/pdf-lib/        pdf-lib 1.17.1 (MIT)
 lib/vendor/fontkit/        @pdf-lib/fontkit 1.1.1 + pako, one ES module (MIT), for Plex in PDFs
-tools/<tool-id>/           one folder per tool: index.html, app.js (UI), calc.js (pure maths), defaults.js, labels.js, report.js (PDF), csv.js, charts.js, style.css
+tools/<tool-id>/           one folder per tool: index.html, app.js (UI), calc.js (pure maths), defaults.js, labels.js, report.js (PDF), csv.js, charts.js / drawing.js, style.css
 docs/                      DESIGN.md, dragon-ink.md, <tool-id>-method.md (user-facing calculation docs, German)
 tests/                     node --test, fixtures/ holds reference PDFs
 scripts/                   serve.mjs (dev server), make-fixtures.mjs, build-fonts.py
@@ -39,14 +39,14 @@ scripts/                   serve.mjs (dev server), make-fixtures.mjs, build-font
 
 - `npm run serve` – dev server on http://localhost:8080
 - `npm test` – all tests (calculation, envelope, PDF round trip, fixture regression)
-- `npm run fixtures` – write reference PDFs for the current calculation version
+- `npm run fixtures` – write reference PDFs for the current calculation version (cases per tool in `scripts/make-fixtures.mjs`)
 - `python scripts/build-fonts.py` – rebuild font subsets from `assets/fonts/source/` (needs fonttools + brotli; output is byte-different each run, only commit when the subset really changes)
 
 ## Roadmap (from the original plan)
 
 Planned tools (status `planned` in the registry):
 
-- **Kanalrechner** – duct/pipe sizing from flow and velocity. Idea: an experimental version with a 3D model and a fluid simulation.
+- **Kanalrechner** – done as a test version (SIA 382/1 tables 49 and 50). Idea for later: an experimental version with a 3D model and a fluid simulation.
 - **Schalldämpfer** – silencer sizing including sound level calculation per octave band.
 - **Monoblock** – air handling unit: fan power, heating and cooling capacity, humidification, filter sizing.
 - **Dämmung** – insulation thickness estimate.
@@ -59,7 +59,7 @@ Open technical items:
 - Excel export as `.xlsx` (CSV exists).
 - Own domain: buy it, add `CNAME`, set the DNS record, enable HTTPS in the Pages settings.
 
-Done from the plan: shared core, PDF export/import with embedded data, start page import, calcVersion warning, reference PDFs, first tool (Druckverlust Lüftung).
+Done from the plan: shared core, PDF export/import with embedded data, start page import, calcVersion warning, reference PDFs, Druckverlust Lüftung, Kanalrechner.
 
 ## Repository
 
