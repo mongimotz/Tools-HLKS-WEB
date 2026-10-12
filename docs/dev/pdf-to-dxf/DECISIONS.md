@@ -95,3 +95,13 @@ Summary of what was read in phase 1 (AGENTS.md, DESIGN.md, dragon-ink.md, lib/co
 - Join: only pieces with equal layer, colour, line weight and dash join. End points within the tolerance are one node; chains end at junctions (three or more pieces); loops become closed polylines. With join off, the result is single lines.
 - Glyph outlines and fills kept as HATCH do not take part in dedupe and join.
 - Arcs, circles and texts are deduplicated separately (same geometry within the tolerance).
+
+## D10 Curves, text, dashes, hatch, filters
+
+- Arc fit: the standard Bézier arc has both ends and its midpoint exactly on the circle, so the circle through these three points is used (exact, no least-squares bias) and checked against 16 samples. Allowed deviation: max(0.02 mm paper, 3·10⁻⁴ · r), because a 90° Bézier arc is off by up to 2.7·10⁻⁴ · r; with a fixed 0.02 mm, every 90° arc with a radius above 74 mm on paper would fail. `fitCircle` (least squares) stays in geometry.js for scans.
+- Consecutive arcs of one subpath with the same centre and radius merge; 359.5° or more gives a CIRCLE. A cubic whose control points lie on the chord becomes a LINE.
+- Curves that are no arcs: polyline (flattening tolerance 0.05 mm paper) or SPLINE (option, R2000 only; R12 always flattens). One SPLINE per Bézier (degree 3, knots 0 0 0 0 1 1 1 1).
+- Hatch heuristic (plan: ≥ 8 parallel, equally spaced short lines): same layer, direction within 0.5°, each line ≤ 100 mm paper, gap ≤ 10 mm paper and equal within 10 %, neighbouring lines overlap along their direction (so far-apart parallel lines are no hatch). Pieces on one line count as one row. Stairs can match; with the default "own layer" they are only moved to `PDF_SCHRAFFUR`.
+- Dashes "in Einzelstriche auflösen" splits lines, polylines, arcs and circles along their length by the dash array (phase 0); dots of length 0 are dropped.
+- Filters: area (keeps only what lies inside, clipped), layers, colours and line weights off, minimum length (paper mm; closed shapes by perimeter, arcs by arc length; text never).
+- `scripts/pdf-to-dxf.mjs`: command line conversion with the same code as the worker, for real plans and the test report.
