@@ -74,3 +74,13 @@ Summary of what was read in phase 1 (AGENTS.md, DESIGN.md, dragon-ink.md, lib/co
 - Line weights: paper width in mm (not scaled), rounded to the nearest valid DXF value.
 - R12: no handles (`$HANDLING` absent), classic empty BLOCKS section, layer names A–Z 0–9 _ - $ up to 31 characters (umlauts folded), characters outside Windows-1252 as `?`.
 - Files use CRLF and Windows-1252 (`$DWGCODEPAGE ANSI_1252`); characters outside it are written as `\U+XXXX` (R2000).
+
+## D8 Units, scale, settings
+
+- Output coordinate = (p − origin + offset) · k with k = 25.4/72 · M / unit (mm 1, cm 10, m 1000). Origin "page" is the bottom left corner of the displayed page; "center" is the centre of the exported geometry.
+- Calibration returns M (it may be fractional, shown as `1:98.7`) and sets `calibrated: true`. Clicks snap to the nearest end point within a few screen pixels (`snapPoint`).
+- Settings (`defaults.js`) are the tool's whole saved state: scale, unit, origin, DXF options, structure options, tolerances (paper mm), scan options, and per-document fields (page, area, layers, colours and widths switched off) that are reset when another PDF is opened.
+- Presets set only the conversion options. `preset` is derived (`presetOf`): any change away from a preset shows "Benutzerdefiniert".
+- Default layer mode without PDF layers: one layer per colour and line weight (`PDF_RRGGBB_0.35`), so thin hatch lines or coloured content can be switched off in CAD.
+- Hatch option gets a third value "keep" (heuristic off) next to the plan's "remove" and "own layer", because a heuristic can be wrong.
+- "Maximale Kompatibilität" keeps text as glyph outlines (polylines): the preset allows only lines and polylines, and room labels are worth keeping.
