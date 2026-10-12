@@ -20,3 +20,30 @@ Results that `npm test` does not show by itself: external DXF checks, manual UI 
 | text | R2000 / R12 | 0 / 0 | 0 / 0 | TEXT 5 |
 
 R12 skips SPLINE (the pipeline flattens curves for R12, see convert.js).
+
+## Phase 6: pipeline output checked with ezdxf and rendered
+
+`node scripts/pdf-to-dxf.mjs` (preset Nova-Unterlage, 1:100) for every vector fixture, then `scripts/check-dxf.py`: 0 errors, 0 fixes in all files. `curves`: ARC 3, CIRCLE 1, LWPOLYLINE 2 (S curve, ellipse). `text`: TEXT 4 plus the unmapped text as 19 glyph outlines on `PDF_TEXT`. `text` with preset "Maximale Kompatibilität" (R12): POLYLINE 70, 0 errors.
+
+Rendered with `python -m ezdxf draw`: circle and arcs in place, "Büro 3.50 m²", "Ø 160", "Schräg 30°" and the 90° text correct; the TEXT height (0.7 × font size) matches the height of the outlined text next to it.
+
+## Phase 7: user interface, checked in the browser (2026-10-12)
+
+Dev server on port 8081, in-app browser (Chromium). Files were dropped by script (`DragEvent` with a `DataTransfer`), downloads were intercepted and read back instead of saved.
+
+| Check | Result |
+|---|---|
+| Start page: tile "PDF → DXF" below the four networks, centred (tile centre = section centre at 1280 px), source link below | ok |
+| Start page: PDF without `data.json` (curves.pdf) dropped → opens in PDF → DXF (hand-over via IndexedDB), 13 → 6 objects | ok |
+| Start page: HLKS PDF (Kanalrechner fixture) still opens in the Kanalrechner | ok |
+| Open by drop: hatch.pdf → 3 layers (`PDF_RGB_0-0-0_0.18`, `…_FILL`, `PDF_SCHRAFFUR` 30), colours and widths as chips | ok |
+| Calibration: clicks 1.5 px next to the ends of the 100 mm control line snap onto them; length field shows 10000 (mm) at 1:100; input 5000 → 1:50 in the toolbar and the scale field | ok |
+| Area: rectangle dragged around the first rectangle of lines.pdf → 5 → 1 objects, "Bereich aufheben" appears | ok |
+| Multi-page: 3 thumbnails, page 3 selected (pager 3 / 3), "Alle nebeneinander" → one file `multipage.dxf` with 3 frames and 6 lines (R2000) | ok |
+| Undo / redo with Strg+Z / Strg+Y on "Bögen erkennen"; preset switches to "Benutzerdefiniert" | ok |
+| Settings survive a reload (draft), per-document fields reset when another PDF opens | ok |
+| 375 × 812 (light): one column (preview, layers, settings), no horizontal scroll, DXF button as icon | ok |
+| Dark theme: black lines drawn in `--text-strong` | ok |
+| Console errors | none (after making `setPointerCapture` tolerant of synthetic pointers) |
+
+Playwright was not used (see DECISIONS D11); the scripted checks above cover its planned smoke test (open → preset → scale → export → DXF valid).

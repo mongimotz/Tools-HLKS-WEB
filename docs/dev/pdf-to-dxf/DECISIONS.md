@@ -105,3 +105,19 @@ Summary of what was read in phase 1 (AGENTS.md, DESIGN.md, dragon-ink.md, lib/co
 - Dashes "in Einzelstriche auflösen" splits lines, polylines, arcs and circles along their length by the dash array (phase 0); dots of length 0 are dropped.
 - Filters: area (keeps only what lies inside, clipped), layers, colours and line weights off, minimum length (paper mm; closed shapes by perimeter, arcs by arc length; text never).
 - `scripts/pdf-to-dxf.mjs`: command line conversion with the same code as the worker, for real plans and the test report.
+
+## D11 User interface
+
+- Layout: settings left, preview in the middle, layer list right; the page fills the window on wide screens (the footer with the source link stays in view). Below 1100 px the layer list moves under the preview, below 760 px everything is one column (preview, layers, settings). Markup order is preview first for phones.
+- App bar as in the other tools: undo, redo, open, theme, primary "↓ DXF". No ⋯ menu: presets are a select in the settings, and there is nothing else to save.
+- Preview: two canvases (drawing and interaction). Path2D per bucket of layer × colour × line weight, line width = paper line weight (at least one device pixel), black and white drawn in `--text-strong` like ACI 7 in CAD. Large drawings (> 60 000 vertices) move as a cached bitmap and are redrawn 140 ms after the movement stops (level of detail). Text below 3 px is skipped.
+- The worker returns the preview with layers, colours and widths that are switched off still included, so switching them is instant; only the export leaves them out. Every other setting change runs the pipeline again (debounced 120 ms; an older run is cancelled).
+- Scale field: the shared combobox (`lib/core/combo.js`) with the presets 1:1 … 1:1000 and free entry. The current scale also shows in the preview toolbar (`1:98.7`).
+- Calibration: mode button (ruler), two clicks with snapping to the nearest vertex within 10 px, then a length field (mm) prefilled with the length at the current scale. Enter applies, Esc cancels.
+- Area: crop button, drag a rectangle; "×" in the toolbar removes it. The area belongs to the page it was drawn on and is reset when the page changes.
+- Layer list: checkbox, colour swatch, name, count; hidden PDF layers say "ausgeblendet". Colours and line weights as toggle chips (off = struck through and faded, not colour alone).
+- Status line: objects before → after (only what is exported), time, warnings with icon. A progress bar with a cancel button appears after 300 ms. Cancel terminates the worker, starts a new one and opens the PDF again.
+- Start page hand-over: a PDF without `data.json` (or one pdf-lib cannot read) is stored in IndexedDB (`stashFileHandoff` in `lib/core/files.js`) and opened by the tool. sessionStorage is too small for plans.
+- Start page tiles: `GENERAL` group in the registry, tools get an `icon`; `home.js` renders one tile per tool in a nav element without heading, centred with flex-wrap. Planned tools grey, like in the networks.
+- Downloads: one file per page with "Jede Seite einzeln", started 400 ms apart (browsers may block a burst).
+- Playwright via npx was skipped: it needs a browser download. The same smoke test ran scripted in the in-app browser (TESTREPORT, phase 7).

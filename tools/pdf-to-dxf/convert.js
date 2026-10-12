@@ -3,8 +3,8 @@
 // export (DXF bytes). The worker (worker.js) calls it; tests call it directly in Node. No DOM.
 
 import { PdfError } from './backend.js';
-import { runPipeline, toDxfEntities, makeTransform, linetypePatterns, PT_MM } from './pipeline.js';
-import { writeDxf } from './dxf.js';
+import { runPipeline, toDxfEntities, makeTransform, linetypePatterns, rgbHex, PT_MM } from './pipeline.js';
+import { writeDxf, lineweight } from './dxf.js';
 import { flattenArc, flattenBezier } from './geometry.js';
 import { entitiesBounds } from './ir.js';
 import { normalizeInputs } from './defaults.js';
@@ -41,11 +41,15 @@ export function pageWarnings(page) {
 }
 
 /**
- * Preview data per layer for the canvas: polylines as Float32Array (x, y in pt) with start indices and
+ * Preview data for the canvas, in buckets of equal layer, colour and line weight (so the layer, colour and
+ * width filters work without a new run): polylines as Float32Array (x, y in pt) with start indices and
  * flags, texts as objects. Arcs, circles and Béziers are flattened coarsely (0.15 pt).
+ * Also returns the colours and line weights that occur, with counts.
  */
-export function previewData(entities, layers) {
-  const byLayer = new Map(layers.map((l) => [l.name, { ...l, coords: [], starts: [], closed: [], fill: [], texts: [] }]));
+export function previewData(entities, fillsAsHatch = false) {
+  const buckets = new Map();
+  const colors = new Map();
+  const widths = new Map();
   const add = (L, pts, closed, fill) => {
     L.starts.push(L.coords.length / 2);
     for (let i = 0; i < pts.length; i++) L.coords.push(pts[i]);
@@ -53,12 +57,19 @@ export function previewData(entities, layers) {
     L.fill.push(fill ? 1 : 0);
   };
   for (const e of entities) {
-    const L = byLayer.get(e.a.layer);
-    if (!L) continue;
+    const a = e.a;
+    const lw = e.kind === 'text' ? 0 : lineweight(a.lineWidthPt * PT_MM);
+    const hex = rgbHex(a.rgb);
+    const key = `${a.layer}|${hex}|${lw}|${e.kind === 'text'}`;
+    let L = buckets.get(key);
+    if (!L) buckets.set(key, (L = { layer: a.layer, rgb: a.rgb, hex, lw, textOnly: e.kind === 'text', count: 0, coords: [], starts: [], closed: [], fill: [], texts: [] }));
+    L.count++;
+    colors.set(hex, { hex, rgb: a.rgb, count: (colors.get(hex)?.count ?? 0) + 1 });
+    if (e.kind !== 'text') widths.set(lw, { lw, count: (widths.get(lw)?.count ?? 0) + 1 });
     switch (e.kind) {
       case 'line':
       case 'polyline':
-        add(L, e.pts, e.kind === 'polyline' && e.closed, e.a.source === 'fill' && e.closed);
+        add(L, e.pts, e.kind === 'polyline' && e.closed, fillsAsHatch && e.a.source === 'fill' && e.closed);
         break;
       case 'cubic':
         add(L, flattenBezier(e.pts, 0.15, [e.pts[0], e.pts[1]]), false, false);
@@ -78,15 +89,16 @@ export function previewData(entities, layers) {
   }
   const out = [];
   const transfer = [];
-  for (const L of byLayer.values()) {
+  for (const L of buckets.values()) {
     const coords = Float32Array.from(L.coords);
     const starts = Uint32Array.from(L.starts);
     const closed = Uint8Array.from(L.closed);
     const fill = Uint8Array.from(L.fill);
     transfer.push(coords.buffer, starts.buffer, closed.buffer, fill.buffer);
-    out.push({ name: L.name, rgb: L.rgb, lw: L.lw, count: L.count, off: L.off, pdf: L.pdf, visible: L.visible, coords, starts, closed, fill, texts: L.texts });
+    out.push({ ...L, coords, starts, closed, fill });
   }
-  return { layers: out, transfer };
+  const byCount = (p, q) => q.count - p.count;
+  return { buckets: out, colors: [...colors.values()].sort(byCount), widths: [...widths.values()].sort((p, q) => p.lw - q.lw), transfer };
 }
 
 /** File name of an export: base name of the PDF, page number when needed, .dxf. */
@@ -179,21 +191,27 @@ export function createService(backend) {
       return { value: r, transfer: [r.data.buffer] };
     },
 
-    /** Pipeline for the current page, with preview data. */
+    /**
+     * Pipeline for the current page, with preview data. Layers, colours and widths switched off stay in
+     * the preview data (the page hides them), so switching them is instant; the export leaves them out.
+     */
     process({ settings }, ctx = {}) {
       const s = normalizeInputs(settings);
       if (s.page >= backend.getPageCount()) throw new PdfError('page');
       ctx.progress?.(0.05, 'extract');
       const t = Date.now();
-      const r = processPage(s.page, s, ctx);
+      const r = processPage(s.page, { ...s, layersOff: [], colorsOff: [], widthsOff: [] }, ctx);
       const extractMs = Date.now() - t - r.stats.ms;
-      const { layers, transfer } = previewData(r.entities, r.layers);
+      const { buckets, colors, widths, transfer } = previewData(r.entities, s.fills === 'hatch');
       return {
         value: {
           page: s.page,
           width: r.page.width,
           height: r.page.height,
-          layers,
+          buckets,
+          layers: r.layers,
+          colors,
+          widths,
           stats: { ...r.stats, extractMs: Math.max(0, extractMs) },
           warnings: pageWarnings(r.page),
           scanned: looksScanned(r.page),

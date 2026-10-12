@@ -1,0 +1,56 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PDF → DXF – HLKS-Tools</title>
+  <meta name="description" content="PDF-Pläne als massstäbliche DXF für CAD, im Browser umgewandelt." />
+  <script>try { const t = localStorage.getItem('hlks-tools:theme'); if (t && t !== 'system') document.documentElement.dataset.theme = t; } catch {}</script>
+  <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="../../assets/css/tokens.css" />
+  <link rel="stylesheet" href="../../assets/css/base.css" />
+  <link rel="stylesheet" href="style.css" />
+  <script type="module" src="app.js"></script>
+</head>
+<body class="p2d">
+  <header class="appbar">
+    <a class="brand" href="../../" title="Zur Startseite">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5.2 7.6 18.8 12 5.2 16.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      HLKS-Tools
+    </a>
+    <span class="appbar-title">PDF → DXF</span>
+    <div class="appbar-actions">
+      <button class="btn ghost icon-only" data-action="undo" title="Rückgängig (Strg+Z)" aria-label="Rückgängig"></button>
+      <button class="btn ghost icon-only" data-action="redo" title="Wiederholen (Strg+Y)" aria-label="Wiederholen"></button>
+      <span class="appbar-sep"></span>
+      <button class="btn ghost icon-only" data-action="open" title="PDF öffnen (Strg+O)" aria-label="PDF öffnen"></button>
+      <button class="btn primary" data-action="export-dxf" title="DXF speichern (Strg+S)" disabled></button>
+    </div>
+  </header>
+
+  <main class="p2d-layout">
+    <section class="stage panel" aria-label="Vorschau">
+      <div class="stage-bar" id="stage-bar"></div>
+      <div class="calib-bar" id="calib-bar" hidden>
+        <label class="calib-field">
+          <span class="field-label">Länge <span class="unit">mm</span></span>
+          <input class="input num" id="calib-length" inputmode="decimal" />
+        </label>
+        <button type="button" class="btn primary icon-only" id="calib-ok" data-action="calib-ok" title="Übernehmen" aria-label="Übernehmen"></button>
+        <button type="button" class="btn ghost icon-only" id="calib-cancel" data-action="calib-cancel" title="Abbrechen" aria-label="Abbrechen"></button>
+      </div>
+      <div class="viewport" id="viewport">
+        <div class="empty" id="empty"></div>
+      </div>
+      <div class="statusbar" id="status" aria-live="polite"></div>
+    </section>
+
+    <aside class="panel settings" id="settings" aria-label="Einstellungen"></aside>
+
+    <aside class="panel layers" id="layers" aria-label="Layer" hidden></aside>
+  </main>
+
+  <div class="drop-overlay" aria-hidden="true"><span>PDF öffnen</span></div>
+</body>
+</html>

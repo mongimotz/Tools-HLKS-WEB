@@ -28,7 +28,7 @@ Branch `feature/pdf-to-dxf`, worktree `../Tools-HLKS-pdf-to-dxf` (see DECISIONS.
 | 4 Units and scale | done | makeTransform (scale, unit, origin, offset), calibrate, snapPoint, scaleLabel; defaults.js settings + presets; control distance 10 000 mm at 1:100 |
 | 5 Structure | done | layers (PDF layers, colour/width modes), clip (rect + polygon), segment dedupe with priorities, join, fills; convert.js process/export |
 | 6 Curves, text, hatch, filter | done | exact arc fit + merge to CIRCLE, splines, text height/rotation, unmapped text as outline, dashes, hatch heuristic, filters; scripts/pdf-to-dxf.mjs |
-| 7 UI | open | |
+| 7 UI | done | index.html, app.js, preview.js, labels.js, style.css; start page tiles and PDF hand-over; checked in the browser (TESTREPORT) |
 | 8 Scans | open | |
 | 9 Performance, robustness | open | |
 | 10 Docs, release | open | |

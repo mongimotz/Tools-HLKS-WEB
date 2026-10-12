@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Start page: one small network per discipline (Heizung, Lüftung, Klima, Sanitär) with one branch per tool,
-// and one open button for any tool's PDF.
+// tiles for tools without a discipline, and one open button for any PDF (HLKS-Tools PDFs open in their tool,
+// other PDFs in PDF → DXF).
 
-import { GROUPS, TOOLS, findTool, toolUrl } from '../../lib/core/registry.js';
-import { readEnvelopeFromFile, pickFile, stashHandoff, enableFileDrop } from '../../lib/core/files.js';
+import { GROUPS, GENERAL, TOOLS, findTool, toolUrl } from '../../lib/core/registry.js';
+import { readEnvelopeFromFile, pickFile, stashHandoff, stashFileHandoff, enableFileDrop } from '../../lib/core/files.js';
 import { html, raw, icon, toast, bindThemeToggle, mountSourceLink } from '../../lib/core/ui.js';
 
 // ---- geometry (px; home.css reads ROW, HEAD and NET from custom properties set below) -------------
@@ -231,10 +232,45 @@ function bindFlow(host) {
   }
 }
 
+// ---- tools without a discipline: tiles at the end, centred, no title ------------------------
+
+function renderGeneral() {
+  const host = document.getElementById('general-tools');
+  const tools = TOOLS.filter((t) => t.group === GENERAL);
+  host.hidden = !tools.length;
+  host.innerHTML = tools
+    .map((t) =>
+      String(
+        t.status === 'ready'
+          ? html`<a class="gtile is-ready" href="${t.path}">${icon(t.icon ?? 'open', { size: 28 })}<span class="tool-name">${t.name}</span></a>`
+          : html`<div class="gtile is-planned" title="In Planung" aria-disabled="true">${icon(t.icon ?? 'open', { size: 28 })}<span class="tool-name">${t.name}</span><span class="visually-hidden">In Planung</span></div>`,
+      ),
+    )
+    .join('');
+}
+
+/** A PDF without HLKS-Tools data goes to the PDF → DXF tool. */
+async function openForeignPdf(file) {
+  const tool = findTool('pdf-to-dxf');
+  if (tool?.status !== 'ready') return false;
+  if (!(await stashFileHandoff(file))) {
+    toast('Übergabe blockiert (Browser-Speicher gesperrt)', { kind: 'error', timeout: 8000 });
+    return true;
+  }
+  location.href = toolUrl('pdf-to-dxf');
+  return true;
+}
+
 async function openFile(file) {
   if (!file) return;
   try {
-    const env = await readEnvelopeFromFile(file);
+    let env;
+    try {
+      env = await readEnvelopeFromFile(file);
+    } catch (e) {
+      if ((e.code === 'no-data' || e.code === 'pdf-unreadable') && (await openForeignPdf(file))) return;
+      throw e;
+    }
     const tool = findTool(env.tool);
     if (!tool || tool.status !== 'ready') {
       toast('Unbekanntes Werkzeug', { kind: 'error', timeout: 7000 });
@@ -251,6 +287,7 @@ async function openFile(file) {
 }
 
 renderNetworks();
+renderGeneral();
 bindFlow(document.getElementById('tools'));
 bindThemeToggle(document.getElementById('theme-toggle'));
 mountSourceLink();
