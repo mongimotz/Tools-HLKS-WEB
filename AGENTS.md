@@ -47,7 +47,7 @@ scripts/                   serve.mjs (dev server), make-fixtures.mjs, build-font
 Planned tools (status `planned` in the registry):
 
 - **Kanalrechner** – done as a test version (SIA 382/1 tables 49 and 50). Idea for later: an experimental version with a 3D model and a fluid simulation.
-- **Schalldämpfer** – silencer sizing including sound level calculation per octave band.
+- **Schalldämpfer** – done as a test version (manufacturer data Trox, Schako, Lindab; targets SIA 181 / LSV; mode "Vorschlag"). Open: edge-gap correction, interpolation in L, LSV sum over strands (see `docs/silencer-plan.md`).
 - **Monoblock** – air handling unit: fan power, heating and cooling capacity, humidification, filter sizing.
 - **Dämmung** – insulation thickness estimate.
 - Later candidates: Messprotokoll, Kühllast-Check.
@@ -59,7 +59,7 @@ Open technical items:
 - Excel export as `.xlsx` (CSV exists).
 - Own domain: buy it, add `CNAME`, set the DNS record, enable HTTPS in the Pages settings.
 
-Done from the plan: shared core, PDF export/import with embedded data, start page import, calcVersion warning, reference PDFs, Druckverlust Lüftung, Kanalrechner.
+Done from the plan: shared core, PDF export/import with embedded data, start page import, calcVersion warning, reference PDFs, Druckverlust Lüftung, Kanalrechner, Schalldämpfer.
 
 ## License
 
