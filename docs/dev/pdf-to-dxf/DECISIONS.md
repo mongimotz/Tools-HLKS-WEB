@@ -61,3 +61,16 @@ Summary of what was read in phase 1 (AGENTS.md, DESIGN.md, dragon-ink.md, lib/co
 
 - `convert.js` holds the conversion service (open, extract with cache, render, later process and export). `worker.js` only does the message plumbing, so Node tests use the same code as the browser. Not in the plan's file list; added for testability.
 - Cancelling: a job checks a cancel flag between pipeline steps. A long MuPDF call cannot be interrupted; the UI then terminates the worker and starts a new one (phase 9).
+
+## D7 DXF writer
+
+- Own writer (`dxf.js`), modelled on the files ezdxf 1.4.4 writes for a new R2000 / R12 drawing, reduced to what a drawing needs: R2000 has HEADER, CLASSES, TABLES (VPORT, LTYPE, LAYER, STYLE, VIEW, UCS, APPID, DIMSTYLE, BLOCK_RECORD), BLOCKS (`*Model_Space`, `*Paper_Space`), ENTITIES and OBJECTS (root dictionary, ACAD_GROUP, ACAD_LAYOUT with Model and Layout1, ACAD_MLINESTYLE, ACAD_PLOTSETTINGS, ACAD_PLOTSTYLENAME with the "Normal" placeholder that every layer points to with code 390).
+- CLASSES is not empty (plan: "leer"): LAYOUT, ACDBDICTIONARYWDFLT and ACDBPLACEHOLDER are class-based objects in R2000, so the classes of the objects the file contains are declared, as AutoCAD and ezdxf do.
+- Handles: fixed small handles for the skeleton, layers and entities count up from 0x30. `$HANDSEED` is the next free handle.
+- Colours: an entity with the colour of its layer is BYLAYER. Otherwise code 62 (nearest ACI, weighted RGB distance) and, unless black or white, code 420 (true colour). Black and white are ACI 7 only. Note: group code 420 was introduced with AutoCAD 2004; AutoCAD, ezdxf, ODA and LibreCAD read it in AC1015 files, but if Nova rejects it, the option "Echtfarben" switches it off (and R12 never writes it). To be checked in the Nova test.
+- Text height: DXF text height is the capital height, PDF font size is the em size. TEXT height = font size × 0.7 (`TEXT_HEIGHT_RATIO`, cap height of Arial, Helvetica and Plex is 0.70–0.72) × 25.4/72 × M. The plan's formula without 0.7 makes every text about 40 % too large in CAD.
+- Text style "Standard" uses `arial.ttf` in R2000 (², Ø and umlauts exist in Arial, not in txt.shx) and `txt` in R12.
+- Line types DASHED (dash–gap) and DASHDOT (four or more elements), pattern from the first dash array of that kind on the page, scaled like the geometry, `$LTSCALE` 1. Only line types that are used are written.
+- Line weights: paper width in mm (not scaled), rounded to the nearest valid DXF value.
+- R12: no handles (`$HANDLING` absent), classic empty BLOCKS section, layer names A–Z 0–9 _ - $ up to 31 characters (umlauts folded), characters outside Windows-1252 as `?`.
+- Files use CRLF and Windows-1252 (`$DWGCODEPAGE ANSI_1252`); characters outside it are written as `\U+XXXX` (R2000).
