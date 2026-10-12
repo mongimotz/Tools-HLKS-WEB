@@ -23,7 +23,7 @@ Branch `feature/pdf-to-dxf`, worktree `../Tools-HLKS-pdf-to-dxf` (see DECISIONS.
 | Phase | State | Notes |
 |---|---|---|
 | 1 License, repo, vendoring, corpus | done | |
-| 2 Extraction → IR | open | |
+| 2 Extraction → IR | done | backend.js (MuPDF device), ir.js, worker.js + convert.js; all 10 vector fixtures equal their truth |
 | 3 DXF writer | open | |
 | 4 Units and scale | open | |
 | 5 Structure | open | |

@@ -43,3 +43,21 @@ Summary of what was read in phase 1 (AGENTS.md, DESIGN.md, dragon-ink.md, lib/co
 - "Text without Unicode mapping": the same font embedded a second time, `/ToUnicode` deleted after `doc.flush()`. MuPDF then reports U+FFFD for every glyph.
 - Scans: the vector plan is rendered by MuPDF at 300 dpi (grey). The clean scan is embedded as PNG (33 kB). The dirty one is rotated 1.5° counter-clockwise about the page centre, gets an uneven grey background, Gaussian noise (σ 6), specks and blots, and is embedded as JPEG quality 75 (441 kB), as real scans usually are.
 - Truth coordinates: pt, y up, origin bottom left of the displayed page. The truth of `rotated.pdf` is mapped with (x, y) → (y − y0, x1 − x) for `/Rotate 90` and the CropBox; MuPDF agrees.
+
+## D5 IR details (deviations from the plan's sketch)
+
+- Points are flat `Float64Array`s (`pts: [x0, y0, x1, y1, …]`) instead of `{x, y}` objects, also for lines and cubics (phase 9: no object per point). The readable form with `[[x, y], …]` (`toPlain` / `fromPlain` in `ir.js`) is used by truth files and tests.
+- Attributes keep the PDF layer in `ocg` and the output layer in `layer` (set by the pipeline), so the layer mode can change without extracting again. Colours are 0…255.
+- Arcs and circles use `cx, cy, r, start, end` (degrees, counter-clockwise).
+- Straight runs of a subpath become one `line` (2 points) or `polyline`; a run that ends at its start is closed; fills are always closed. Every Bézier is its own `cubic` with a `chain` id per subpath, so arc fitting can merge the pieces of one circle.
+- Clips are a list on the page (`page.clips[id] = { id, parent, rect | rings | none }`), entities refer to the innermost one by `clipId`. Clips MuPDF cannot express as a path (stroke clips, text clips, soft masks) are recorded as `none` (no clipping).
+- Content inside soft-mask definitions and tiling patterns is skipped (pattern fills are decoration; a hatch in a pattern is lost, documented as a limit). Invisible text (render mode 3, e.g. OCR layers) is counted, not extracted.
+- MuPDF hides switched-off PDF layers while running a page. To read them, the backend switches all layers on for that run and restores them; `page.layers` keeps the default visibility.
+- Text: glyphs are grouped into runs in content order (same size ±2 %, direction ±1°, colour, layer, clip; perpendicular offset ≤ 0.1 h; gap −0.3 h … 0.5 h). A gap > 0.15 h without a space glyph inserts a space. Glyphs without Unicode (U+FFFD, 0, control characters) become U+FFFD and mark the run `unmapped`.
+- Text as outline: MuPDF.js has no glyph outline API. The backend sends the text object through MuPDF's own SVG writer (`DocumentWriter(buffer, 'svg', 'text=path')`) and parses the glyph paths (`<path id>` + `<use transform>`). One writer per text object, so colour and layer stay right.
+- An empty user password is tried before reporting "password".
+
+## D6 Conversion service and worker
+
+- `convert.js` holds the conversion service (open, extract with cache, render, later process and export). `worker.js` only does the message plumbing, so Node tests use the same code as the browser. Not in the plan's file list; added for testability.
+- Cancelling: a job checks a cancel flag between pipeline steps. A long MuPDF call cannot be interrupted; the UI then terminates the worker and starts a new one (phase 9).
