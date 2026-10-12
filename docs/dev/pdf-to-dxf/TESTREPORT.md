@@ -68,3 +68,27 @@ Plan targets: clean ≥ 90 %, dirty ≥ 70 % and skew left < 0.2° — met with 
 The first version split long lines at 600 dpi into ~260 pieces: Douglas–Peucker with a fixed 1 px tolerance followed the one-pixel steps of the de-skewed skeleton. The tolerance is now 0.1 mm (at least 1 px).
 
 In the browser: scan_dirty.pdf shows "Seite ist ein Bild" and the scan button; the raster is shown under the preview. Scan on → 29 → 15 objects on `SCAN_0.15` … `SCAN_0.70`, status "Schräglage 1.5°" and the button "Massstab kalibrieren".
+
+## Phase 9: performance and robustness
+
+Heavy plan generated at test time (`tests/helpers/heavy-pdf.js`, A1 landscape, 2.2 MB): 30 000 rectangles, furniture polylines, groups of hatch lines, 30 000 door swings as Béziers, 400 texts; 300 000 segments, 141 400 paths. Node 24 on the owner's laptop, preset Nova-Unterlage:
+
+| Step | Time |
+|---|---|
+| open | 5 ms |
+| extract (MuPDF device → IR) | 449 ms |
+| pipeline | 2'456 ms (select 56, curves 27, clip 3, dedupe 1'528, hatch 87, join 309) |
+| DXF (14 MB) | 270 ms |
+| total | 3.2 s (`npm test`: 4.2 s including reading the DXF back) — limit 15 s |
+
+Result: 50 572 entities (11 713 polylines, 27 993 lines, 10 466 arcs, 400 texts). Dedupe is the most expensive step; it is fast enough, so it stays as it is.
+
+In the browser (in-app Chromium, pane hidden): the heavy PDF opens and shows 141'400 → 51'584 objects after 3.6 s; switching "Linien verbinden" off runs again in 1.4 s (228'806 objects). No long tasks over 50 ms were reported on the page during the run (PerformanceObserver; the pane was hidden, so this is only a hint). The progress bar appears after 300 ms; "Abbrechen" ends the run ("Abgebrochen"), the old result stays, the next change runs normally in the new worker.
+
+Fuzz: 200 option sets (seed 20261012) over the ten vector fixtures and a few runs of scan_clean with vectorising on; every DXF passes the JS reader, version as chosen (1.1 s).
+
+Error cases: empty file → "PDF nicht lesbar"; a PDF without pages → "PDF ohne Seiten"; a truncated PDF → not readable or no pages; AES-256 with a user password (written by MuPDF) → "PDF mit Passwort geschützt"; only an owner password → opens; a blank page → 0 objects and a valid empty DXF; page index out of range → "Seite fehlt".
+
+Real plans: `tests/fixtures/pdf-to-dxf/real/` is empty on this machine, the test is skipped. See TODO-OWNER.md.
+
+Loading: a test follows the static imports of the start page and every tool page: none reaches `lib/vendor/mupdf/` or `backend.js`. Only the worker imports the backend, and the backend imports MuPDF with `await import()`.

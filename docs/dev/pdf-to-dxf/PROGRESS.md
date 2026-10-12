@@ -30,7 +30,7 @@ Branch `feature/pdf-to-dxf`, worktree `../Tools-HLKS-pdf-to-dxf` (see DECISIONS.
 | 6 Curves, text, hatch, filter | done | exact arc fit + merge to CIRCLE, splines, text height/rotation, unmapped text as outline, dashes, hatch heuristic, filters; scripts/pdf-to-dxf.mjs |
 | 7 UI | done | index.html, app.js, preview.js, labels.js, style.css; start page tiles and PDF hand-over; checked in the browser (TESTREPORT) |
 | 8 Scans | done | scan.js (threshold, closing, specks, skew, thinning, tracing, outlines), service + UI; clean and dirty 100 % found, skew exact |
-| 9 Performance, robustness | open | |
+| 9 Performance, robustness | done | 300k segments in 3.2 s (Node), fuzz 200 runs, error cases, real-plan test (skipped, no files), lazy-load test; browser check with cancel |
 | 10 Docs, release | open | |
 
 ## Log
