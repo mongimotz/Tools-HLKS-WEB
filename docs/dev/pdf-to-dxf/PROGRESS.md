@@ -26,7 +26,7 @@ Branch `feature/pdf-to-dxf`, worktree `../Tools-HLKS-pdf-to-dxf` (see DECISIONS.
 | 2 Extraction → IR | done | backend.js (MuPDF device), ir.js, worker.js + convert.js; all 10 vector fixtures equal their truth |
 | 3 DXF writer | done | dxf.js R2000 + R12, tests/helpers/dxf-reader.js, scripts/check-dxf.py; ezdxf: 0 errors (TESTREPORT) |
 | 4 Units and scale | done | makeTransform (scale, unit, origin, offset), calibrate, snapPoint, scaleLabel; defaults.js settings + presets; control distance 10 000 mm at 1:100 |
-| 5 Structure | open | |
+| 5 Structure | done | layers (PDF layers, colour/width modes), clip (rect + polygon), segment dedupe with priorities, join, fills; convert.js process/export |
 | 6 Curves, text, hatch, filter | open | |
 | 7 UI | open | |
 | 8 Scans | open | |

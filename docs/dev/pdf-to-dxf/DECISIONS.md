@@ -84,3 +84,14 @@ Summary of what was read in phase 1 (AGENTS.md, DESIGN.md, dragon-ink.md, lib/co
 - Default layer mode without PDF layers: one layer per colour and line weight (`PDF_RRGGBB_0.35`), so thin hatch lines or coloured content can be switched off in CAD.
 - Hatch option gets a third value "keep" (heuristic off) next to the plan's "remove" and "own layer", because a heuristic can be wrong.
 - "Maximale Kompatibilität" keeps text as glyph outlines (polylines): the preset allows only lines and polylines, and room labels are worth keeping.
+
+## D9 Pipeline order and structure steps
+
+- Order: select + layers → curves (arc fit) → clip → dedupe → hatch → join → dashes → area → layer list → filter → transform. The plan's order (clip → dedupe → join → arcFit → hatch …) changes in two places: curves come first, because clipping and joining work on lines and arcs, not on Béziers; hatch detection comes before join, because hatch lines are single segments.
+- Layers: the PDF layer name wins; otherwise the layer mode decides. Names follow the plan's example: `PDF_RGB_255-0-0_0.35` (colour + line weight, the weight rounded to the DXF value), `PDF_RGB_255-0-0`, `PDF_0.35`, `PDF`. Fill outlines get `_FILL` instead of a weight, text goes to `PDF_TEXT`, hatch lines to `PDF_SCHRAFFUR`.
+- White fills (all channels ≥ 250) are dropped: they mask other content, their outline is noise in CAD.
+- Clip: rectangles with Liang–Barsky, other clips with segment–ring intersections and a point-in-polygon test on each piece (even-odd or non-zero as in the PDF). Arcs, circles and Béziers stay whole when they are completely inside, otherwise they are flattened and clipped. Text stays when its insertion point is inside. Nested clips are applied one after the other. Own code was enough, Clipper2 is not needed.
+- Dedupe and join work on segments: lines and polylines are taken apart, deduplicated, and joined again. Segments on one line (direction and offset within the join tolerance) are merged per interval; every part keeps the attributes of the strongest piece covering it: stroke beats fill, a later piece (painted on top) beats an earlier one. Pieces of different PDF layers never merge. So a filled rectangle with an outline in another colour comes out once, as the stroke.
+- Join: only pieces with equal layer, colour, line weight and dash join. End points within the tolerance are one node; chains end at junctions (three or more pieces); loops become closed polylines. With join off, the result is single lines.
+- Glyph outlines and fills kept as HATCH do not take part in dedupe and join.
+- Arcs, circles and texts are deduplicated separately (same geometry within the tolerance).

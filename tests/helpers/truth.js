@@ -19,8 +19,24 @@ function samePts(a, b, tol) {
   return a.length === b.length && a.every((p, i) => near(p[0], b[i][0], tol) && near(p[1], b[i][1], tol));
 }
 
-/** Does entity `act` (readable form) match truth entity `exp`? Attributes are only compared when present in exp. */
-export function sameEntity(act, exp, tol = 0.01, { attrs = true } = {}) {
+/** Same points in either direction; closed rings may also start at any vertex. */
+function samePtsLoose(a, b, tol, closed) {
+  if (a.length !== b.length) return false;
+  const rev = [...b].reverse();
+  if (!closed) return samePts(a, b, tol) || samePts(a, rev, tol);
+  for (const cand of [b, rev]) {
+    for (let s = 0; s < cand.length; s++) {
+      if (samePts(a, [...cand.slice(s), ...cand.slice(0, s)], tol)) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Does entity `act` (readable form) match truth entity `exp`? Attributes are only compared when present in exp.
+ * loose: points may run the other way, closed rings may start anywhere (pipeline output).
+ */
+export function sameEntity(act, exp, tol = 0.01, { attrs = true, loose = false } = {}) {
   if (act.kind !== exp.kind) return false;
   if (exp.kind === 'text') {
     if (!near(act.pos[0], exp.pos[0], tol) || !near(act.pos[1], exp.pos[1], tol)) return false;
@@ -33,7 +49,7 @@ export function sameEntity(act, exp, tol = 0.01, { attrs = true } = {}) {
     if (exp.kind === 'arc' && (!near(act.start, exp.start, 0.05) || !near(act.end, exp.end, 0.05))) return false;
   } else {
     if (exp.closed !== undefined && !!act.closed !== !!exp.closed) return false;
-    if (!samePts(act.pts, exp.pts, tol)) return false;
+    if (loose ? !samePtsLoose(act.pts, exp.pts, tol, !!exp.closed) : !samePts(act.pts, exp.pts, tol)) return false;
   }
   if (!attrs) return true;
   if (exp.rgb && JSON.stringify(rgb255(exp.rgb)) !== JSON.stringify(act.rgb)) return false;
