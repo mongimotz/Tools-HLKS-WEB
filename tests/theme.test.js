@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // assets/css/tokens.css is the single source of colours. The PDF reads it at runtime;
 // the favicon cannot (a separate file), so this test keeps its copy in sync.
 

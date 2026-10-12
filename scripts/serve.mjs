@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Minimal static file server for local development (ES modules need http://, not file://).
 // Usage: node scripts/serve.mjs [port]
 

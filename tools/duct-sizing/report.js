@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // PDF report for the duct sizing tool. No DOM: also used by Node tests.
 
 import { buildPdf, INK } from '../../lib/core/pdf.js';

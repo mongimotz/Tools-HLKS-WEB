@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Duct pressure loss calculation. Pure functions, no DOM: runs in the browser and in Node tests.
 //
 // Units inside this module: lengths of ducts in mm (inputs) and m (calculation), flow in m³/h,

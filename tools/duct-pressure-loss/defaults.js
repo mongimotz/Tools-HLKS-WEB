@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Default catalogues, input schema normalisation and the example project.
 // Catalogue names are user-facing (German). Values are guide values ("Richtwerte").
 

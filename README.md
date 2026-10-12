@@ -175,7 +175,13 @@ Regeln für Mitwirkende und Agenten: [AGENTS.md](AGENTS.md). Gestaltung: [docs/D
 
 Die Seite läuft unter https://mongimotz.github.io/Tools-HLKS-WEB/. GitHub Pages veröffentlicht den Zweig `main` (Ordner root) nach jedem Push, meist innerhalb von ein bis zwei Minuten. Die Datei `.nojekyll` ist vorhanden. Für eine eigene Domain kommt später eine Datei `CNAME` dazu.
 
-## Lizenzen
+## Lizenz und Fremdcode
+
+HLKS-Tools: Copyright (C) 2025–2026 Fabio. Lizenz: GNU AGPL v3 oder später, siehe [LICENSE](LICENSE).
+
+Du darfst die Werkzeuge nutzen, ändern und weitergeben. Wer eine geänderte Version weitergibt oder online anbietet, muss den Quellcode unter derselben Lizenz offenlegen. Das Symbol `</>` unten auf jeder Seite führt zum Quellcode.
+
+Fremdcode behält seine eigene Lizenz:
 
 - pdf-lib (MIT): `lib/vendor/pdf-lib/`
 - @pdf-lib/fontkit und pako (MIT): `lib/vendor/fontkit/`

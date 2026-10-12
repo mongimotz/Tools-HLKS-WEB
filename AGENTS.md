@@ -61,6 +61,13 @@ Open technical items:
 
 Done from the plan: shared core, PDF export/import with embedded data, start page import, calcVersion warning, reference PDFs, Druckverlust Lüftung, Kanalrechner.
 
+## License
+
+- The repo is AGPL-3.0-or-later (`LICENSE`). Every own source file (`.js`, `.mjs`, `.css`, `.html`, `.py` outside `lib/vendor/`, `assets/fonts/` and `tests/fixtures/`) starts with `// SPDX-License-Identifier: AGPL-3.0-or-later` (`/* … */` in CSS, `#` in Python, `<!-- … -->` on line 2 of HTML, after the doctype). `tests/spdx.test.js` checks it.
+- New third-party code only under an AGPL-compatible license: MIT, BSD, ISC, Zlib, Apache-2.0, BSL-1.0, LGPL-3.0, GPL-3.0, AGPL-3.0; fonts under OFL. Not allowed: GPL-2.0-only, proprietary, unclear.
+- Every vendored library lives in `lib/vendor/<name>/` with its `LICENSE` and is listed in `README.md` (section "Lizenz und Fremdcode").
+- Every page calls `mountSourceLink()` from `lib/core/ui.js`: a small footer link to the source code (AGPL section 13).
+
 ## Repository
 
 - GitHub: `mongimotz/Tools-HLKS-WEB` (public, branch `main`).

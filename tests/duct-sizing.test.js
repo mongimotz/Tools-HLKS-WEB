@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Duct sizing (Kanalrechner): SIA 382/1 tables 49 and 50, sizing modes, PDF round trip and reference PDFs.
 
 import { test } from 'node:test';

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Duct sizing after SIA 382/1:2025, 5.11.5.7 and 5.11.5.8 (tables 49 and 50). Pure functions, no DOM:
 // runs in the browser and in Node tests.
 //

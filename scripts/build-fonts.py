@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
 """Build the font files used by the site from the IBM Plex package (or any other variable font pair).
 
 Run once when the fonts change (needs Python with fonttools and brotli):

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // PDF report and CSV export for the duct tool. No DOM: also used by Node tests.
 
 import { buildPdf, INK } from '../../lib/core/pdf.js';

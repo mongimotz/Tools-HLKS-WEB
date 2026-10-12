@@ -1,9 +1,10 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Start page: one small network per discipline (Heizung, Lüftung, Klima, Sanitär) with one branch per tool,
 // and one open button for any tool's PDF.
 
 import { GROUPS, TOOLS, findTool, toolUrl } from '../../lib/core/registry.js';
 import { readEnvelopeFromFile, pickFile, stashHandoff, enableFileDrop } from '../../lib/core/files.js';
-import { html, raw, icon, toast, bindThemeToggle } from '../../lib/core/ui.js';
+import { html, raw, icon, toast, bindThemeToggle, mountSourceLink } from '../../lib/core/ui.js';
 
 // ---- geometry (px; home.css reads ROW, HEAD and NET from custom properties set below) -------------
 
@@ -252,6 +253,7 @@ async function openFile(file) {
 renderNetworks();
 bindFlow(document.getElementById('tools'));
 bindThemeToggle(document.getElementById('theme-toggle'));
+mountSourceLink();
 const openBtn = document.getElementById('open-file');
 openBtn.innerHTML = String(html`${icon('open')}<span>Öffnen</span>`);
 openBtn.addEventListener('click', async () => openFile(await pickFile()));

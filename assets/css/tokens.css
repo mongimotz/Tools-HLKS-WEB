@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
 /* Design tokens: the single source for colours, fonts and sizes of every page.
    The PDF reports read their colours from this file too (light column, lib/core/pdf.js),
    and tests/theme.test.js checks that the favicon uses --primary / --on-primary.

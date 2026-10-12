@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // SVG charts for the duct tool: pressure profile along the critical path and the network schematic.
 
 import { fmt } from '../../lib/core/format.js';

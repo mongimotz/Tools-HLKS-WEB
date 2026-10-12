@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // User-facing (German) texts shared by the page, the PDF report and the CSV export.
 // Short labels only; explanations belong in docs/ (see docs/DESIGN.md, "Principles").
 

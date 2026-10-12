@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
 /* Shared base styles and components. Tools add their own stylesheet on top. */
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -160,6 +161,12 @@ textarea.input { height: auto; min-height: 60px; padding: 6px 8px; resize: verti
 .toast-success .icon { color: var(--inverse-success); }
 .toast-warning .icon { color: var(--inverse-warning); }
 @keyframes toast-in { from { transform: translateY(6px); opacity: 0; } }
+
+/* ---- footer: source link (lib/core/ui.js mountSourceLink) ------------- */
+
+.site-foot { display: flex; justify-content: center; padding: 0 var(--gutter) var(--sp-4); }
+.site-foot a { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-button); color: var(--text-muted); }
+.site-foot a:hover { color: var(--primary); background: var(--surface-hover); }
 
 /* ---- drop overlay ----------------------------------------------------- */
 

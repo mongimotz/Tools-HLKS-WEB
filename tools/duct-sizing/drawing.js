@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Cross-section drawing of a duct with dimension lines in mm. No DOM: crossSectionLayout() returns plain
 // shapes that the page draws as SVG and report.js draws into the PDF.
 // Coordinates: y downwards (SVG and the PDF writer use the same convention).

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Export → import → export must keep the data identical. Saved fixture PDFs must still import.
 // Fixtures of the current calculation version must reproduce their snapshot exactly (regression check);
 // older ones may differ, because a new calculation version is allowed to change results.

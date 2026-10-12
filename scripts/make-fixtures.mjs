@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Write reference PDFs to tests/fixtures/. Run once per calculation version and commit the result:
 //   npm run fixtures
 // The regression tests re-import every fixture and compare the recalculated result with the

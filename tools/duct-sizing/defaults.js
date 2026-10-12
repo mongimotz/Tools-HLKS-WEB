@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Default catalogues (SIA 382/1:2025 tables 49 and 50, size series), input schema normalisation and the example.
 // Catalogue values are guide values ("Richtwerte") and are saved with every file.
 //

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Page controller for the duct pressure loss tool.
 
 import {
@@ -33,7 +34,7 @@ import { createEnvelope, checkCompatibility, normalizeProject, EnvelopeError } f
 import { readEnvelopeFromFile, pickFile, download, safeFileName, takeHandoff, stashHandoff, enableFileDrop } from '../../lib/core/files.js';
 import { mountProjectInfo, newProject } from '../../lib/core/project-info.js';
 import { findTool, toolUrl } from '../../lib/core/registry.js';
-import { html, raw, icon, toast, bindThemeToggle } from '../../lib/core/ui.js';
+import { html, raw, icon, toast, bindThemeToggle, mountSourceLink } from '../../lib/core/ui.js';
 import { enableCombos } from '../../lib/core/combo.js';
 
 const DRAFT_KEY = `hlks-tools:${TOOL_ID}:draft`;
@@ -1224,6 +1225,7 @@ async function start() {
   store = new DocumentStore(loadInitialDoc(), { draftKey: DRAFT_KEY });
 
   addThemeButton();
+  mountSourceLink();
   projectView = mountProjectInfo($('#project'), {
     getProject: () => doc().project,
     onInput: () => store.touch(),

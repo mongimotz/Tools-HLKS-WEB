@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // CSV export (opens in Excel: semicolon separated, UTF-8 with BOM). No DOM, no pdf-lib.
 
 import { SHAPE_LABELS, modeLabel } from './labels.js';
