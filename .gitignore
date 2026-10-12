@@ -2,3 +2,6 @@ node_modules/
 .DS_Store
 Thumbs.db
 *.log
+
+# real plans for local PDF to DXF tests (never committed)
+tests/fixtures/pdf-to-dxf/real/

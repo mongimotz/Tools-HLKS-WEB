@@ -1,0 +1,132 @@
+%PDF-1.7
+%ÅÅÅÅ
+
+1 0 obj
+<<
+/Type /Pages
+/Kids [ 7 0 R ]
+/Count 1
+>>
+endobj
+
+2 0 obj
+<<
+/Type /Catalog
+/Pages 1 0 R
+/OCProperties <<
+/OCGs [ 4 0 R 5 0 R 6 0 R ]
+/D <<
+/Order [ 4 0 R 5 0 R 6 0 R ]
+/ON [ 4 0 R 5 0 R ]
+/OFF [ 6 0 R ]
+>>
+>>
+>>
+endobj
+
+3 0 obj
+<<
+/Producer <FEFF007000640066002D006C00690062>
+/ModDate (D:20261012000000Z)
+/Creator <FEFF0048004C004B0053002D0054006F006F006C00730020007400650073007400200063006F0072007000750073>
+/CreationDate (D:20261012000000Z)
+>>
+endobj
+
+4 0 obj
+<<
+/Type /OCG
+/Name (Waende)
+>>
+endobj
+
+5 0 obj
+<<
+/Type /OCG
+/Name (Moebel)
+>>
+endobj
+
+6 0 obj
+<<
+/Type /OCG
+/Name (Bemassung)
+>>
+endobj
+
+7 0 obj
+<<
+/Type /Page
+/Parent 1 0 R
+/Resources <<
+/Font <<
+>>
+/XObject <<
+>>
+/ExtGState <<
+>>
+/Properties <<
+/oc1 4 0 R
+/oc2 5 0 R
+/oc3 6 0 R
+>>
+>>
+/MediaBox [ 0 0 595.28 841.89 ]
+/Annots [ ]
+/Contents [ 8 0 R ]
+>>
+endobj
+
+8 0 obj
+<<
+/Length 277
+>>
+stream
+0 0 0 RG
+1 w
+/OC /oc1 BDC
+50 500 400 250 re S
+60 510 380 230 re S
+EMC
+/OC /oc2 BDC
+0.5 0.25 0 RG
+0.5 w
+100 550 80 40 re S
+250 600 60 60 re S
+EMC
+/OC /oc3 BDC
+0 0 1 RG
+0.25 w
+50 470 m 450 470 l S
+50 460 m 50 480 l S
+450 460 m 450 480 l S
+EMC
+0 0 0 RG
+0.5 w
+50 300 m 450 300 l S
+
+endstream
+endobj
+
+xref
+0 9
+0000000000 65535 f 
+0000000016 00000 n 
+0000000076 00000 n 
+0000000247 00000 n 
+0000000481 00000 n 
+0000000529 00000 n 
+0000000577 00000 n 
+0000000628 00000 n 
+0000000852 00000 n 
+
+trailer
+<<
+/Size 9
+/Root 2 0 R
+/Info 3 0 R
+>>
+
+startxref
+1181
+%%EOF

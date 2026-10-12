@@ -1,0 +1,252 @@
+{
+ "name": "multipage",
+ "description": "Three pages: A4 portrait, A3 landscape, A1 portrait",
+ "pages": [
+  {
+   "width": 595.28,
+   "height": 841.89,
+   "entities": [
+    {
+     "kind": "polyline",
+     "pts": [
+      [
+       20,
+       20
+      ],
+      [
+       575.28,
+       20
+      ],
+      [
+       575.28,
+       821.89
+      ],
+      [
+       20,
+       821.89
+      ]
+     ],
+     "closed": true,
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       40,
+       40
+      ],
+      [
+       140,
+       40
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    }
+   ]
+  },
+  {
+   "width": 1190.55,
+   "height": 841.89,
+   "entities": [
+    {
+     "kind": "polyline",
+     "pts": [
+      [
+       20,
+       20
+      ],
+      [
+       1170.55,
+       20
+      ],
+      [
+       1170.55,
+       821.89
+      ],
+      [
+       20,
+       821.89
+      ]
+     ],
+     "closed": true,
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       40,
+       40
+      ],
+      [
+       140,
+       40
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       40,
+       50
+      ],
+      [
+       140,
+       50
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    }
+   ]
+  },
+  {
+   "width": 1683.78,
+   "height": 2383.94,
+   "entities": [
+    {
+     "kind": "polyline",
+     "pts": [
+      [
+       20,
+       20
+      ],
+      [
+       1663.78,
+       20
+      ],
+      [
+       1663.78,
+       2363.94
+      ],
+      [
+       20,
+       2363.94
+      ]
+     ],
+     "closed": true,
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       40,
+       40
+      ],
+      [
+       140,
+       40
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       40,
+       50
+      ],
+      [
+       140,
+       50
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       40,
+       60
+      ],
+      [
+       140,
+       60
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    }
+   ]
+  }
+ ],
+ "expect": {
+  "pageCount": 3
+ }
+}

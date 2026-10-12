@@ -1,0 +1,765 @@
+{
+ "name": "hatch",
+ "description": "Rectangle with 45° line hatching, filled triangle without outline",
+ "pages": [
+  {
+   "width": 595.28,
+   "height": 841.89,
+   "entities": [
+    {
+     "kind": "polyline",
+     "pts": [
+      [
+       100,
+       500
+      ],
+      [
+       300,
+       500
+      ],
+      [
+       300,
+       650
+      ],
+      [
+       100,
+       650
+      ]
+     ],
+     "closed": true,
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       100,
+       638.6863
+      ],
+      [
+       111.3137,
+       650
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       100,
+       627.3726
+      ],
+      [
+       122.6274,
+       650
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       100,
+       616.0589
+      ],
+      [
+       133.9411,
+       650
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       100,
+       604.7452
+      ],
+      [
+       145.2548,
+       650
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       100,
+       593.4315
+      ],
+      [
+       156.5685,
+       650
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       100,
+       582.1177
+      ],
+      [
+       167.8823,
+       650
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       100,
+       570.804
+      ],
+      [
+       179.196,
+       650
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       100,
+       559.4903
+      ],
+      [
+       190.5097,
+       650
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       100,
+       548.1766
+      ],
+      [
+       201.8234,
+       650
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       100,
+       536.8629
+      ],
+      [
+       213.1371,
+       650
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       100,
+       525.5492
+      ],
+      [
+       224.4508,
+       650
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       100,
+       514.2355
+      ],
+      [
+       235.7645,
+       650
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       100,
+       502.9218
+      ],
+      [
+       247.0782,
+       650
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       108.3919,
+       500
+      ],
+      [
+       258.3919,
+       650
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       119.7056,
+       500
+      ],
+      [
+       269.7056,
+       650
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       131.0193,
+       500
+      ],
+      [
+       281.0193,
+       650
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       142.333,
+       500
+      ],
+      [
+       292.333,
+       650
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       153.6468,
+       500
+      ],
+      [
+       300,
+       646.3532
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       164.9605,
+       500
+      ],
+      [
+       300,
+       635.0395
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       176.2742,
+       500
+      ],
+      [
+       300,
+       623.7258
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       187.5879,
+       500
+      ],
+      [
+       300,
+       612.4121
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       198.9016,
+       500
+      ],
+      [
+       300,
+       601.0984
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       210.2153,
+       500
+      ],
+      [
+       300,
+       589.7847
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       221.529,
+       500
+      ],
+      [
+       300,
+       578.471
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       232.8427,
+       500
+      ],
+      [
+       300,
+       567.1573
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       244.1564,
+       500
+      ],
+      [
+       300,
+       555.8436
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       255.4701,
+       500
+      ],
+      [
+       300,
+       544.5299
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       266.7838,
+       500
+      ],
+      [
+       300,
+       533.2162
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       278.0975,
+       500
+      ],
+      [
+       300,
+       521.9025
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       289.4113,
+       500
+      ],
+      [
+       300,
+       510.5887
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.18,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "polyline",
+     "pts": [
+      [
+       350,
+       500
+      ],
+      [
+       500,
+       500
+      ],
+      [
+       425,
+       650
+      ]
+     ],
+     "closed": true,
+     "rgb": [
+      0.6,
+      0.6,
+      0.6
+     ],
+     "lineWidthPt": 0,
+     "dash": null,
+     "source": "fill",
+     "layer": null
+    }
+   ]
+  }
+ ],
+ "expect": {
+  "hatchLines": 30,
+  "outline": [
+   [
+    100,
+    500
+   ],
+   [
+    300,
+    500
+   ],
+   [
+    300,
+    650
+   ],
+   [
+    100,
+    650
+   ]
+  ],
+  "fill": [
+   [
+    350,
+    500
+   ],
+   [
+    500,
+    500
+   ],
+   [
+    425,
+    650
+   ]
+  ]
+ }
+}

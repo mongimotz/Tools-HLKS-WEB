@@ -1,0 +1,162 @@
+{
+ "name": "lines",
+ "description": "Rectangles, lines, open polyline, control distance of exactly 100 mm on paper",
+ "pages": [
+  {
+   "width": 595.28,
+   "height": 841.89,
+   "entities": [
+    {
+     "kind": "polyline",
+     "pts": [
+      [
+       50,
+       600
+      ],
+      [
+       250,
+       600
+      ],
+      [
+       250,
+       700
+      ],
+      [
+       50,
+       700
+      ]
+     ],
+     "closed": true,
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "polyline",
+     "pts": [
+      [
+       300,
+       600
+      ],
+      [
+       500,
+       600
+      ],
+      [
+       500,
+       750
+      ],
+      [
+       300,
+       750
+      ]
+     ],
+     "closed": true,
+     "rgb": [
+      1,
+      0,
+      0
+     ],
+     "lineWidthPt": 1,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       60,
+       400
+      ],
+      [
+       260,
+       550
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      1
+     ],
+     "lineWidthPt": 0.25,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "polyline",
+     "pts": [
+      [
+       300,
+       300
+      ],
+      [
+       350,
+       350
+      ],
+      [
+       400,
+       300
+      ],
+      [
+       450,
+       350
+      ]
+     ],
+     "closed": false,
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.7,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       100,
+       200
+      ],
+      [
+       383.4646,
+       200
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.9921259842519685,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    }
+   ]
+  }
+ ],
+ "expect": {
+  "control": {
+   "p0": [
+    100,
+    200
+   ],
+   "p1": [
+    383.4646,
+    200
+   ],
+   "paperMm": 100
+  }
+ }
+}

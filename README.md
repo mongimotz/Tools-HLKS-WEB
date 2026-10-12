@@ -186,3 +186,4 @@ Fremdcode behält seine eigene Lizenz:
 - pdf-lib (MIT): `lib/vendor/pdf-lib/`
 - @pdf-lib/fontkit und pako (MIT): `lib/vendor/fontkit/`
 - IBM Plex Sans und Mono (SIL Open Font License): `assets/fonts/`
+- MuPDF.js 1.28.1 von Artifex Software (GNU AGPL v3 oder später): `lib/vendor/mupdf/`, unverändert aus dem npm-Paket `mupdf`. Quellcode von MuPDF: https://cgit.ghostscript.com/mupdf.git/ und https://mupdf.com

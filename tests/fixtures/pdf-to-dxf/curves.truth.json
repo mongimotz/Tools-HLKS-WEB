@@ -1,0 +1,443 @@
+{
+ "name": "curves",
+ "description": "Full circle, quarter, half and 45° arcs as Béziers, a free S curve and an ellipse",
+ "pages": [
+  {
+   "width": 595.28,
+   "height": 841.89,
+   "entities": [
+    {
+     "kind": "cubic",
+     "pts": [
+      [
+       200,
+       650
+      ],
+      [
+       200,
+       677.6142
+      ],
+      [
+       177.6142,
+       700
+      ],
+      [
+       150,
+       700
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "cubic",
+     "pts": [
+      [
+       150,
+       700
+      ],
+      [
+       122.3858,
+       700
+      ],
+      [
+       100,
+       677.6142
+      ],
+      [
+       100,
+       650
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "cubic",
+     "pts": [
+      [
+       100,
+       650
+      ],
+      [
+       100,
+       622.3858
+      ],
+      [
+       122.3858,
+       600
+      ],
+      [
+       150,
+       600
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "cubic",
+     "pts": [
+      [
+       150,
+       600
+      ],
+      [
+       177.6142,
+       600
+      ],
+      [
+       200,
+       622.3858
+      ],
+      [
+       200,
+       650
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "cubic",
+     "pts": [
+      [
+       410,
+       650
+      ],
+      [
+       410,
+       683.1371
+      ],
+      [
+       383.1371,
+       710
+      ],
+      [
+       350,
+       710
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "cubic",
+     "pts": [
+      [
+       190,
+       450
+      ],
+      [
+       190,
+       472.0914
+      ],
+      [
+       172.0914,
+       490
+      ],
+      [
+       150,
+       490
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "cubic",
+     "pts": [
+      [
+       150,
+       490
+      ],
+      [
+       127.9086,
+       490
+      ],
+      [
+       110,
+       472.0914
+      ],
+      [
+       110,
+       450
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "cubic",
+     "pts": [
+      [
+       371.8092,
+       439.7394
+      ],
+      [
+       374.5305,
+       432.2627
+      ],
+      [
+       380.1104,
+       426.1733
+      ],
+      [
+       387.3215,
+       422.8108
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "cubic",
+     "pts": [
+      [
+       300,
+       300
+      ],
+      [
+       350,
+       400
+      ],
+      [
+       400,
+       200
+      ],
+      [
+       450,
+       300
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "cubic",
+     "pts": [
+      [
+       260,
+       200
+      ],
+      [
+       260,
+       216.5685
+      ],
+      [
+       233.1371,
+       230
+      ],
+      [
+       200,
+       230
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "cubic",
+     "pts": [
+      [
+       200,
+       230
+      ],
+      [
+       166.8629,
+       230
+      ],
+      [
+       140,
+       216.5685
+      ],
+      [
+       140,
+       200
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "cubic",
+     "pts": [
+      [
+       140,
+       200
+      ],
+      [
+       140,
+       183.4315
+      ],
+      [
+       166.8629,
+       170
+      ],
+      [
+       200,
+       170
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "cubic",
+     "pts": [
+      [
+       200,
+       170
+      ],
+      [
+       233.1371,
+       170
+      ],
+      [
+       260,
+       183.4315
+      ],
+      [
+       260,
+       200
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    }
+   ]
+  }
+ ],
+ "expect": {
+  "circles": [
+   {
+    "c": [
+     150,
+     650
+    ],
+    "r": 50
+   }
+  ],
+  "arcs": [
+   {
+    "c": [
+     350,
+     650
+    ],
+    "r": 60,
+    "start": 0,
+    "end": 90
+   },
+   {
+    "c": [
+     150,
+     450
+    ],
+    "r": 40,
+    "start": 0,
+    "end": 180
+   },
+   {
+    "c": [
+     400,
+     450
+    ],
+    "r": 30,
+    "start": 200,
+    "end": 245
+   }
+  ],
+  "freeCurves": 2
+ }
+}

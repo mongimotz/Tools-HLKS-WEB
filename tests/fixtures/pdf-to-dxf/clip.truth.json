@@ -1,0 +1,270 @@
+{
+ "name": "clip",
+ "description": "Rectangular clip with overhanging lines and a rectangle, triangular clip",
+ "pages": [
+  {
+   "width": 595.28,
+   "height": 841.89,
+   "entities": [
+    {
+     "kind": "line",
+     "pts": [
+      [
+       50,
+       575
+      ],
+      [
+       350,
+       575
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "polyline",
+     "pts": [
+      [
+       150,
+       450
+      ],
+      [
+       250,
+       450
+      ],
+      [
+       250,
+       700
+      ],
+      [
+       150,
+       700
+      ]
+     ],
+     "closed": true,
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       320,
+       520
+      ],
+      [
+       380,
+       620
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       120,
+       520
+      ],
+      [
+       280,
+       620
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       50,
+       200
+      ],
+      [
+       450,
+       200
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       250,
+       50
+      ],
+      [
+       250,
+       400
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       400,
+       400
+      ],
+      [
+       500,
+       400
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    }
+   ]
+  }
+ ],
+ "expect": {
+  "clipped": [
+   {
+    "kind": "line",
+    "pts": [
+     [
+      100,
+      575
+     ],
+     [
+      300,
+      575
+     ]
+    ]
+   },
+   {
+    "kind": "line",
+    "pts": [
+     [
+      150,
+      500
+     ],
+     [
+      150,
+      650
+     ]
+    ]
+   },
+   {
+    "kind": "line",
+    "pts": [
+     [
+      250,
+      500
+     ],
+     [
+      250,
+      650
+     ]
+    ]
+   },
+   {
+    "kind": "line",
+    "pts": [
+     [
+      120,
+      520
+     ],
+     [
+      280,
+      620
+     ]
+    ]
+   },
+   {
+    "kind": "line",
+    "pts": [
+     [
+      160,
+      200
+     ],
+     [
+      340,
+      200
+     ]
+    ]
+   },
+   {
+    "kind": "line",
+    "pts": [
+     [
+      250,
+      100
+     ],
+     [
+      250,
+      350
+     ]
+    ]
+   },
+   {
+    "kind": "line",
+    "pts": [
+     [
+      400,
+      400
+     ],
+     [
+      500,
+      400
+     ]
+    ]
+   }
+  ]
+ }
+}

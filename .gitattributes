@@ -3,3 +3,6 @@
 *.ttf binary
 *.woff2 binary
 *.xlsx binary
+*.wasm binary
+*.jpg binary
+*.png binary

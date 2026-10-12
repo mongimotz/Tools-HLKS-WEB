@@ -23,6 +23,7 @@ const TYPES = {
   '.pdf': 'application/pdf',
   '.webmanifest': 'application/manifest+json',
   '.map': 'application/json',
+  '.wasm': 'application/wasm',
 };
 
 createServer(async (req, res) => {

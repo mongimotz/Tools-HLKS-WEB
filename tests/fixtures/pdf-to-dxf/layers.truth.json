@@ -1,0 +1,244 @@
+{
+ "name": "layers",
+ "description": "Three optional content groups (Waende, Moebel, Bemassung); Bemassung is off by default",
+ "pages": [
+  {
+   "width": 595.28,
+   "height": 841.89,
+   "entities": [
+    {
+     "kind": "polyline",
+     "pts": [
+      [
+       50,
+       500
+      ],
+      [
+       450,
+       500
+      ],
+      [
+       450,
+       750
+      ],
+      [
+       50,
+       750
+      ]
+     ],
+     "closed": true,
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 1,
+     "dash": null,
+     "source": "stroke",
+     "layer": "Waende"
+    },
+    {
+     "kind": "polyline",
+     "pts": [
+      [
+       60,
+       510
+      ],
+      [
+       440,
+       510
+      ],
+      [
+       440,
+       740
+      ],
+      [
+       60,
+       740
+      ]
+     ],
+     "closed": true,
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 1,
+     "dash": null,
+     "source": "stroke",
+     "layer": "Waende"
+    },
+    {
+     "kind": "polyline",
+     "pts": [
+      [
+       100,
+       550
+      ],
+      [
+       180,
+       550
+      ],
+      [
+       180,
+       590
+      ],
+      [
+       100,
+       590
+      ]
+     ],
+     "closed": true,
+     "rgb": [
+      0.5,
+      0.25,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": "Moebel"
+    },
+    {
+     "kind": "polyline",
+     "pts": [
+      [
+       250,
+       600
+      ],
+      [
+       310,
+       600
+      ],
+      [
+       310,
+       660
+      ],
+      [
+       250,
+       660
+      ]
+     ],
+     "closed": true,
+     "rgb": [
+      0.5,
+      0.25,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": "Moebel"
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       50,
+       470
+      ],
+      [
+       450,
+       470
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      1
+     ],
+     "lineWidthPt": 0.25,
+     "dash": null,
+     "source": "stroke",
+     "layer": "Bemassung"
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       50,
+       460
+      ],
+      [
+       50,
+       480
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      1
+     ],
+     "lineWidthPt": 0.25,
+     "dash": null,
+     "source": "stroke",
+     "layer": "Bemassung"
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       450,
+       460
+      ],
+      [
+       450,
+       480
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      1
+     ],
+     "lineWidthPt": 0.25,
+     "dash": null,
+     "source": "stroke",
+     "layer": "Bemassung"
+    },
+    {
+     "kind": "line",
+     "pts": [
+      [
+       50,
+       300
+      ],
+      [
+       450,
+       300
+      ]
+     ],
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 0.5,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    }
+   ]
+  }
+ ],
+ "expect": {
+  "layers": [
+   {
+    "name": "Waende",
+    "visible": true,
+    "count": 2
+   },
+   {
+    "name": "Moebel",
+    "visible": true,
+    "count": 2
+   },
+   {
+    "name": "Bemassung",
+    "visible": false,
+    "count": 3
+   }
+  ],
+  "noLayer": 1
+ }
+}

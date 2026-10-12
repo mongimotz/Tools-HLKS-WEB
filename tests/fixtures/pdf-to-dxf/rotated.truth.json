@@ -1,0 +1,79 @@
+{
+ "name": "rotated",
+ "description": "/Rotate 90 and a CropBox that does not start at the origin",
+ "pages": [
+  {
+   "width": 641.89,
+   "height": 495.28,
+   "entities": [
+    {
+     "kind": "polyline",
+     "pts": [
+      [
+       100,
+       445.28
+      ],
+      [
+       300,
+       445.28
+      ],
+      [
+       300,
+       295.28
+      ]
+     ],
+     "closed": false,
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 1,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    },
+    {
+     "kind": "polyline",
+     "pts": [
+      [
+       400,
+       245.28
+      ],
+      [
+       400,
+       145.28
+      ],
+      [
+       450,
+       145.28
+      ],
+      [
+       450,
+       245.28
+      ]
+     ],
+     "closed": true,
+     "rgb": [
+      0,
+      0,
+      0
+     ],
+     "lineWidthPt": 1,
+     "dash": null,
+     "source": "stroke",
+     "layer": null
+    }
+   ]
+  }
+ ],
+ "expect": {
+  "rotate": 90,
+  "cropBox": [
+   50,
+   100,
+   545.28,
+   741.89
+  ]
+ }
+}

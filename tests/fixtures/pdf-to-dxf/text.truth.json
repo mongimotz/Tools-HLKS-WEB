@@ -1,0 +1,113 @@
+{
+ "name": "text",
+ "description": "Text with umlauts, ², Ø and °, rotated 90° and 30°, and one text without ToUnicode",
+ "pages": [
+  {
+   "width": 595.28,
+   "height": 841.89,
+   "entities": [
+    {
+     "kind": "text",
+     "str": "Büro 3.50 m²",
+     "pos": [
+      100,
+      700
+     ],
+     "height": 12,
+     "rot": 0
+    },
+    {
+     "kind": "text",
+     "str": "Ø 160",
+     "pos": [
+      100,
+      650
+     ],
+     "height": 10,
+     "rot": 0
+    },
+    {
+     "kind": "text",
+     "str": "Vertikal",
+     "pos": [
+      300,
+      500
+     ],
+     "height": 10,
+     "rot": 90
+    },
+    {
+     "kind": "text",
+     "str": "Schräg 30°",
+     "pos": [
+      100,
+      400
+     ],
+     "height": 14,
+     "rot": 30
+    },
+    {
+     "kind": "text",
+     "str": "Ohne Zuordnung",
+     "pos": [
+      100,
+      300
+     ],
+     "height": 10,
+     "rot": 0,
+     "noUnicode": true
+    }
+   ]
+  }
+ ],
+ "expect": {
+  "texts": [
+   {
+    "str": "Büro 3.50 m²",
+    "pos": [
+     100,
+     700
+    ],
+    "height": 12,
+    "rot": 0
+   },
+   {
+    "str": "Ø 160",
+    "pos": [
+     100,
+     650
+    ],
+    "height": 10,
+    "rot": 0
+   },
+   {
+    "str": "Vertikal",
+    "pos": [
+     300,
+     500
+    ],
+    "height": 10,
+    "rot": 90
+   },
+   {
+    "str": "Schräg 30°",
+    "pos": [
+     100,
+     400
+    ],
+    "height": 14,
+    "rot": 30
+   },
+   {
+    "str": "Ohne Zuordnung",
+    "pos": [
+     100,
+     300
+    ],
+    "height": 10,
+    "rot": 0,
+    "noUnicode": true
+   }
+  ]
+ }
+}
