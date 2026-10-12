@@ -10,7 +10,7 @@ Rechenwerkzeuge für Heizung, Lüftung, Klima und Sanitär. Die Werkzeuge laufen
 |---|---|---|---|
 | Lüftung | Druckverlust Lüftung | Teilstrecken mit Formstücken und Einbauteilen, kritischer Strang, Drosselbedarf, Reserve des Ventilators | Testversion |
 | Lüftung | Kanalrechner | Rohre und Kanäle (rund, eckig, flachoval) nach SIA 382/1, Tabellen 49 und 50: Abmessung oder Prüfung, Druckgefälle, Pins | Testversion |
-| Lüftung | Schalldämpfer | Auslegung mit Schallpegel im Oktavband | geplant |
+| Lüftung | Schalldämpfer | Schallpegel je Oktave von der Quelle bis zum Empfänger, Schalldämpfer aus Herstellerdaten (Trox, Schako, Lindab), Ziel nach SIA 2024 / SIA 181 oder LSV, Vorschlag passender Produkte | Testversion |
 | Lüftung | Monoblock | Ventilatorleistung, Heiz- und Kühlleistung, Befeuchtung, Filter | geplant |
 | Heizung | Heizlast | Heizlast eines Raums oder Gebäudes | geplant |
 | Heizung | Rohrnetz Heizung | Rohrdimensionen und Druckverlust im Heiznetz | geplant |
@@ -152,6 +152,73 @@ Der Reiter Kataloge enthält Tabelle 49, Tabelle 50, die Normreihe der runden Ro
 ### Rechenweg
 
 Formeln, Ansätze, Rundung und Grenzen: [docs/duct-sizing-method.md](docs/duct-sizing-method.md).
+
+## Schalldämpfer
+
+Das Werkzeug rechnet den Schallpegel je Oktave (63 bis 8000 Hz) von der Quelle bis zum Empfänger. Es legt die Schalldämpfer auf dem Weg aus Herstellerdaten aus: Einfügungsdämpfung, Druckverlust und Strömungsgeräusch. Du gibst nur bekannte Werte ein, zum Beispiel die Schallleistung des Monoblocks aus dem Datenblatt.
+
+### Eingabe
+
+1. **Strang:** Bezeichnung, Auslegungs-Volumenstrom V̇ und Luftdichte ρ. Ein Projekt kann mehrere Stränge haben (zum Beispiel Zuluft und Fortluft). Das Plus neben der Überschrift legt einen neuen Strang an, das Kopier-Symbol dupliziert ihn. Ab zwei Strängen erscheinen Reiter.
+2. **Elemente:** Die Knöpfe unter der Tabelle fügen eine Quelle, ein Bauteil, einen Schalldämpfer oder einen Empfänger ein. Ein neues Element kommt vor den Empfänger am Ende des Strangs.
+3. **Quelle:** Schallleistung L_W je Oktave. Die erste Quelle gibt den Startwert, eine spätere Quelle addiert sich zum Pegel.
+4. **Bauteil:** Dämpfung D und Eigengeräusch L_W je Oktave, beide frei. So erfasst du einen Volumenstromregler, eine Brandschutzklappe oder eine bekannte Mündungsreflexion.
+5. **Schalldämpfer:** Die Auswahl links wechselt zwischen Kulisse, Rohr und Eingabe.
+   - Kulisse: Serie, Kulissendicke d, Spalt s und Länge L aus der Datenbank, dazu Anzahl Kulissen n, Höhe H und Einbau (Kanal, Ansaugung frei, Ausblasen frei). Die Breite B folgt aus n · (d + s).
+   - Rohr: Serie, Durchmesser, Länge, Dämmdicke und, wo es sie gibt, Kernbreite.
+   - Eingabe: D_e, L_W,Str je Oktave und Δp von Hand, für Produkte ausserhalb der Datenbank.
+   - Die Listen zeigen nur Kombinationen, die in den Herstellertabellen stehen. Passt eine Wahl nicht mehr, springt das Werkzeug zur nächsten vorhandenen Zeile.
+6. **Empfänger:** Abstand r, Richtfaktor Q und Raum: Absorptionsfläche A oder Volumen V mit Nachhallzeit T. Ohne Raum gilt Freifeld (aussen). Das Ziel wählst du nach Raumtyp (innen: Raumnutzung nach SIA 2024, Anforderung nach SIA 181 oder empfohlene Auslegung), nach LSV (aussen, Empfindlichkeitsstufe, Tag und Nacht) oder als Wert.
+
+Ein Element hat einen eigenen Volumenstrom V̇, wenn er sich ändert. Sonst übernimmt es den Wert davor. Bei einem Abzweig teilt sich die Schallleistung im Verhältnis der Volumenströme. Den Wert ΔL zeigt die Spalte V̇ unter dem Feld.
+
+Der Pfeil links öffnet die Details eines Elements: Zwischenwerte, Vorgänger, ΔL von Hand und die Knöpfe ↑ und ↓ zum Verschieben auf dem Weg.
+
+### Abzweige
+
+- Das Plus in der Zeile fügt direkt nach dem Element ein neues Element ein. Alles, was danach kam, folgt dem neuen Element.
+- Das Abzweig-Symbol startet einen neuen Weg ab diesem Element. Beide öffnen eine Liste mit den vier Elementarten.
+- Die Nummern folgen dem Weg: 1, 2, 3 auf dem Hauptweg, 2.1, 2.2 im Abzweig ab Element 2. Ein Abzweig ist in der Spalte Nr. eingerückt. Änderst du eine Nummer von Hand, bleiben die Nummern danach stehen.
+
+### Vorschlag
+
+Der Schalter über der Tabelle wechselt zwischen **Prüfen** und **Vorschlag**. Im Vorschlag hat jeder Schalldämpfer eine Lupe. Die Lupe startet die Suche für diesen Schalldämpfer.
+
+- Kulisse: Serie, Höhe H, B max, L max, v max und Δp max. Leere Felder heissen: keine Grenze. v max ist ohne Eingabe 12 m/s, Δp max 100 Pa.
+- Rohr: Serie, Durchmesser von … bis, Aussen-Ø max, L max, v max und Δp max.
+- Die Liste zeigt die besten 10 Produkte, sortiert nach Δp und dann nach L. Über der Liste steht, wie viele Produkte passen und wie viele das Werkzeug geprüft hat.
+- Der Haken in einer Zeile übernimmt das Produkt. Die Suche endet dann.
+- Passt kein Produkt, zeigt die Liste das Produkt, das am knappsten verfehlt. Rote Werte zeigen, welche Grenze es nicht einhält.
+
+### Ergebnisse
+
+- Oben steht der schlechteste Empfänger der Datei mit seinem Pegel (L_pA, bei LSV L_r Tag oder Nacht), dem Ziel und der Reserve oder Überschreitung.
+- Die Tabelle zeigt je Element das Spektrum danach („nach“) und den A-bewerteten Summenpegel Σ. Schalldämpfer zeigen auch v, Δp und das Strömungsgeräusch L_W,Str.
+- Ein roter Strich links markiert ein Element mit Fehler, ein oranger Strich eine Warnung. Ein Wert mit ↑ liegt über seiner Grenze.
+- Das Diagramm zeigt die Spektren auf dem Weg zum schlechtesten Empfänger des Strangs: Quelle, nach jedem Schalldämpfer und am Empfänger. Die gestrichelte Linie ist das Spektrum am Empfänger, um die Reserve oder Überschreitung verschoben. Sie zeigt, wo das Spektrum liegen muss, damit das Ziel knapp erfüllt ist.
+- Die Hinweise nennen Grenzen, die ein Element nicht einhält, zum Beispiel ein zu lautes Strömungsgeräusch. Der Pfeil springt zum Element.
+
+### Herstellerdaten
+
+Die Datenbank enthält Kulissen von Trox (XK, MK) und Schako (MWK) sowie Rohrschalldämpfer von Trox (CA, CK), Schako (RS-N, RS-M) und Lindab (SLU). Jede Datei speichert eine Kopie der Tabellenzeilen, die sie verwendet. Eine alte Datei rechnet deshalb mit ihren Werten weiter, auch wenn sich die Daten ändern. Nach dem Öffnen nennt ein Hinweis die Schalldämpfer mit geänderten Daten. Das Symbol ↺ im Hinweis übernimmt die neuen Daten.
+
+### Symbole und Tastatur
+
+| Symbol, Taste | Bedeutung |
+|---|---|
+| + in der Zeile | Element danach einfügen |
+| Abzweig | Neuer Weg ab diesem Element |
+| Papierkorb | Element löschen. Die Meldung danach hat ein Symbol für Rückgängig. |
+| Lupe (Vorschlag) | Produkte für diesen Schalldämpfer suchen |
+| Haken (Vorschlag) | Produkt übernehmen |
+| + und Kopie bei Strang | Strang anlegen, Strang duplizieren |
+| ↺ im Hinweis nach dem Öffnen | Aktuelle Herstellerdaten übernehmen |
+| Enter, Umschalt+Enter | Gleiche Oktave im nächsten oder vorherigen Element |
+| Strg+Z, Strg+Y, Strg+S, Strg+O | Rückgängig, Wiederholen, PDF speichern, Öffnen |
+
+### Rechenweg
+
+Formeln, Daten, Annahmen und Grenzen: [docs/silencer-method.md](docs/silencer-method.md).
 
 ## Entwicklung
 
