@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { makeTransform, calibrate, scaleLabel, snapPoint, toDxfEntities, PT_MM } from '../tools/pdf-to-dxf/pipeline.js';
 import { writeDxf } from '../tools/pdf-to-dxf/dxf.js';
 import { createBackend } from '../tools/pdf-to-dxf/backend.js';
-import { defaultSettings, normalizeInputs, applyPreset, presetOf, PRESETS, SCALES } from '../tools/pdf-to-dxf/defaults.js';
+import { defaultSettings, normalizeInputs, applyPreset, presetOf, resetDocumentFields, PRESETS, SCALES } from '../tools/pdf-to-dxf/defaults.js';
 import { readDxf } from './helpers/dxf-reader.js';
 import { loadFixture } from './helpers/truth.js';
 
@@ -97,4 +97,15 @@ test('settings: defaults, repair, idempotent, presets', () => {
   assert.equal(applyPreset(d, 'compat').version, 'R12');
   assert.equal(applyPreset(d, 'compat').trueColor, false);
   assert.equal(normalizeInputs({ ...d, text: 'omit' }).preset, 'custom');
+});
+
+test('another PDF: calibrated scale goes back to the nearest standard scale', () => {
+  const s = normalizeInputs({ ...defaultSettings(), scale: 98.7, calibrated: true, area: [0, 0, 10, 10], layersOff: ['A'], scanOn: true });
+  const r = resetDocumentFields(s);
+  assert.equal(r.scale, 100);
+  assert.equal(r.calibrated, false);
+  assert.equal(r.area, null);
+  assert.deepEqual(r.layersOff, []);
+  assert.equal(r.scanOn, false);
+  assert.equal(resetDocumentFields({ ...s, scale: 75, calibrated: false }).scale, 75, 'a chosen scale stays');
 });

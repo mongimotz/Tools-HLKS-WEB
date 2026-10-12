@@ -60,6 +60,9 @@
 .statusbar { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; min-height: 32px; padding: 0 var(--sp-3); border-top: 1px solid var(--border); font-size: var(--fs-xs); }
 .statusbar .warn { display: inline-flex; align-items: center; gap: 4px; }
 .statusbar .warn .icon { color: var(--warning); }
+.warn-btn { border: 0; background: none; padding: 2px 4px; margin: 0 -4px; border-radius: var(--r-input); font: inherit; color: var(--primary); cursor: pointer; }
+.warn-btn:hover { background: var(--primary-subtle); }
+.statusbar .warn-btn .icon { color: var(--primary); }
 .progress { width: 120px; height: 4px; border-radius: 2px; background: var(--surface-sunken); overflow: hidden; }
 .progress i { display: block; height: 100%; background: var(--primary); }
 .icon-btn {

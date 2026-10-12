@@ -16,7 +16,7 @@ Branch `feature/pdf-to-dxf`, worktree `../Tools-HLKS-pdf-to-dxf` (see DECISIONS.
 - `lib/core/ui.js`: icons appended at the end of `ICONS`.
 - `lib/core/pdf.js`: `INK_TOKENS` gained chart4 … chart8.
 - `scripts/make-fixtures.mjs`: silencer imports, a third entry in `tools`, helper `silencerStrands()`.
-- After the merge: SPDX line and `mountSourceLink()` for `tools/silencer/*`, its tests and docs-free files.
+- Merged into the branch on 2026-10-12 (aa404cc, main at b174604): no conflicts; silencer files got the SPDX line, the silencer page `mountSourceLink()`.
 
 ## Phases
 
@@ -29,7 +29,7 @@ Branch `feature/pdf-to-dxf`, worktree `../Tools-HLKS-pdf-to-dxf` (see DECISIONS.
 | 5 Structure | done | layers (PDF layers, colour/width modes), clip (rect + polygon), segment dedupe with priorities, join, fills; convert.js process/export |
 | 6 Curves, text, hatch, filter | done | exact arc fit + merge to CIRCLE, splines, text height/rotation, unmapped text as outline, dashes, hatch heuristic, filters; scripts/pdf-to-dxf.mjs |
 | 7 UI | done | index.html, app.js, preview.js, labels.js, style.css; start page tiles and PDF hand-over; checked in the browser (TESTREPORT) |
-| 8 Scans | open | |
+| 8 Scans | done | scan.js (threshold, closing, specks, skew, thinning, tracing, outlines), service + UI; clean and dirty 100 % found, skew exact |
 | 9 Performance, robustness | open | |
 | 10 Docs, release | open | |
 

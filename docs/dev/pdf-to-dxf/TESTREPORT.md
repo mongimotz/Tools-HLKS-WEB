@@ -47,3 +47,24 @@ Dev server on port 8081, in-app browser (Chromium). Files were dropped by script
 | Console errors | none (after making `setPointerCapture` tolerant of synthetic pointers) |
 
 Playwright was not used (see DECISIONS D11); the scripted checks above cover its planned smoke test (open → preset → scale → export → DXF valid).
+
+## Phase 8: scans
+
+Truth: 18 lines of the vector plan behind the scans (`expect.lines`). A line counts as found when at least 90 % of its length (sampled every 0.5 mm) lies within 1 mm on paper of an output segment of similar direction (`tests/helpers/scan-score.js`). Node 24, one core.
+
+| File | dpi | Mode | Skew found (truth) | Lines found | Output pieces | Time (render + vectorise) |
+|---|---|---|---|---|---|---|
+| scan_clean | 300 | centre line | 0° (0°) | 18 / 18 = 100 % | 24 | 46 + 170 ms |
+| scan_dirty | 300 | centre line | 1.50° (1.5°) | 18 / 18 = 100 % | 29 | 38 + 165 ms |
+| scan_clean | 200 | centre line | 0° | 18 / 18 | 25 | 53 + 103 ms |
+| scan_dirty | 200 | centre line | 1.51° | 18 / 18 | 32 | 44 + 85 ms |
+| scan_clean | 600 | centre line | 0° | 18 / 18 | 24 | 119 + 547 ms |
+| scan_dirty | 600 | centre line | 1.50° | 18 / 18 | 29 | 110 + 519 ms |
+| scan_clean | 300 | outline | 0° | 18 / 18 | 10 rings | 46 + 137 ms |
+| scan_dirty | 300 | outline | 1.50° | 18 / 18 | 10 rings | 38 + 132 ms |
+
+Plan targets: clean ≥ 90 %, dirty ≥ 70 % and skew left < 0.2° — met with margin. The dirty scan had 1'047 specks and blots removed (300 dpi). Measured stroke widths: 0.71–0.76 mm for the 0.71 mm walls, 0.42–0.43 for 0.42, 0.25 for 0.25, 0.15–0.17 for 0.18 mm. The only output pieces off the truth lines are the door swing (an arc, flattened).
+
+The first version split long lines at 600 dpi into ~260 pieces: Douglas–Peucker with a fixed 1 px tolerance followed the one-pixel steps of the de-skewed skeleton. The tolerance is now 0.1 mm (at least 1 px).
+
+In the browser: scan_dirty.pdf shows "Seite ist ein Bild" and the scan button; the raster is shown under the preview. Scan on → 29 → 15 objects on `SCAN_0.15` … `SCAN_0.70`, status "Schräglage 1.5°" and the button "Massstab kalibrieren".

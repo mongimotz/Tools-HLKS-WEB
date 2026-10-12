@@ -57,6 +57,7 @@ export function defaultSettings() {
     scan: { dpi: 300, mode: 'centerline', snapDeg: 2 },
     // per document (reset when another PDF is opened)
     page: 0,
+    scanOn: false, // vectorise the raster of a scanned page
     area: null, // [x0, y0, x1, y1] in pt of the current page: keep only this rectangle
     layersOff: [], // output layer names that are not exported
     colorsOff: [], // 'rrggbb'
@@ -114,6 +115,7 @@ export function normalizeInputs(raw) {
       snapDeg: numIn(scan.snapDeg, 0, 10, d.scan.snapDeg),
     },
     page: Math.round(numIn(s.page, 0, 1e5, d.page)),
+    scanOn: bool(s.scanOn, d.scanOn),
     area,
     layersOff: strList(s.layersOff, /^.{1,300}$/s),
     colorsOff: strList(s.colorsOff, /^[0-9a-f]{6}$/),
@@ -143,5 +145,7 @@ export function applyPreset(settings, name) {
 /** Per-document fields back to their defaults (another PDF was opened). */
 export function resetDocumentFields(settings) {
   const d = defaultSettings();
-  return { ...settings, page: d.page, area: d.area, layersOff: [], colorsOff: [], widthsOff: [] };
+  // a calibrated scale belongs to one plan: back to the nearest standard scale
+  const scale = settings.calibrated ? SCALES.reduce((p, q) => (Math.abs(Math.log(q / settings.scale)) < Math.abs(Math.log(p / settings.scale)) ? q : p)) : settings.scale;
+  return { ...settings, scale, calibrated: false, page: d.page, scanOn: false, area: d.area, layersOff: [], colorsOff: [], widthsOff: [] };
 }

@@ -92,6 +92,10 @@ export function warningText(w) {
       return `Text ohne Zeichenzuordnung: ${w.count}`;
     case 'scan':
       return 'Seite ist ein Bild';
+    case 'skew':
+      return `Schräglage ${w.count}°`;
+    case 'calibrate':
+      return 'Massstab kalibrieren';
     case 'images':
       return `Bilder: ${w.count}`;
     case 'shadings':

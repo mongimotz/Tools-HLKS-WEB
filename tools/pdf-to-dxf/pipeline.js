@@ -116,6 +116,7 @@ export function layerNameFor(e, mode) {
   if (mode === 'single') return 'PDF';
   if (e.kind === 'text' || a.source === 'text') return TEXT_LAYER;
   const lw = (lineweight(a.lineWidthPt * PT_MM) / 100).toFixed(2);
+  if (a.source === 'scan') return mode === 'color' ? 'SCAN' : `SCAN_${lw}`;
   const fill = a.source === 'fill';
   if (mode === 'color') return `PDF_${rgbName(a.rgb)}`;
   if (mode === 'width') return fill ? 'PDF_FILL' : `PDF_${lw}`;

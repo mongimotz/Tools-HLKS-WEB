@@ -121,3 +121,15 @@ Summary of what was read in phase 1 (AGENTS.md, DESIGN.md, dragon-ink.md, lib/co
 - Start page tiles: `GENERAL` group in the registry, tools get an `icon`; `home.js` renders one tile per tool in a nav element without heading, centred with flex-wrap. Planned tools grey, like in the networks.
 - Downloads: one file per page with "Jede Seite einzeln", started 400 ms apart (browsers may block a burst).
 - Playwright via npx was skipped: it needs a browser download. The same smoke test ran scripted in the in-app browser (TESTREPORT, phase 7).
+
+## D12 Scans
+
+- Detection (`looksScanned`): fewer than 50 vector segments and 20 texts, and images covering at least 60 % of the page. Then the status says "Seite ist ein Bild", the raster is shown under the preview and the scan button appears. Vectorising is a per-document switch (`scanOn`), off by default, so a plan with a scanned logo is not vectorised by accident.
+- Threshold: Bradley (integral image), window 4 mm, ink when 18 % darker than the window mean and darker than 200. Works on grey and uneven backgrounds.
+- Morphology: a 3 × 3 closing fills one-pixel holes and gaps. No opening: it would erase one-pixel lines at 200 dpi. Specks are removed by size instead: components smaller than 1.2 mm in both directions (dust, blots, dots of noise).
+- Skew: projection profiles of rows and columns of ink pixels (sample of up to 250 000), ±5° in 0.25° steps, refined in 0.02° steps. The raster is not rotated; the vectors are turned back about the page centre, which is exact and cheap. Consequence: in the preview the straightened vectors lie on the skewed raster.
+- Centre lines: chamfer distance transform (line width = 2 × distance at the skeleton − 1), Zhang–Suen thinning on the list of ink pixels, staircase pixels removed, skeleton traced between end points and junctions, spurs (short branches with a free end, shorter than two line widths or 1 mm) dropped, Douglas–Peucker 0.1 mm (at least 1 px) on the de-skewed coordinates, snap to 0° / 90° (default 2°, 0 = off), collinear pieces merged (offset ≤ 0.35 mm, gap ≤ 0.6 mm), corners and T joints closed (≤ 0.8 mm). The line weight snaps to 0.05 mm steps, so layers by width stay few (`SCAN_0.25`, `SCAN_0.70` …).
+- Outlines: marching squares on the ink, Douglas–Peucker 0.7 px, closed polylines.
+- Raster size: at most 40 megapixels; larger pages get a lower resolution (the effective dpi is used for the coordinates).
+- After vectorising, the scan lines go through the same pipeline as vector content (dedupe, join, hatch, filters). The hint "Massstab kalibrieren" in the status line starts the calibration as long as the scale is not calibrated.
+- A calibrated scale belongs to one plan: opening another PDF sets the nearest standard scale and clears `calibrated`.

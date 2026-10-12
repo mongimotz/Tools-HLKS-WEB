@@ -16,6 +16,7 @@ import {
   CURVE_MODES,
   DASH_MODES,
   PRESET_NAMES,
+  SCAN_MODES,
   normalizeInputs,
   applyPreset,
   resetDocumentFields,
@@ -30,6 +31,7 @@ import { html, raw, icon, toast, bindThemeToggle, mountSourceLink } from '../../
 import { enableCombos } from '../../lib/core/combo.js';
 
 const DRAFT_KEY = `hlks-tools:${TOOL_ID}:draft`;
+const SCAN_DPIS = [200, 300, 400, 600];
 const $ = (sel, root = document) => root.querySelector(sel);
 const isPdf = (b) => b.length > 4 && b[0] === 0x25 && b[1] === 0x50 && b[2] === 0x44 && b[3] === 0x46; // %PDF
 
@@ -222,6 +224,14 @@ function renderSettings() {
       ${toggle('join', FIELDS.join)}
       ${number('minLengthMm', FIELDS.minLengthMm, 'mm')}
     </fieldset>
+    ${s.scanOn
+      ? html`<fieldset>
+          <legend>${SECTIONS.scan}</legend>
+          ${field(FIELDS.scanMode, seg('scan.mode', SCAN_MODES, OPTIONS.scanMode))}
+          ${field(html`${FIELDS.scanDpi} <span class="unit">dpi</span>`, seg('scan.dpi', SCAN_DPIS))}
+          ${number('scan.snapDeg', FIELDS.scanSnap, '°')}
+        </fieldset>`
+      : ''}
     <details class="more" ${raw(app.tolOpen ? 'open' : '')}>
       <summary>${icon('chevron', { size: 14 })}${SECTIONS.tol}</summary>
       <div class="two">
@@ -303,7 +313,8 @@ function renderToolbar() {
     ${btn('calibrate', 'ruler', ACTIONS.calibrate, { pressed: mode === 'calibrate', disabled: !app.info })}
     ${btn('area', 'crop', ACTIONS.area, { pressed: mode === 'area', disabled: !app.info })}
     ${btn('area-clear', 'close', ACTIONS.areaClear, { hidden: !s.area })}
-    ${btn('underlay', 'image', ACTIONS.underlay, { pressed: !!app.underlayOn.get(page), disabled: !app.info })}`);
+    ${btn('underlay', 'image', ACTIONS.underlay, { pressed: !!app.underlayOn.get(page), disabled: !app.info })}
+    ${btn('scan', 'scan', ACTIONS.scan, { pressed: !!s.scanOn, hidden: !(app.result?.scanned || s.scanOn) })}`);
   $('[data-action="export-dxf"]').disabled = !app.info;
 }
 
@@ -409,7 +420,13 @@ function renderStatus() {
     const ms = (r.stats.ms ?? 0) + (r.stats.extractMs ?? 0);
     parts.push(html`<span class="num">${fmt(r.stats.before)} → ${fmt(visibleCount())}</span>`);
     parts.push(html`<span class="num muted">${ms < 1000 ? `${fmt(ms)} ms` : `${fmt(ms / 1000, 1)} s`}</span>`);
-    for (const w of r.warnings) parts.push(html`<span class="warn">${icon('warning', { size: 14 })}${warningText(w)}</span>`);
+    for (const w of r.warnings) {
+      if (w.code === 'calibrate') {
+        // scans have no reliable scale: offer the calibration right here
+        parts.push(html`<button type="button" class="warn warn-btn" data-action="calibrate">${icon('ruler', { size: 14 })}${warningText(w)}</button>`);
+      } else if (w.code === 'skew') parts.push(html`<span class="muted">${warningText(w)}</span>`);
+      else parts.push(html`<span class="warn">${icon('warning', { size: 14 })}${warningText(w)}</span>`);
+    }
   }
   host.innerHTML = parts.map(String).join('');
 }
@@ -732,6 +749,9 @@ function bindActions() {
         break;
       case 'area':
         setMode('area');
+        break;
+      case 'scan':
+        change((s) => (s.scanOn = !s.scanOn));
         break;
       case 'area-clear':
         change((s) => (s.area = null));

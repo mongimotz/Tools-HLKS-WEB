@@ -6,7 +6,8 @@ import { PdfError } from './backend.js';
 import { runPipeline, toDxfEntities, makeTransform, linetypePatterns, rgbHex, PT_MM } from './pipeline.js';
 import { writeDxf, lineweight } from './dxf.js';
 import { flattenArc, flattenBezier } from './geometry.js';
-import { entitiesBounds } from './ir.js';
+import { entitiesBounds, attrs as makeAttrs, polyline } from './ir.js';
+import { vectorizeScan, roundWidthPt } from './scan.js';
 import { normalizeInputs } from './defaults.js';
 
 const MM_PT = 72 / 25.4;
@@ -29,11 +30,14 @@ export function looksScanned(page) {
   return page.stats.segments < 50 && page.stats.texts < 20 && imageArea >= 0.6 * area;
 }
 
-/** Warnings for the status line: [{ code, count? }]. */
-export function pageWarnings(page) {
+/** Warnings for the status line: [{ code, count? }]. `s`: settings, `scan`: scan result of the page or null. */
+export function pageWarnings(page, s = null, scan = null) {
   const w = [];
   if (page.stats.unmapped) w.push({ code: 'unmapped', count: page.stats.unmapped });
-  if (looksScanned(page)) w.push({ code: 'scan' });
+  if (scan) {
+    if (scan.skewDeg) w.push({ code: 'skew', count: scan.skewDeg });
+    if (!s?.calibrated) w.push({ code: 'calibrate' });
+  } else if (looksScanned(page)) w.push({ code: 'scan' });
   else if (page.images.length) w.push({ code: 'images', count: page.images.length });
   if (page.stats.shadings) w.push({ code: 'shadings', count: page.stats.shadings });
   if (page.errors?.length) w.push({ code: 'damaged', count: page.errors.length });
@@ -126,12 +130,38 @@ export function createService(backend) {
     return p;
   }
 
+  const scanCache = new Map();
+
+  /** Vectorised raster of a scanned page as IR entities (source 'scan'), cached per page and scan options. */
+  function scanCached(index, s, ctx = {}) {
+    const key = `${index}|${s.scan.dpi}|${s.scan.mode}|${s.scan.snapDeg}`;
+    let r = scanCache.get(key);
+    if (r) return r;
+    ctx.progress?.(0.05, 'scan');
+    const info = backend.getPageInfo(index);
+    const raster = backend.renderPage(index, s.scan.dpi, { maxPixels: 40e6 });
+    const v = vectorizeScan(raster, info, { mode: s.scan.mode, snapDeg: s.scan.snapDeg }, (value) => ctx.progress?.(0.05 + 0.6 * value, 'scan'));
+    const attrCache = new Map();
+    const entities = v.lines.map((l) => {
+      const lw = Math.round(roundWidthPt(l.widthPt) * 1e4) / 1e4;
+      let a = attrCache.get(lw);
+      if (!a) attrCache.set(lw, (a = makeAttrs({ rgb: [0, 0, 0], lineWidthPt: lw, source: 'scan' })));
+      return polyline(l.pts, l.closed, a);
+    });
+    r = { entities, skewDeg: v.skewDeg, dpi: raster.dpi, ms: v.stats.ms };
+    if (scanCache.size > 4) scanCache.delete(scanCache.keys().next().value);
+    scanCache.set(key, r);
+    return r;
+  }
+
   /** Pipeline for one page. The area selection belongs to the current page only. */
   function processPage(index, s, ctx) {
-    const page = extractCached(index, extractionOptions(s));
+    let page = extractCached(index, extractionOptions(s));
+    const scan = s.scanOn ? scanCached(index, s, ctx) : null;
+    if (scan) page = { ...page, entities: [...page.entities, ...scan.entities] };
     const settings = index === s.page ? s : { ...s, area: null };
     const result = runPipeline(page, settings, ctx);
-    return { page, ...result };
+    return { page, scan, ...result };
   }
 
   /** DXF bytes for a list of processed pages placed side by side (one page: no offset). */
@@ -174,6 +204,7 @@ export function createService(backend) {
 
     open({ bytes }) {
       cache.clear();
+      scanCache.clear();
       backend.open(bytes);
       const pageCount = backend.getPageCount();
       const pages = [];
@@ -213,7 +244,8 @@ export function createService(backend) {
           colors,
           widths,
           stats: { ...r.stats, extractMs: Math.max(0, extractMs) },
-          warnings: pageWarnings(r.page),
+          warnings: pageWarnings(r.page, s, r.scan),
+          scan: r.scan ? { skewDeg: r.scan.skewDeg, dpi: r.scan.dpi, ms: r.scan.ms } : null,
           scanned: looksScanned(r.page),
           pdfLayers: r.page.layers,
         },

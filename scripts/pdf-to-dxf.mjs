@@ -29,6 +29,7 @@ s = normalizeInputs({
   version: opt('version', s.version),
   pages: opt('pages', s.pages),
   page: Number(opt('page', 1)) - 1,
+  scanOn: args.includes('--scan'),
 });
 
 const svc = createService(await createBackend());
@@ -52,7 +53,7 @@ for (const i of indices) {
     texts: r.page.stats.texts,
     unmapped: r.page.stats.unmapped,
     scanned: looksScanned(r.page),
-    warnings: pageWarnings(r.page).map((w) => w.code),
+    warnings: pageWarnings(r.page, s, r.scan).map((w) => w.code),
     ms: Date.now() - t,
   });
 }
