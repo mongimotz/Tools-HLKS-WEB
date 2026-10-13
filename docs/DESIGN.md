@@ -49,6 +49,8 @@ All four networks share one drawing language: a source symbol in a circle, lines
 
 The geometry is built in `assets/js/home.js` (one function per discipline); styles and motion are in `assets/css/home.css`.
 
+Tools without a discipline (registry group `general`) sit below the networks as tiles: an untitled row, centred, wrapping, one tile per tool with its icon (28 px) and the name in the same style as the tool names of the networks. Tiles are still; hover and focus colour the tile border and name in `--primary`. Planned tools are grey. A single tile stands in the middle.
+
 ## Colour
 
 **Source of truth: [`dragon-ink.md`](dragon-ink.md)** (Kanagawa Dragon based). `assets/css/tokens.css` uses exactly its token names (`--bg`, `--surface`, `--text-muted`, `--primary`, `--chart-1` …) for light and dark.
@@ -81,13 +83,21 @@ Only IBM Plex Sans and IBM Plex Mono (SIL OFL). Sources: `assets/fonts/source/` 
 ## Layout and components
 
 - 4 px spacing grid (`--sp-1` … `--sp-8`). Radius: inputs 4, buttons 6, panels 10.
-- App bar on every tool page: brand (back to start), tool name, icon actions; the primary action is "PDF".
+- App bar on every tool page: brand (back to start), tool name, icon actions; the primary action is "PDF" ("DXF" in PDF → DXF, which saves nothing else).
+- Footer on every page: one muted code icon (`</>`) linking to the source code (`mountSourceLink()`, AGPL). Nothing else in the footer.
 - Shared project header (`lib/core/project-info.js`): Projekt, Projekt-Nr., Bearbeiter, Datum.
 - Result strip directly under the project header: the one number that matters, big. No sub-lines under it.
 - Tables with results use fixed column widths (`table-layout: fixed`); a value that does not fit is clipped with `…` instead of moving the layout.
 - Number fields with standard sizes (e.g. Lindab diameters) use the combobox in `lib/core/combo.js`: free entry, list on click, ↑ / ↓ step through the sizes, the list is never filtered.
 - Warnings are listed under "Hinweise"; a row with a section jumps to it (→).
 - Phone width works (16 px gutter, wide tables scroll inside their panel, never the page).
+
+Patterns of the PDF → DXF tool (reuse them for drawing previews):
+
+- **Preview canvas:** paper in `--surface` on `--surface-sunken`, content in its own colours, black and white content in `--text-strong` (like colour 7 in CAD). Wheel or two fingers zoom about the pointer, dragging pans, "four corners" fits the page. Interaction graphics (snap marker, measured line, selection rectangle) in `--primary` on a separate overlay canvas. A raster of the source can lie underneath at 45 % opacity (image icon toggles it).
+- **Modes** are toggle buttons in the preview toolbar (`aria-pressed`, pressed = `--primary-subtle` fill): ruler = calibrate, crop corners = select an area. Esc leaves a mode. Calibration asks for the length in a strip under the toolbar (`--primary-subtle`), prefilled with the current value; Enter applies.
+- **Layer list:** checkbox, colour swatch (12 px, inline `--sw`), name (ellipsis), count in the number font. Off = struck through and muted. Filters for colours and line weights are toggle chips; off = struck through and faded, never colour alone.
+- **Status line** under the preview: counts before → after, time, warnings with icon. Long work shows a thin progress bar with × to cancel after 300 ms. A warning that has an action (e.g. "Massstab kalibrieren") is a link-style button in `--primary`.
 
 ## Motion
 

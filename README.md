@@ -22,13 +22,17 @@ Rechenwerkzeuge für Heizung, Lüftung, Klima und Sanitär. Die Werkzeuge laufen
 | Sanitär | Trinkwasser | Leitungsdimensionen für Trinkwasser | geplant |
 | Sanitär | Warmwasser | Speicher und Leistung für Warmwasser | geplant |
 | Sanitär | Entwässerung | Leitungsdimensionen für Schmutzwasser | geplant |
+| – | PDF → DXF | PDF-Pläne als massstäbliche DXF für CAD (Trimble Nova): Layer, Bögen, Text, Schraffuren, Kalibrierung, gescannte Pläne | Testversion |
 
 Die Startseite zeigt die Werkzeuge nach Fachrichtung: Heizung, Lüftung, Klima und Sanitär. Jede Fachrichtung ist ein kleines Netz, jedes Werkzeug ein Abzweig. Ein geplantes Werkzeug ist grau. Zeigst du auf ein bereites Werkzeug, öffnet sich sein Ventil oder seine Klappe und das Medium fliesst bis zum Endgerät. Unter einem Werkzeug steht der Name der letzten Berechnung, wenn dieser Browser einen Entwurf gespeichert hat.
+
+Werkzeuge ohne Fachrichtung stehen als Kacheln unter den Netzen, zum Beispiel PDF → DXF.
 
 ## Speichern und öffnen
 
 - **PDF** speichert einen Bericht. Die PDF enthält die Eingaben als Anhang `data.json`.
-- **Öffnen** (Ordner-Symbol) liest eine PDF oder JSON aus HLKS-Tools. Du kannst die Datei auch auf die Seite ziehen. Auf der Startseite öffnet sich die Datei im passenden Werkzeug.
+- **Öffnen** (Ordner-Symbol) liest eine PDF oder JSON aus HLKS-Tools. Du kannst die Datei auch auf die Seite ziehen. Auf der Startseite öffnet sich die Datei im passenden Werkzeug. Eine andere PDF, zum Beispiel ein Plan des Architekten, öffnet sich auf der Startseite in PDF → DXF.
+- **PDF → DXF** speichert nur die DXF. Es gibt keinen Bericht, kein JSON und keine CSV. Die PDF bleibt auf deinem Gerät und wird nicht gespeichert; der Browser merkt sich nur die Einstellungen.
 - Bewahre die Original-PDF auf. Wenn ein anderes Programm die PDF neu druckt oder neu speichert, geht der Anhang oft verloren.
 - Der Browser speichert die laufende Berechnung als Entwurf. Der Entwurf gilt nur für diesen Browser auf diesem Gerät.
 - Das Menü ⋯ enthält: Neue Berechnung, Beispiel laden, JSON speichern (nur Daten), CSV speichern (Tabelle für Excel, Trennzeichen Semikolon).
@@ -220,6 +224,111 @@ Die Datenbank enthält Kulissen von Trox (XK, MK) und Schako (MWK) sowie Rohrsch
 
 Formeln, Daten, Annahmen und Grenzen: [docs/silencer-method.md](docs/silencer-method.md).
 
+## PDF → DXF
+
+PDF → DXF macht aus einem PDF-Plan eine DXF für CAD, massstäblich in Millimetern. Das Ziel ist eine saubere Unterlage für Trimble Nova. Die Umwandlung läuft ganz im Browser; die PDF verlässt dein Gerät nicht. Links stehen die Einstellungen, in der Mitte die Vorschau, rechts die Layer.
+
+### Bedienung
+
+1. **Öffnen:** Ordner-Symbol, Strg+O oder die PDF auf die Seite ziehen. Auf der Startseite öffnet sich jede PDF ohne HLKS-Daten hier.
+2. **Seite:** Bei mehreren Seiten wählst du die Seite mit den Miniaturen oder mit ‹ und › über der Vorschau.
+3. **Massstab:** Den Planmassstab wählst du in der Liste (1:1 bis 1:1000) oder tippst ihn ein, auch krumme Werte wie 98.7. Stimmt der Massstab nicht sicher, kalibrierst du (siehe unten).
+4. **Vorgabe:** „Nova-Unterlage“ passt für die meisten Pläne. Die anderen Vorgaben stehen unter „Einstellungen“.
+5. **Layer:** Rechts schaltest du Layer, Farben und Strichstärken aus, die du nicht brauchst. Was ausgeschaltet ist, kommt nicht in die DXF.
+6. **Speichern:** „↓ DXF“ oder Strg+S.
+
+Die Vorschau zeigt, was in die DXF kommt. Schwarze und weisse Linien erscheinen in der Textfarbe der Seite, wie im CAD. Mausrad oder zwei Finger zoomen, Ziehen verschiebt.
+
+**Kalibrieren:** Wähle das Lineal, klicke auf Anfang und Ende einer bekannten Strecke (zum Beispiel eine Masskette) und gib die wahre Länge in Millimetern ein. Die Klicks rasten auf dem nächsten Linienende ein. Das Werkzeug rechnet den Massstab aus und zeigt ihn über der Vorschau (zum Beispiel 1:98.7). Eine Kalibrierung gilt nur für diese PDF: Öffnest du eine andere, gilt wieder der nächste Normmassstab.
+
+**Bereich:** Mit dem Zuschneide-Symbol ziehst du ein Rechteck auf. Nur was darin liegt, kommt in die DXF; Linien am Rand werden abgeschnitten. × hebt den Bereich auf. Der Bereich gilt für die Seite, auf der du ihn gezogen hast.
+
+### Symbole und Tastatur
+
+| Symbol, Taste | Bedeutung |
+|---|---|
+| Ordner, Strg+O | PDF öffnen |
+| ↓ DXF, Strg+S | DXF speichern |
+| ↶ ↷, Strg+Z, Strg+Y | Einstellungen rückgängig, wiederholen |
+| Vier Ecken | Ganze Seite zeigen |
+| Lineal | Kalibrieren: zwei Punkte, dann die Länge in mm. Enter übernimmt, Esc bricht ab |
+| Zuschneide-Winkel | Bereich wählen |
+| × über der Vorschau | Bereich aufheben |
+| Bild | PDF-Bild unter der Vorschau ein- oder ausblenden |
+| Rahmen mit Linie | Scan vektorisieren (nur bei gescannten Seiten) |
+| ‹ › | Vorherige, nächste Seite |
+| × in der Statuszeile | Laufende Umwandlung abbrechen |
+| Esc | Kalibrieren oder Bereich wählen beenden |
+
+### Einstellungen
+
+**Seiten** (nur bei mehreren Seiten): „Aktuelle Seite“ speichert die gewählte Seite. „Jede Seite einzeln“ speichert eine DXF pro Seite (mehrere Downloads, der Browser fragt eventuell nach). „Alle nebeneinander“ legt alle Seiten mit 20 mm Abstand (auf dem Papier) nebeneinander in eine DXF.
+
+**Ausgabe**
+
+- **Einheit:** mm (Standard), cm oder m. Die DXF meldet die Einheit dem CAD.
+- **Ursprung:** „Seitenecke“ legt den Nullpunkt in die linke untere Ecke der Seite. „Mitte“ legt ihn in die Mitte der Zeichnung.
+- **DXF:** R2000 (Standard) oder R12 für alte Programme. R12 kennt keine Splines, keine Flächen, keine Echtfarben und keine Strichstärken; Polylinien sind dort POLYLINE statt LWPOLYLINE.
+- **Echtfarben:** schreibt die genaue Farbe zusätzlich zur nächsten AutoCAD-Farbe (nur R2000). Schwarz und Weiss sind immer Farbe 7.
+
+**Inhalt**
+
+- **Vorgabe:**
+  - *Nova-Unterlage:* R2000, Linien verbunden, Bögen erkannt, Text als Text, Schraffuren auf eigenem Layer, Füllungen als Umriss, Clipping an.
+  - *Nur Geometrie:* wie Nova-Unterlage, aber ohne Text, ohne Schraffuren und ohne Füllungen.
+  - *Maximale Kompatibilität:* R12, nur Linien und Polylinien: Bögen als Polylinie, Text als Umriss.
+  - *Benutzerdefiniert:* erscheint, sobald du eine Einstellung änderst.
+- **Layer ohne PDF-Ebenen:** Hat die PDF Ebenen, wird jede Ebene ein Layer mit ihrem Namen. Alles andere kommt nach Farbe und Strichstärke (`PDF_RGB_255-0-0_0.35`), nur nach Farbe (`PDF_RGB_255-0-0`), nur nach Strichstärke (`PDF_0.35`) oder auf einen Layer (`PDF`). Text liegt auf `PDF_TEXT`, Schraffuren auf `PDF_SCHRAFFUR`, Umrisse von Füllungen auf `…_FILL`, gescannte Linien auf `SCAN_…`.
+- **Ausgeblendete PDF-Ebenen:** nimmt auch Ebenen mit, die in der PDF ausgeschaltet sind. In der Layerliste steht dann „ausgeblendet“.
+- **Text:** „Text“ schreibt TEXT-Objekte (Höhe, Lage und Drehung wie in der PDF, Schrift Arial). „Umriss“ schreibt die Buchstaben als geschlossene Polylinien. „Aus“ lässt Text weg. Text ohne Zeichenzuordnung (siehe Hinweise) wird immer als Umriss geschrieben, ausser bei „Aus“.
+- **Füllungen:** „Umriss“ schreibt den Rand gefüllter Flächen als Polylinie. „Fläche“ schreibt eine gefüllte Fläche (HATCH, nur R2000). „Aus“ lässt Füllungen weg. Weisse Füllungen fallen immer weg; sie decken in der PDF nur andere Linien ab.
+- **Schraffuren:** Mindestens 8 parallele, gleich weit auseinander liegende kurze Linien gelten als Schraffur. „Eigener Layer“ legt sie auf `PDF_SCHRAFFUR`, „Entfernen“ lässt sie weg, „Lassen“ schaltet die Erkennung aus. Auch eine Treppe kann als Schraffur gelten; mit „Eigener Layer“ geht sie nicht verloren.
+- **Kurven:** Kurven, die keine Kreisbögen sind, werden zur Polylinie oder (nur R2000) zum Spline.
+- **Strichlierung:** „Linientyp“ schreibt strichlierte Linien als durchgehende Linie mit dem Linientyp DASHED oder DASHDOT. „Einzelstriche“ schreibt jeden Strich als eigene Linie.
+- **Bögen erkennen:** Kreisbögen und Kreise aus der PDF werden ARC und CIRCLE.
+- **Clipping anwenden:** schneidet ab, was die PDF ausserhalb eines Ausschnitts verdeckt (zum Beispiel ein Planausschnitt). Ohne Clipping kommt auch das Verdeckte mit.
+- **Doppelte entfernen:** Doppelte und überlappende Linien kommen nur einmal in die DXF. Liegt eine Kontur auf dem Rand einer Füllung, bleibt die Kontur.
+- **Linien verbinden:** Linien mit gemeinsamen Endpunkten werden zu Polylinien, wenn Layer, Farbe und Strichstärke gleich sind.
+- **Mindestlänge:** Linien, die auf dem Papier kürzer sind, fallen weg (0 = aus).
+
+**Toleranzen** (aufklappen, Werte auf dem Papier in mm): Verbinden (Endpunkte gelten als gleich, Standard 0.05), Bogen (Abweichung für Kreisbögen, 0.02), Kurven (Abweichung der Polylinie von der Kurve, 0.05).
+
+**Scan** (nur bei eingeschaltetem Scan): Verfahren „Mittellinie“ (eine Linie pro Strich, Standard) oder „Umriss“ (Rand jedes Strichs als geschlossene Polylinie), Auflösung 200 bis 600 dpi (Standard 300), Fang 0° / 90° (Linien bis zu diesem Winkel werden genau waagrecht oder senkrecht, Standard 2°, 0 schaltet aus).
+
+### Gescannte Pläne
+
+Ist eine Seite nur ein Bild, steht in der Statuszeile „Seite ist ein Bild“, die Vorschau zeigt das Bild, und über der Vorschau erscheint das Scan-Symbol. Mit dem Symbol vektorisiert das Werkzeug das Bild: Es trennt Linien vom Hintergrund, entfernt Flecken, misst die Schräglage, macht aus jedem Strich eine Linie und dreht das Ergebnis gerade. Die Statuszeile zeigt die gefundene Schräglage. Weil die Linien gerade gedreht sind, liegen sie in der Vorschau leicht schräg zum Bild darunter.
+
+Ein Scan hat keinen sicheren Massstab. Solange du nicht kalibriert hast, steht in der Statuszeile „Massstab kalibrieren“; ein Klick darauf startet die Kalibrierung. Ein Scan ist eine Unterlage zum Nachzeichnen, kein genauer Plan.
+
+### Statuszeile und Hinweise
+
+Die Statuszeile zeigt die Anzahl Objekte aus der PDF und die Anzahl, die in die DXF kommt, dazu die Zeit. Dauert die Umwandlung länger, erscheint ein Balken mit × zum Abbrechen.
+
+| Hinweis | Bedeutung |
+|---|---|
+| Text ohne Zeichenzuordnung | Die PDF sagt bei diesem Text nicht, welche Buchstaben die Zeichen sind. Das Werkzeug schreibt ihn als Umriss. |
+| Seite ist ein Bild | Die Seite enthält fast keine Linien, nur ein Bild: ein Scan. Scan-Symbol verwenden. |
+| Bilder | Die Seite enthält Bilder (Logos, Fotos, Planausschnitte als Bild). Bilder kommen nicht in die DXF. |
+| Verläufe | Farbverläufe der PDF kommen nicht in die DXF. |
+| PDF teilweise beschädigt | MuPDF konnte die Seite nur teilweise lesen. Prüfe die DXF besonders. |
+| Schräglage | Gefundene Schräglage eines Scans, die das Werkzeug ausgeglichen hat. |
+| Massstab kalibrieren | Der Massstab eines Scans ist noch nicht kalibriert. |
+
+Fehlermeldungen: „PDF nicht lesbar“ (beschädigte Datei), „PDF mit Passwort geschützt“ (Datei zuerst ohne Passwort speichern), „PDF ohne Seiten“, „Keine PDF“.
+
+### Grenzen
+
+- Die DXF enthält Linien, keine Bedeutung: Eine Wand ist zwei Linien, kein Wandobjekt. Bemassungen sind Linien und Text, keine Bemassungsobjekte.
+- Text erscheint in Arial. Länge und Abstände können von der Schrift der PDF abweichen.
+- Bilder, Verläufe und Muster-Füllungen der PDF fallen weg.
+- Gescannte Pläne liefern eine Unterlage mit der Genauigkeit des Scans. Text in Scans wird zu kurzen Linien.
+- Die Schraffur-Erkennung ist eine Schätzung. Prüfe den Layer `PDF_SCHRAFFUR`.
+
+### Rechenweg und Test in Nova
+
+Umrechnung, Bogenerkennung, Schraffur-Erkennung, Scan-Verfahren, Toleranzen und Grenzen: [docs/pdf-to-dxf-method.md](docs/pdf-to-dxf-method.md). Checkliste für den Test in Trimble Nova: [docs/pdf-to-dxf-nova-test.md](docs/pdf-to-dxf-nova-test.md).
+
 ## Entwicklung
 
 Das Projekt braucht keinen Build-Schritt. Node 20 oder neuer genügt, es gibt keine Abhängigkeiten zum Installieren.
@@ -235,6 +344,36 @@ npm test
 ```
 
 Die Tests prüfen die Berechnung, das Dateiformat, die PDF (speichern, öffnen, wieder speichern) und die Referenz-PDFs in `tests/fixtures/`.
+
+Wie auf GitHub Pages unter einem Unterpfad (prüft, dass alle Pfade relativ sind):
+
+```bash
+node scripts/serve.mjs 8080 --base Tools-HLKS-WEB
+```
+
+Die Seite läuft dann unter http://localhost:8080/Tools-HLKS-WEB/.
+
+Hilfen für PDF → DXF:
+
+```bash
+node scripts/pdf-to-dxf.mjs plan.pdf --out ausgabe
+```
+
+Wandelt eine PDF mit dem Code des Werkzeugs um und zeigt pro Seite eine Statistik. Optionen: `--preset nova|geometry|compat`, `--scale 100`, `--unit mm|cm|m`, `--version R2000|R12`, `--pages current|each|sideBySide`, `--page 1`, `--scan`, `--json`.
+
+```bash
+node scripts/make-pdf-to-dxf-fixtures.mjs
+```
+
+Schreibt die Test-PDFs mit ihren Solldaten in `tests/fixtures/pdf-to-dxf/` neu. Nur nötig, wenn sich die Test-PDFs ändern sollen.
+
+```bash
+python scripts/check-dxf.py ausgabe/plan.dxf
+```
+
+Prüft DXF-Dateien mit ezdxf (braucht `pip install ezdxf`), nicht Teil von `npm test`.
+
+Eigene Pläne zum Testen legst du in `tests/fixtures/pdf-to-dxf/real/`. Der Ordner kommt nicht ins Repo; `npm test` wandelt jede PDF darin um und prüft die DXF.
 
 Regeln für Mitwirkende und Agenten: [AGENTS.md](AGENTS.md). Gestaltung: [docs/DESIGN.md](docs/DESIGN.md) und [docs/dragon-ink.md](docs/dragon-ink.md).
 

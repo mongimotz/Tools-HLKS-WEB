@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Minimal static file server for local development (ES modules need http://, not file://).
-// Usage: node scripts/serve.mjs [port]
+// Usage: node scripts/serve.mjs [port] [--base Tools-HLKS-WEB]
+// --base serves the site under a sub-path, as GitHub Pages does (checks that all paths are relative).
+// Git Bash turns "/Tools-HLKS-WEB/" into a Windows path; such a value is cut back to its last part.
 
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
@@ -8,7 +10,12 @@ import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const port = Number(process.argv[2] || process.env.PORT || 8080);
+const args = process.argv.slice(2);
+const baseIndex = args.indexOf('--base');
+const baseArg = baseIndex >= 0 ? (args[baseIndex + 1] ?? '').replace(/\\/g, '/') : '';
+const baseName = (/^[A-Za-z]:\//.test(baseArg) ? baseArg.replace(/\/+$/, '').split('/').pop() : baseArg).replace(/^\/+|\/+$/g, '');
+const base = baseName ? `/${baseName}/` : '/';
+const port = Number(args.find((a) => /^\d+$/.test(a)) || process.env.PORT || 8080);
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -29,7 +36,11 @@ const TYPES = {
 createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
-    let path = normalize(join(root, decodeURIComponent(url.pathname)));
+    if (!`${url.pathname}/`.startsWith(base)) {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end(`Not found (site under ${base})`);
+      return;
+    }
+    let path = normalize(join(root, decodeURIComponent(url.pathname.slice(base.length - 1))));
     if (!path.startsWith(root)) {
       res.writeHead(403).end();
       return;
@@ -53,4 +64,4 @@ createServer(async (req, res) => {
   } catch (e) {
     res.writeHead(500).end(String(e));
   }
-}).listen(port, () => console.log(`HLKS-Tools dev server: http://localhost:${port}/`));
+}).listen(port, () => console.log(`HLKS-Tools dev server: http://localhost:${port}${base}`));

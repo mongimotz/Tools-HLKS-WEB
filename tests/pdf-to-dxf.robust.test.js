@@ -156,6 +156,20 @@ test('real plans: every PDF in real/ converts to a valid DXF', async (t) => {
   }
 });
 
+// ---- relative paths only (the site runs under a sub-path on GitHub Pages) ------------------------------
+
+test('no absolute paths in the site (src="/", href="/", fetch("/"), url(/), imports from "/")', async () => {
+  const root = new URL('../', import.meta.url);
+  const files = ['index.html'];
+  for (const dir of ['assets/css', 'assets/js', 'lib/core']) for (const f of await readdir(new URL(`${dir}/`, root))) files.push(`${dir}/${f}`);
+  for (const t of await readdir(new URL('tools/', root))) for (const f of await readdir(new URL(`tools/${t}/`, root), { withFileTypes: true })) if (f.isFile()) files.push(`tools/${t}/${f.name}`);
+  const bad = /(?:src|href)=["']\/(?!\/)|fetch\(\s*['"`]\/(?!\/)|url\(\s*['"]?\/(?!\/)|from\s+['"]\/|import\(\s*['"`]\/(?!\/)/;
+  for (const f of files.filter((f) => /\.(html|js|css)$/.test(f))) {
+    const src = await readFile(new URL(f, root), 'utf8');
+    assert.doesNotMatch(src, bad, f);
+  }
+});
+
 // ---- loading: MuPDF only in the worker -----------------------------------------------------------------
 
 /** Static imports of a module and everything it imports (relative paths only). */
