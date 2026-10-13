@@ -47,17 +47,20 @@ function route(points) {
 }
 
 /**
- * One tool's branch. Planned: only its parts (valve shut, terminal idle). Ready: also the medium, which
+ * One tool's branch. Placeholder: only its parts (valve shut, terminal idle). Ready: also the medium, which
  * is revealed from the source when the tool is activated and then keeps moving.
  */
-function run(group, i, ready, flow, kind, parts) {
-  if (!ready) return `<g class="run is-planned">${parts}</g>`;
+function run(group, i, ready, flow, kind, parts, backflow = null) {
+  if (!ready) return `<g class="run is-placeholder">${parts}</g>`;
   const id = `reveal-${group}-${i}`;
-  const style = `--len:${Math.ceil(flow.len) + 24};--reveal:${Math.round(flow.len / REVEAL)}ms`;
+  const len = Math.max(flow.len, backflow?.len ?? 0);
+  const style = `--len:${Math.ceil(len) + 24};--reveal:${Math.round(len / REVEAL)}ms`;
+  const mask = (key, d) => `<mask id="${key}" maskUnits="userSpaceOnUse" x="-50" y="-50" width="${NET + 100}" height="9999"><path class="reveal" d="${d}"/></mask>`;
+  const returning = backflow ? mask(`${id}-return`, backflow.revealD ?? backflow.d) + `<path class="flow flow-${kind} flow-return" d="${backflow.d}" mask="url(#${id}-return)"/>` : '';
   return (
     `<g class="run" data-i="${i}" style="${style}">` +
-    `<mask id="${id}" maskUnits="userSpaceOnUse" x="-50" y="-50" width="${NET + 100}" height="9999"><path class="reveal" d="${flow.d}"/></mask>` +
-    `<path class="flow flow-${kind}" d="${flow.d}" mask="url(#${id})"/>${parts}</g>`
+    mask(id, flow.d) +
+    `<path class="flow flow-${kind}" d="${flow.d}" mask="url(#${id})"/>${returning}${parts}</g>`
   );
 }
 
@@ -76,7 +79,7 @@ function heating(rows) {
   let svg = `<path class="pipe" d="M${SUP} ${CY}V${last - 8}M${COL} ${ys[0] + 8}V${bottom}H${RET}V${CY}"/>`;
   rows.forEach((ready, i) => {
     const y = ys[i];
-    svg += `<path class="pipe${ready ? '' : ' is-planned'}" d="M${SUP} ${y - 8}H${RAD}M${RAD + 24} ${y + 8}H${COL}"/>`;
+    svg += `<path class="pipe${ready ? '' : ' is-placeholder'}" d="M${SUP} ${y - 8}H${RAD}M${RAD + 24} ${y + 8}H${COL}"/>`;
   });
   rows.forEach((ready, i) => {
     const y = ys[i];
@@ -88,7 +91,7 @@ function heating(rows) {
   const flame =
     'M0 -13C4 -8 9 -4 9 3.5C9 9 5 12.5 0 12.5C-5 12.5 -9 9 -9 3.5C-9 -1 -6 -3.5 -4.5 -7.5C-3 -4 -1.5 -2.5 0.5 -1.5C2 -5.5 1.5 -9.5 0 -13Z' +
     'M0 12.5C-2.8 12.5 -4.2 10.5 -3.8 8C-3.4 5.8 -1.2 4.6 0 2.5C1.2 4.6 3.8 6 3.8 8.4C3.8 10.8 2.4 12.5 0 12.5Z';
-  svg += `${ring()}<g transform="translate(${CX} ${CY})"><path class="src flame" d="${flame}"/></g>`;
+  svg += `${ring()}<g transform="translate(${CX} ${CY}) scale(1.3)"><path class="src flame" d="${flame}"/></g>`;
   return { h: bottom + 2, svg };
 }
 
@@ -102,7 +105,7 @@ function ventilation(rows) {
   // Ducts are drawn as wide strokes (walls) with a narrower background stroke on top (inside),
   // so tees and the closed end join without extra geometry.
   let svg = `<path class="duct-wall" d="M${CX} ${CY}V${last + 10}"/>`;
-  rows.forEach((ready, i) => (svg += `<path class="duct-wall${ready ? '' : ' is-planned'}" d="M${CX + 10} ${ys[i]}H${END}"/>`));
+  rows.forEach((ready, i) => (svg += `<path class="duct-wall${ready ? '' : ' is-placeholder'}" d="M${CX + 10} ${ys[i]}H${END}"/>`));
   svg += `<path class="duct-in" d="M${CX} ${CY}V${last + 8}${ys.map((y) => `M${CX} ${y}H${END}`).join('')}"/>`;
   rows.forEach((ready, i) => {
     const y = ys[i];
@@ -112,28 +115,43 @@ function ventilation(rows) {
     const jets = ready ? `<path class="flow flow-air out" d="M${END + 15} ${y - 7}l14 -6M${END + 15} ${y}h16M${END + 15} ${y + 7}l14 6"/>` : '';
     svg += run('ventilation', i, ready, flow, 'air', damper + diffuser + jets);
   });
-  // four swept blades: straight leading edge, curved trailing edge to the next blade's root
-  const at = (r, k) => `${(r * Math.cos((k * Math.PI) / 2)).toFixed(2)} ${(r * Math.sin((k * Math.PI) / 2)).toFixed(2)}`;
-  const rotor = `M${at(2.5, 0)}${[0, 1, 2, 3].map((k) => `L${at(15, k)}A9 9 0 0 1 ${at(2.5, k + 1)}`).join('')}Z`;
-  svg += `${ring()}<g transform="translate(${CX} ${CY})"><path class="src spin fan" d="${rotor}"/></g>`;
+  // Separate swept blades leave clear gaps around a fixed hub; the rotor is exactly centred.
+  const blade = 'M-1.5 -3L-5 -12C-6 -15 -4 -17 -1 -17H4C7 -17 8 -14 6 -11L3 -1.5Z';
+  const rotor = [0, 90, 180, 270].map((a) => `<path class="src" transform="rotate(${a})" d="${blade}"/>`).join('');
+  svg += `${ring()}<g transform="translate(${CX} ${CY})"><g class="spin fan">${rotor}</g><circle class="src fan-hub" r="3"/></g>`;
   return { h: last + 12, svg };
 }
 
-// ---- Klima: split system, refrigerant line with Y branches (refnet) to wall units -------------------
+// ---- Klima: split system, paired refrigerant lines with Y branches (refnet) to wall units -----------
 
 function cooling(rows) {
   const ys = rows.map((_, i) => yRow(i));
   const last = ys.at(-1);
   const UNIT = 94;
+  const SUP = CX + 4;
+  const RET = CX - 4;
   const Y = 18; // branch: 45° from the trunk
-  let svg = `<path class="pipe" d="M${CX} ${CY}V${last - Y}"/>`;
-  rows.forEach((ready, i) => (svg += `<path class="pipe${ready ? '' : ' is-planned'}" d="M${CX} ${ys[i] - Y}L${CX + Y} ${ys[i]}H${UNIT}"/>`));
+  const END = SUP + Y;
+  const feeds = ys.map((y) => route([[SUP, OUT], [SUP, y - Y - 4], [END, y - 4], [UNIT, y - 4]]));
+  const returns = ys.map((y, i) => {
+    const start = y - Y - 4;
+    const flow = route([[RET, OUT], [RET, start], [END, y + 4], [UNIT, y + 4]]);
+    if (i === rows.length - 1) return { ...flow, branchD: route([[RET, start], [END, y + 4], [UNIT, y + 4]]).d };
+    // A gap at the supply trunk shows a crossing, while the reveal remains continuous.
+    const branch = `L${SUP - 3} ${start + 5}M${SUP + 3} ${start + 11}L${END} ${y + 4}H${UNIT}`;
+    return { ...flow, revealD: flow.d, d: `M${RET} ${OUT}V${start}${branch}`, branchD: `M${RET} ${start}${branch}` };
+  });
+  let svg = `<path class="pipe" d="M${SUP} ${CY}V${last - Y - 4}M${RET} ${CY}V${last - Y - 4}"/>`;
   rows.forEach((ready, i) => {
     const y = ys[i];
-    const flow = route([[CX, OUT], [CX, y - Y], [CX + Y, y], [UNIT, y]]);
+    const cls = `pipe${ready ? '' : ' is-placeholder'}`;
+    svg += `<path class="${cls}" d="M${SUP} ${y - Y - 4}L${END} ${y - 4}H${UNIT}"/><path class="${cls}" d="${returns[i].branchD}"/>`;
+  });
+  rows.forEach((ready, i) => {
+    const y = ys[i];
     const unit = `<g class="term"><rect x="${UNIT}" y="${y - 9}" width="32" height="16" rx="3"/><path d="M${UNIT + 6} ${y + 2}H${UNIT + 26}"/></g><path class="flap" d="M${UNIT + 5} ${y + 7}H${UNIT + 27}"/>`;
     const air = ready ? `<path class="flow flow-air out" d="M${UNIT + 10} ${y + 15}l-2 13M${UNIT + 16} ${y + 15}v13M${UNIT + 22} ${y + 15}l2 13"/>` : '';
-    svg += run('cooling', i, ready, flow, 'gas', unit + air);
+    svg += run('cooling', i, ready, feeds[i], 'gas', unit + air, returns[i]);
   });
   let flake = '';
   for (let a = 0; a < 180; a += 60) {
@@ -142,7 +160,7 @@ function cooling(rows) {
     flake += `M${p(-14, 0)}L${p(14, 0)}`;
     for (const r of [8, -8]) flake += `M${p(r * 1.5, -4)}L${p(r, 0)}L${p(r * 1.5, 4)}`;
   }
-  svg += `${ring()}<g transform="translate(${CX} ${CY})"><path class="src spin flake" d="${flake}"/></g>`;
+  svg += `${ring()}<g transform="translate(${CX} ${CY}) scale(1.2)"><path class="src spin flake" d="${flake}"/></g>`;
   return { h: last + 30, svg };
 }
 
@@ -155,18 +173,17 @@ function plumbing(rows) {
   const BAR = OUT + 8; // manifold
   const TAP = 98;
   let svg = `<path class="pipe" d="M${CX} ${CY}V${BAR}"/><path class="manifold" d="M${Math.min(...xs) - 3} ${BAR}H${Math.max(...xs) + 3}"/>`;
-  rows.forEach((ready, i) => (svg += `<path class="pipe${ready ? '' : ' is-planned'}" d="${route([[xs[i], BAR], [xs[i], ys[i], 8], [TAP, ys[i]]]).d}"/>`));
+  rows.forEach((ready, i) => (svg += `<path class="pipe${ready ? '' : ' is-placeholder'}" d="${route([[xs[i], BAR], [xs[i], ys[i], 8], [TAP, ys[i]]]).d}"/>`));
   rows.forEach((ready, i) => {
     const y = ys[i];
     const flow = route([[CX, OUT], [CX, BAR], [xs[i], BAR], [xs[i], y, 8], [TAP, y]]);
     // wall-mounted single-lever tap: the lever lies flat (closed) and lifts to open
-    const tap = `<g class="term"><path d="M${TAP} ${y - 9}V${y + 9}M${TAP} ${y}H${TAP + 20}Q${TAP + 27} ${y} ${TAP + 27} ${y + 7}V${y + 10}M${TAP + 16} ${y}V${y - 5}"/></g><path class="lever" d="M${TAP + 16} ${y - 6}H${TAP + 4}"/>`;
-    const water = ready ? `<path class="flow flow-water out" d="M${TAP + 27} ${y + 14}V${y + 34}"/>` : '';
+    const tap = `<g class="term"><path class="tap-body" d="M${TAP} ${y - 3}H${TAP + 17}C${TAP + 24} ${y - 3} ${TAP + 29} ${y + 2} ${TAP + 29} ${y + 9}V${y + 12}H${TAP + 23}V${y + 9}C${TAP + 23} ${y + 6} ${TAP + 21} ${y + 3} ${TAP + 17} ${y + 3}H${TAP}Z"/><path d="M${TAP} ${y - 9}V${y + 9}M${TAP + 12} ${y - 3}V${y - 8}"/></g><path class="lever" d="M${TAP + 12} ${y - 9}H${TAP + 2}"/>`;
+    const water = ready ? `<path class="flow flow-water out" d="M${TAP + 26} ${y + 16}V${y + 34}"/>` : '';
     svg += run('plumbing', i, ready, flow, 'water', tap + water);
   });
-  const tapIcon = 'M-13 -11V-1M-13 -6H2Q8 -6 8 0V2M-4 -6V-12M-8.5 -12H0.5';
-  const drop = 'M8 6C10 9 11.5 10.5 11.5 12.5A3.5 3.5 0 0 1 4.5 12.5C4.5 10.5 6 9 8 6Z';
-  svg += `${ring()}<g transform="translate(${CX} ${CY})"><path class="src" d="${tapIcon}"/><path class="src drop" d="${drop}"/></g>`;
+  const drop = 'M0 -17C-3 -12 -13 -3 -13 4C-13 11 -7.5 16 0 16C7.5 16 13 11 13 4C13 -3 3 -12 0 -17Z';
+  svg += `${ring()}<g transform="translate(${CX} ${CY})"><g class="src drop"><path d="${drop}"/><path class="drop-reflection" d="M-8 4C-8 8 -5.5 11 -2 11"/></g></g>`;
   return { h: ys.at(-1) + 34, svg };
 }
 
@@ -193,7 +210,7 @@ function toolRow(t, i) {
     ${draft ? html`<span class="tool-meta">${icon('save', { size: 12 })}${draft}</span>` : ''}`;
   return ready
     ? html`<li class="tool is-ready" data-i="${i}"><a href="${t.path}">${body}</a></li>`
-    : html`<li class="tool is-planned" title="In Planung"><div aria-disabled="true">${body}<span class="visually-hidden">In Planung</span></div></li>`;
+    : html`<li class="tool is-placeholder"><div aria-disabled="true">${body}</div></li>`;
 }
 
 function renderNetworks() {
@@ -243,7 +260,7 @@ function renderGeneral() {
       String(
         t.status === 'ready'
           ? html`<a class="gtile is-ready" href="${t.path}">${icon(t.icon ?? 'open', { size: 28 })}<span class="tool-name">${t.name}</span></a>`
-          : html`<div class="gtile is-planned" title="In Planung" aria-disabled="true">${icon(t.icon ?? 'open', { size: 28 })}<span class="tool-name">${t.name}</span><span class="visually-hidden">In Planung</span></div>`,
+          : html`<div class="gtile is-placeholder" aria-disabled="true">${icon(t.icon ?? 'open', { size: 28 })}<span class="tool-name">${t.name}</span></div>`,
       ),
     )
     .join('');

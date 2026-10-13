@@ -65,7 +65,7 @@
   text-overflow: ellipsis;
 }
 .tool-meta { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; overflow: hidden; }
-.is-planned .tool-name { color: var(--text-muted); }
+.is-placeholder .tool-name { color: var(--text-muted); }
 
 .is-ready a:hover .tool-name, .is-ready a:focus-visible .tool-name { color: var(--primary); }
 .is-ready a:focus-visible { outline: none; }
@@ -89,19 +89,19 @@
 .gtile.is-ready:hover .tool-name, .gtile.is-ready:focus-visible .tool-name { color: var(--primary); }
 .gtile.is-ready:focus-visible { outline: none; }
 .gtile.is-ready:focus-visible .tool-name { text-decoration: underline; }
-.gtile.is-planned .tool-name { color: var(--text-muted); }
+.gtile.is-placeholder .tool-name { color: var(--text-muted); }
 
 /* ---- drawing ---------------------------------------------------------------- */
 
 .net {
   --line: var(--text-muted);          /* built parts */
-  --line-planned: var(--border-strong);
+  --line-placeholder: var(--border-strong);
   --flow: var(--primary);             /* moving medium, running source, reached terminal */
   fill: none;
   stroke-linecap: butt;
   stroke-linejoin: miter;
 }
-.net .is-planned { --line: var(--line-planned); }
+.net .is-placeholder { --line: var(--line-placeholder); }
 
 .pipe { stroke: var(--line); stroke-width: 2; }
 .manifold { stroke: var(--line); stroke-width: 4; stroke-linecap: round; }
@@ -111,6 +111,7 @@
 .term { stroke: var(--line); stroke-width: 2; transition: stroke 0.2s; }
 .term rect { fill: var(--bg); }
 .term path { stroke-width: 1.5; }
+.term .tap-body { fill: var(--bg); stroke-width: 2; stroke-linejoin: round; }
 
 .valve { stroke: var(--line); stroke-width: 1.5; stroke-linejoin: round; fill: var(--line); transition: fill 0.2s; }
 .damper, .flap, .lever { stroke: var(--line); stroke-width: 2; stroke-linecap: round; transform-box: fill-box; transition: transform 0.25s ease-out; }
@@ -120,8 +121,9 @@
 
 /* source symbol */
 .src-ring { fill: var(--bg); stroke: var(--text); stroke-width: 2; transition: stroke 0.2s; }
-.src { stroke: var(--text); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.2s, fill 0.2s; }
+.src { stroke: var(--text); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; transition: stroke 0.2s, fill 0.2s; }
 .spin { transform-box: fill-box; transform-origin: center; animation: spin 0.7s linear infinite paused; }
+.fan-hub { fill: var(--bg); }
 .flake { animation-duration: 6s; }
 .flame { transform-box: fill-box; transform-origin: center bottom; }
 
@@ -131,6 +133,7 @@
 .flow-air { stroke-width: 2; stroke-dasharray: 7 9; }
 .flow-water { stroke-width: 3; stroke-dasharray: 5 5; animation-name: flow-10; animation-duration: 0.45s; }
 .flow-gas { stroke-width: 3.5; stroke-linecap: round; stroke-dasharray: 0 8; animation-name: flow-8; animation-duration: 0.3s; }
+.flow-return { animation-direction: reverse; }
 .flow.out { stroke-width: 2; }
 
 /* active branch */
@@ -147,6 +150,8 @@
 .is-on .spin { animation-play-state: running; }
 .is-on .flame { fill: var(--flow); animation: flicker 0.5s ease-in-out infinite alternate; }
 .is-on .drop { fill: var(--flow); animation: drip 0.9s ease-in infinite; }
+.drop-reflection { fill: none; }
+.is-on .drop-reflection { stroke: var(--bg); }
 
 @keyframes flow-16 { to { stroke-dashoffset: -16; } }
 @keyframes flow-10 { to { stroke-dashoffset: -10; } }
@@ -154,7 +159,7 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes flicker { to { transform: scale(0.94, 1.06); } }
 @keyframes drip {
-  0% { transform: translateY(-3px); opacity: 0; }
+  0% { transform: translateY(-1px); opacity: 0; }
   25% { transform: translateY(0); opacity: 1; }
-  100% { transform: translateY(7px); opacity: 0; }
+  100% { transform: translateY(4px); opacity: 0; }
 }

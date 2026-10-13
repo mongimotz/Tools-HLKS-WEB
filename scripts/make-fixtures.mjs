@@ -62,7 +62,7 @@ const tools = [
     defaults: silencerDefaults,
     report: silencerReport,
     cases: {
-      example: { project: { name: 'Beispiel Kilian', number: 'FX-5', author: 'Fixture', date: '2026-10-12' }, inputs: silencerDefaults.exampleInputs() },
+      example: { project: { name: 'Beispiel', number: 'FX-5', author: 'Fixture', date: '2026-10-12' }, inputs: silencerDefaults.exampleInputs() },
       paths: { project: { name: 'Drei Wege, Datenbank, LSV', number: 'FX-6', author: 'Fixture', date: '2026-10-13' }, inputs: silencerPaths() },
     },
   },

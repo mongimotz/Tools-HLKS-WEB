@@ -38,18 +38,20 @@ What these mean in practice:
 
 Technical and quiet. The start page shows the tools as one small network per discipline, in HLKS order (2 × 2 on wide screens, one column on phones). It is the only illustrative element. Tool pages are plain so the numbers stand out.
 
-All four networks share one drawing language: a source symbol in a circle, lines in `--text-muted` (planned branches in `--border-strong`), the moving medium in `--primary`, valves and dampers shut while idle. Each discipline has its own idiom:
+All four networks share one drawing language: a source symbol in a circle, lines in `--text-muted` (placeholder branches in `--border-strong`), the moving medium in `--primary`, valves and dampers shut while idle. The source symbols have balanced visual size within their circles. Each discipline has its own idiom:
 
 | Discipline | Source | Network | Branch control | Terminal | Medium |
 |---|---|---|---|---|---|
 | Heizung | flame | Tichelmann (reverse return): supply, return collector, return to the boiler; every radiator has the same circuit length | valve (filled = shut) | radiator | water, short dashes |
 | Lüftung | four-blade fan | duct with two walls, tees | damper (across = shut) | supply diffuser, air jets | air, long dashes |
-| Klima | snowflake | refrigerant line with 45° Y branches (refnet) | flap of the unit | wall unit, air downwards | refrigerant, dots |
-| Sanitär | tap with drop | manifold with one line per tap (Einzelzuleitungen), bent corners | lever (flat = shut) | wall tap, falling water | water, short dashes |
+| Klima | snowflake | paired refrigerant feed and return lines with 45° Y branches (refnet) | flap of the unit | wall unit, air downwards | refrigerant, dots |
+| Sanitär | water drop with one reflection stroke | manifold with one line per tap (Einzelzuleitungen), bent corners | lever (flat = shut) | compact outlined tap, falling water | water, short dashes |
 
 The geometry is built in `assets/js/home.js` (one function per discipline); styles and motion are in `assets/css/home.css`.
 
-Tools without a discipline (registry group `general`) sit below the networks as tiles: an untitled row, centred, wrapping, one tile per tool with its icon (28 px) and the name in the same style as the tool names of the networks. Tiles are still; hover and focus colour the tile border and name in `--primary`. Planned tools are grey. A single tile stands in the middle.
+Each discipline initially shows three entries. Lüftung has three ready tools. The other disciplines use numbered grey placeholders with no destination. The registry generates them from a count, and the network geometry follows the number of entries.
+
+Tools without a discipline (registry group `general`) sit below the networks as tiles: an untitled row, centred, wrapping, one tile per tool with its icon (28 px) and the name in the same style as the tool names of the networks. Tiles are still; hover and focus colour the tile border and name in `--primary`. Placeholders are grey. A single tile stands in the middle.
 
 ## Colour
 

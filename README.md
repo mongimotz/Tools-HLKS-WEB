@@ -11,20 +11,9 @@ Rechenwerkzeuge für Heizung, Lüftung, Klima und Sanitär. Die Werkzeuge laufen
 | Lüftung | Druckverlust Lüftung | Teilstrecken mit Formstücken und Einbauteilen, kritischer Strang, Drosselbedarf, Reserve des Ventilators | Testversion |
 | Lüftung | Kanalrechner | Rohre und Kanäle (rund, eckig, flachoval) nach SIA 382/1, Tabellen 49 und 50: Abmessung oder Prüfung, Druckgefälle, Pins | Testversion |
 | Lüftung | Schalldämpfer | Schallpegel je Oktave von der Quelle bis zum Empfänger, Schalldämpfer aus Herstellerdaten (Trox, Schako, Lindab), Ziel nach SIA 2024 / SIA 181 oder LSV, Varianten für ein vorgegebenes Gehäuse | Testversion |
-| Lüftung | Monoblock | Ventilatorleistung, Heiz- und Kühlleistung, Befeuchtung, Filter | geplant |
-| Heizung | Heizlast | Heizlast eines Raums oder Gebäudes | geplant |
-| Heizung | Rohrnetz Heizung | Rohrdimensionen und Druckverlust im Heiznetz | geplant |
-| Heizung | Ausdehnungsgefäss | Auslegung von Ausdehnungsgefäss und Vordruck | geplant |
-| Heizung | Dämmung | Abschätzung der Dämmstärke für Leitungen und Kanäle | geplant |
-| Klima | Kühllast-Check | Grobe Prüfung der Kühllast eines Raums | geplant |
-| Klima | h,x-Diagramm | Luftzustände und Zustandsänderungen | geplant |
-| Klima | Kältemittel | Kältemittelmenge und Grenzwerte für den Raum | geplant |
-| Sanitär | Trinkwasser | Leitungsdimensionen für Trinkwasser | geplant |
-| Sanitär | Warmwasser | Speicher und Leistung für Warmwasser | geplant |
-| Sanitär | Entwässerung | Leitungsdimensionen für Schmutzwasser | geplant |
 | – | PDF → DXF | PDF-Pläne als massstäbliche DXF für CAD (Trimble Nova): Layer, Bögen, Text, Schraffuren, Kalibrierung, gescannte Pläne | Testversion |
 
-Die Startseite zeigt die Werkzeuge nach Fachrichtung: Heizung, Lüftung, Klima und Sanitär. Jede Fachrichtung ist ein kleines Netz, jedes Werkzeug ein Abzweig. Ein geplantes Werkzeug ist grau. Zeigst du auf ein bereites Werkzeug, öffnet sich sein Ventil oder seine Klappe und das Medium fliesst bis zum Endgerät. Unter einem Werkzeug steht der Name der letzten Berechnung, wenn dieser Browser einen Entwurf gespeichert hat.
+Die Startseite zeigt die Werkzeuge nach Fachrichtung: Heizung, Lüftung, Klima und Sanitär. Jede Fachrichtung hat drei Abzweige. Heizung, Klima und Sanitär zeigen graue Einträge «Platzhalter 1» bis «Platzhalter 3». Zeigst du auf ein bereites Werkzeug, öffnet sich sein Ventil oder seine Klappe. Das Medium fliesst bis zum Endgerät. Unter einem Werkzeug steht der Name der letzten Berechnung, wenn dieser Browser einen Entwurf gespeichert hat.
 
 Werkzeuge ohne Fachrichtung stehen als Kacheln unter den Netzen, zum Beispiel PDF → DXF.
 
@@ -382,7 +371,7 @@ Regeln für Mitwirkende und Agenten: [AGENTS.md](AGENTS.md). Gestaltung: [docs/D
 
 ### Veröffentlichen
 
-Die Seite läuft unter https://mongimotz.github.io/Tools-HLKS-WEB/. GitHub Pages veröffentlicht den Zweig `main` (Ordner root) nach jedem Push, meist innerhalb von ein bis zwei Minuten. Die Datei `.nojekyll` ist vorhanden. Für eine eigene Domain kommt später eine Datei `CNAME` dazu.
+Die Seite läuft unter https://mongimotz.github.io/Tools-HLKS-WEB/. GitHub Pages veröffentlicht den Zweig `main` (Ordner root) nach jedem Push, meist innerhalb von ein bis zwei Minuten. Die Datei `.nojekyll` ist vorhanden.
 
 ## Lizenz und Fremdcode
 

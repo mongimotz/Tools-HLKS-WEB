@@ -54,15 +54,14 @@ scripts/                   serve.mjs (dev server, --base for a sub-path), make-f
 - `python scripts/check-dxf.py file.dxf …` – check DXF files with ezdxf (recover + audit); not part of `npm test`
 - Real plans for local tests go into `tests/fixtures/pdf-to-dxf/real/` (git-ignored); `npm test` converts every PDF there.
 
-## Roadmap (from the original plan)
+## Tool inventory (owner decision, 2026-10-13)
 
-Planned tools (status `planned` in the registry):
+The start page shows three entries per discipline. Lüftung has three ready tools. Heizung, Klima and Sanitär use `Platzhalter 1` to `Platzhalter 3`, with status `placeholder` and no path. These slots do not name or promise future tools. The registry generates them from a count, so more entries can be added later.
 
-- **Kanalrechner** – done as a test version (SIA 382/1 tables 49 and 50). Idea for later: an experimental version with a 3D model and a fluid simulation.
+Current implementation notes:
+
+- **Kanalrechner** – done as a test version (SIA 382/1 tables 49 and 50).
 - **Schalldämpfer** – done as a test version, version 2 since 2026-10-13 (paths as plain level lists like the owner's Excel sheet, dB / dB(A) per line, design panel with housing B × H, front view and variants; manufacturer data Trox, Schako, Lindab; targets SIA 2024 / SIA 181 / LSV). Open: interpolation in L and s, LSV sum over paths (see `docs/silencer-plan.md`).
-- **Monoblock** – air handling unit: fan power, heating and cooling capacity, humidification, filter sizing.
-- **Dämmung** – insulation thickness estimate.
-- Later candidates: Messprotokoll, Kühllast-Check.
 
 Open technical items:
 
@@ -71,7 +70,7 @@ Open technical items:
 - Excel export as `.xlsx` (CSV exists).
 - Own domain: buy it, add `CNAME`, set the DNS record, enable HTTPS in the Pages settings.
 
-Done from the plan: shared core, PDF export/import with embedded data, start page import, calcVersion warning, reference PDFs, Druckverlust Lüftung, Kanalrechner, Schalldämpfer, PDF → DXF (test version; vector and scanned PDFs, R2000 and R12; open: the owner's test in Trimble Nova, `docs/pdf-to-dxf-nova-test.md`).
+Available: shared core, PDF export/import with embedded data, start page import, calcVersion warning, reference PDFs, Druckverlust Lüftung, Kanalrechner, Schalldämpfer, PDF → DXF (test version; vector and scanned PDFs, R2000 and R12; open: the owner's test in Trimble Nova, `docs/pdf-to-dxf-nova-test.md`).
 
 ## License
 

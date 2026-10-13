@@ -110,7 +110,7 @@ function loadInitialDoc() {
   return exampleDoc();
 }
 
-const exampleDoc = () => ({ project: { ...newProject(), name: 'Beispiel Kilian' }, inputs: exampleInputs() });
+const exampleDoc = () => ({ project: { ...newProject(), name: 'Beispiel' }, inputs: exampleInputs() });
 
 const UNDO_ACTION = { icon: 'undo', label: 'Rückgängig', run: () => undo() };
 
