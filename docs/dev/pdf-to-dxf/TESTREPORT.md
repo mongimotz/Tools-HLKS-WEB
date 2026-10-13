@@ -92,3 +92,11 @@ Error cases: empty file → "PDF nicht lesbar"; a PDF without pages → "PDF ohn
 Real plans: `tests/fixtures/pdf-to-dxf/real/` is empty on this machine, the test is skipped. See TODO-OWNER.md.
 
 Loading: a test follows the static imports of the start page and every tool page: none reaches `lib/vendor/mupdf/` or `backend.js`. Only the worker imports the backend, and the backend imports MuPDF with `await import()`.
+
+## Phase 10: final check on the branch
+
+`node scripts/pdf-to-dxf.mjs` on every fixture with the final code: preset Nova-Unterlage with "Jede Seite einzeln" (14 files, both scans vectorised) and preset Maximale Kompatibilität (R12, 10 files). `scripts/check-dxf.py`: all 24 files 0 errors, 0 fixes.
+
+Sub-path: `node scripts/serve.mjs 8083 --base Tools-HLKS-WEB`; the start page, the tile, the hand-over of a foreign PDF, the worker, the backend and MuPDF's WebAssembly load under `/Tools-HLKS-WEB/`, and curves.pdf converts (13 → 6).
+
+`npm test`: 176 tests, 175 pass, 1 skipped (real plans). The live site is not updated yet (release waits for the owner).
