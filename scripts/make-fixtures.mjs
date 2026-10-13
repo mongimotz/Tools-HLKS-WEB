@@ -63,38 +63,53 @@ const tools = [
     report: silencerReport,
     cases: {
       example: { project: { name: 'Beispiel Kilian', number: 'FX-5', author: 'Fixture', date: '2026-10-12' }, inputs: silencerDefaults.exampleInputs() },
-      strands: { project: { name: 'Zwei Stränge, Datenbank, LSV', number: 'FX-6', author: 'Fixture', date: '2026-10-12' }, inputs: silencerStrands() },
+      paths: { project: { name: 'Drei Wege, Datenbank, LSV', number: 'FX-6', author: 'Fixture', date: '2026-10-13' }, inputs: silencerPaths() },
     },
   },
 ];
 
-/** Silencer case 2: supply with database silencers and a branch, exhaust with LSV day and night. */
-function silencerStrands() {
+/** Silencer case 2: supply to two rooms with database silencers and branches, exhaust in dB(A) with LSV day and night. */
+function silencerPaths() {
+  const fan = { type: 'source', name: 'Monoblock Zuluft', lw: [80, 82, 84, 86, 84, 80, 76, 70] };
+  const central = { type: 'silencer', name: 'SD Zentrale', kind: 'rect', install: 'freeOutlet', rect: { series: 'trox-xk', d: 200, s: 100, L: 1500, B: 1200, H: 1000 } };
   return silencerDefaults.normalizeInputs({
-    strands: [
+    paths: [
       {
-        id: 'st1',
-        name: 'Zuluft',
+        id: 'w1',
+        name: 'Zuluft Büro',
         flow: 8000,
-        elements: [
-          { id: 'e1', nr: '1', after: null, type: 'source', name: 'Monoblock Zuluft', lw: [80, 82, 84, 86, 84, 80, 76, 70] },
-          { id: 'e2', nr: '2', after: 'e1', type: 'silencer', name: 'SD Zentrale', kind: 'rect', install: 'freeOutlet', rect: { series: 'trox-xk', d: 200, s: 100, L: 1500, n: 4, H: 1000 } },
-          { id: 'e3', nr: '3', after: 'e2', type: 'component', name: 'VAV Büro', flow: 5000, lw: [62, 58, 54, 50, 48, 46, 42, 38] },
-          { id: 'e4', nr: '4', after: 'e3', type: 'silencer', name: 'SD Büro', kind: 'round', round: { series: 'schako-rs-n', dn: 500, L: 950, insulation: 100 } },
-          { id: 'e5', nr: '5', after: 'e4', type: 'receiver', name: 'Büro', r: 1.5, q: 2, volume: 120, reverb: 0.6, basis: 'room', room: { type: '3.01' } },
-          { id: 'e6', nr: '2.1', after: 'e2', type: 'silencer', name: 'SD Sitzung', flow: 3000, kind: 'round', round: { series: 'trox-ck', dn: 315, L: 1500, insulation: 100, core: 100 } },
-          { id: 'e7', nr: '2.2', after: 'e6', type: 'receiver', name: 'Sitzungszimmer', r: 2, q: 2, area: 25, basis: 'manual', target: 32 },
+        rows: [
+          { id: 'r1', ...fan },
+          { id: 'r2', ...central },
+          { id: 'r3', type: 'branch', name: 'Abzweig Büro', flow: 5000 },
+          { id: 'r4', type: 'source', name: 'VAV Büro', lw: [62, 58, 54, 50, 48, 46, 42, 38] },
+          { id: 'r5', type: 'silencer', name: 'SD Büro', kind: 'round', round: { series: 'schako-rs-n', dn: 500, L: 950, insulation: 100 } },
         ],
+        receiver: { name: 'Büro', r: 1.5, q: 2, volume: 120, reverb: 0.6, basis: 'room', room: { type: '3.01' } },
       },
       {
-        id: 'st2',
+        id: 'w2',
+        name: 'Zuluft Sitzung',
+        flow: 8000,
+        rows: [
+          { id: 'r6', ...fan },
+          { id: 'r7', ...central },
+          { id: 'r8', type: 'branch', name: 'Abzweig Sitzung', flow: 3000 },
+          { id: 'r9', type: 'silencer', name: 'SD Sitzung', kind: 'round', round: { series: 'trox-ck', dn: 315, L: 1500, insulation: 100, core: 100 } },
+          { id: 'r10', type: 'loss', name: 'Bogen', d: [0, 1, 2, 3, 3, 3, 3, 3] },
+        ],
+        receiver: { name: 'Sitzungszimmer', r: 2, q: 2, area: 25, basis: 'manual', target: 32 },
+      },
+      {
+        id: 'w3',
         name: 'Fortluft',
         flow: 7500,
-        elements: [
-          { id: 'e8', nr: '1', after: null, type: 'source', name: 'Monoblock Fortluft', lw: [79, 81, 83, 84, 82, 78, 74, 68] },
-          { id: 'e9', nr: '2', after: 'e8', type: 'silencer', name: 'SD Fortluft', kind: 'rect', rect: { series: 'schako-mwk-ob', d: 200, s: 100, L: 2000, n: 4, H: 900 } },
-          { id: 'e10', nr: '3', after: 'e9', type: 'receiver', name: 'Nachbar Fenster', r: 12, q: 2, basis: 'lsv', lsv: { es: 2, k2: 2, hoursNight: 4 } },
+        rows: [
+          { id: 'r11', type: 'source', name: 'Monoblock Fortluft', unit: 'dBA', lw: [53, 65, 74, 81, 82, 79, 75, 67] },
+          { id: 'r12', type: 'silencer', name: 'SD Fortluft', kind: 'rect', rect: { series: 'schako-mwk-ob', d: 200, s: 100, L: 2000, B: 1200, H: 900 } },
+          { id: 'r13', type: 'loss', name: 'Mündung', d: [10, 6, 3, 1, 0, 0, 0, 0] },
         ],
+        receiver: { name: 'Nachbar Fenster', r: 12, q: 2, basis: 'lsv', lsv: { es: 2, k2: 2, hoursNight: 4 } },
       },
     ],
   });

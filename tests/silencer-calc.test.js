@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 
 import {
   CALC_VERSION,
+  A_WEIGHTING,
   compute,
   sumLevels,
   aWeighted,
@@ -14,6 +15,7 @@ import {
   roomTerm,
   absorptionArea,
   splitterSilencer,
+  splitterCount,
   roundSilencer,
   lookupRow,
   rowCopy,
@@ -23,28 +25,13 @@ import {
   roundChoices,
   snapRect,
   snapRound,
-  proposeSilencer,
-  PROPOSE_DEFAULTS,
+  silencerVariants,
+  fittingSplitterRows,
+  VARIANT_LIMITS,
+  GAP_TOLERANCE,
 } from '../tools/silencer/calc.js';
-import {
-  normalizeInputs,
-  exampleInputs,
-  emptyInputs,
-  newStrand,
-  TOOL_ID,
-  INPUT_VERSION,
-  autoNumbers,
-  isAutoNumbered,
-  branchDepths,
-  insertAfter,
-  insertBefore,
-  branchFrom,
-  removeElement,
-  moveElement,
-  setPredecessor,
-  duplicateStrand,
-  normalizeElement,
-} from '../tools/silencer/defaults.js';
+import { normalizeInputs, exampleInputs, emptyInputs, newRow, newPath, duplicatePath, TOOL_ID, INPUT_VERSION } from '../tools/silencer/defaults.js';
+import { rectFrontView, roundFrontView } from '../tools/silencer/drawing.js';
 import { createEnvelope, parseEnvelope, checkCompatibility } from '../lib/core/envelope.js';
 import { frictionFactor } from '../lib/core/air.js';
 
@@ -52,28 +39,27 @@ const near = (actual, expected, tol, msg = '') =>
   assert.ok(Math.abs(actual - expected) <= tol, `${msg} expected ${expected} ± ${tol}, got ${actual}`);
 const nearAll = (actual, expected, tol, msg = '') => expected.forEach((e, i) => near(actual[i], e, tol, `${msg}[${i}]`));
 
-/** One strand from a list of elements (chain unless `after` is given). */
-function strandOf(elements, { flow = null, density = 1.2 } = {}) {
-  const els = elements.map((e, i) => ({ id: `e${i + 1}`, after: i ? `e${i}` : null, ...e }));
-  return normalizeInputs({ density, strands: [{ id: 'st1', flow, elements: els }] });
+/** One path from a list of rows (ids r1, r2 …) and a receiver. */
+function pathOf(rows, { flow = null, receiver = {}, density = 1.2 } = {}) {
+  return normalizeInputs({ density, paths: [{ id: 'w1', flow, rows: rows.map((r, i) => ({ id: `r${i + 1}`, ...r })), receiver }] });
 }
-const resultOf = (inputs, id) => compute(inputs).strands[0].elements.get(id);
+const resultOf = (inputs) => compute(inputs).paths[0];
+const rowResult = (inputs, id) => resultOf(inputs).rows.get(id);
 const codes = (r) => r.issues.map((i) => i.code);
 
+const flat = (v) => new Array(8).fill(v);
 const rect = (spec, extra = {}) => ({ type: 'silencer', kind: 'rect', rect: spec, ...extra });
 const round = (spec, extra = {}) => ({ type: 'silencer', kind: 'round', round: spec, ...extra });
 
 // ---- 1. Kilian chain --------------------------------------------------------------------
 
 test('1. Kilian chain: spectrum, L_WA and L_pA of the Excel sheet', () => {
-  const inputs = exampleInputs();
-  const s = compute(inputs).strands[0];
-  const last = s.elements.get('e4');
-  nearAll(last.lwOut, [69.24, 56.75, 42.53, 36.01, 32.0, 28.02, 28.15, 37.18], 0.01, 'L_W');
-  near(last.lwaOut, 46.38, 0.01, 'L_WA');
-  const rec = s.elements.get('e5');
-  near(rec.lpa, 32.37, 0.01, 'L_pA (r = 2 m, Q = 2, no room)');
-  assert.equal(rec.area, null);
+  const p = compute(exampleInputs()).paths[0];
+  // the sheet sums in dB and weights at the end; the tool runs in dB(A): same values plus A per octave
+  nearAll(p.level.map((l, i) => l - A_WEIGHTING[i]), [69.24, 56.75, 42.53, 36.01, 32.0, 28.02, 28.15, 37.18], 0.01, 'L_W');
+  near(p.lwa, 46.38, 0.01, 'L_WA');
+  near(p.receiver.lpa, 32.37, 0.01, 'L_pA (r = 2 m, Q = 2, no room)');
+  assert.equal(p.receiver.area, null);
 });
 
 test('levels: energetic sum and A-weighting', () => {
@@ -82,12 +68,40 @@ test('levels: energetic sum and A-weighting', () => {
   near(aWeighted([0, 0, 0, 0, 80, 0, 0, 0]), 80, 1e-3);
 });
 
+test('lines: one per operation, like the Excel sheet; dB lines get an A-weighting line', () => {
+  const p = compute(exampleInputs()).paths[0];
+  const kinds = p.lines.map((l) => `${l.rowId}:${l.kind}${l.op}`);
+  assert.deepEqual(kinds, [
+    'r1:source+', 'r1:aweight+',
+    'r2:de−', 'r2:flow+', 'r2:aweight+',
+    'r3:source+', 'r3:aweight+',
+    'r4:de−', 'r4:flow+', 'r4:aweight+',
+  ]);
+  const src = p.lines[0];
+  assert.deepEqual([src.unit, src.edit], ['dB', 'lw']);
+  near(src.total, aWeighted([78, 85, 87, 89, 78, 79, 78, 74]), 1e-9, 'total of a row in dB(A)');
+  assert.deepEqual(p.lines[1].values, A_WEIGHTING);
+});
+
+test('dB(A) input: the same source typed in dB(A) gives the same result, without an A-weighting line', () => {
+  const lw = [78, 85, 87, 89, 78, 79, 78, 74];
+  const inDb = resultOf(pathOf([{ type: 'source', lw, unit: 'dB' }], { receiver: { r: 2, q: 2 } }));
+  const inDbA = resultOf(pathOf([{ type: 'source', lw: lw.map((l, i) => l + A_WEIGHTING[i]), unit: 'dBA' }], { receiver: { r: 2, q: 2 } }));
+  near(inDbA.lwa, inDb.lwa, 1e-9);
+  near(inDbA.receiver.lpa, inDb.receiver.lpa, 1e-9);
+  assert.deepEqual(inDbA.lines.map((l) => l.kind), ['source']);
+  // a manual silencer's flow noise in dB(A): also no A-weighting line
+  const m = resultOf(pathOf([{ type: 'source', lw: flat(80) }, { type: 'silencer', kind: 'manual', manual: { de: flat(10), lwFlow: flat(40), unit: 'dBA' } }]));
+  assert.deepEqual(m.lines.map((l) => l.kind), ['source', 'aweight', 'de', 'flow']);
+  near(m.rows.get('r2').lwaFlow, sumLevels(flat(40)), 1e-9);
+});
+
 // ---- 2. database splitter ----------------------------------------------------------------
 
-test('2. Trox XK 200/100/1500, n = 4, H = 1000, 10’000 m³/h', () => {
+test('2. Trox XK 200/100/1500 in B 1200 × H 1000 (n = 4), 10’000 m³/h', () => {
   const row = rowCopy(lookupRow('rect', { series: 'trox-xk', d: 200, s: 100, L: 1500 }), 'rect');
-  const r = splitterSilencer({ row, n: 4, H: 1000, flow: 10000, density: 1.2 });
-  assert.equal(r.B, 1200);
+  const r = splitterSilencer({ row, B: 1200, H: 1000, flow: 10000, density: 1.2 });
+  assert.deepEqual([r.n, r.gap], [4, 100]);
   near(r.v, 6.944, 0.001, 'v_s'); // 10000 / 3600 / (4 · 0.1 · 1.0)
   assert.deepEqual(r.de, [5, 12, 22, 44, 50, 46, 30, 19]);
   near(r.zeta, 0.6525, 1e-4, 'ζ'); // 14 / (0.6 · 6²) = 0.6481 … 40 / (0.6 · 10²) = 0.6667, linear in v
@@ -96,63 +110,59 @@ test('2. Trox XK 200/100/1500, n = 4, H = 1000, 10’000 m³/h', () => {
   nearAll(r.lwFlow, [39.3, 33.3, 34.3, 33.3, 30.3, 27.3, 21.3, 17.3], 0.06, 'L_W,flow');
 });
 
-test('2b. the same silencer as an element: installation factor and net effect', () => {
-  const spec = { series: 'trox-xk', d: 200, s: 100, L: 1500, n: 4, H: 1000 };
-  const lw = [90, 90, 90, 90, 90, 90, 90, 90];
-  const duct = resultOf(strandOf([{ type: 'source', lw }, rect(spec)], { flow: 10000 }), 'e2');
-  const outlet = resultOf(strandOf([{ type: 'source', lw }, rect(spec, { install: 'freeOutlet' })], { flow: 10000 }), 'e2');
+test('housing B: splitters evenly spaced, n = round(B / (d + s)), real gap s′ = B / n − d', () => {
+  assert.equal(splitterCount(1200, 200, 100), 4);
+  assert.equal(splitterCount(1150, 200, 100), 4); // 3.83 → 4, s′ = 87.5
+  assert.equal(splitterCount(1000, 200, 100), 3); // 3.33 → 3, s′ = 133
+  assert.equal(splitterCount(250, 200, 100), 1); // 0.83 → 1, s′ = 50
+  assert.equal(splitterCount(200, 200, 100), 0, 'no room for a gap');
+  const row = rowCopy(lookupRow('rect', { series: 'trox-xk', d: 200, s: 100, L: 1500 }), 'rect');
+  const r = splitterSilencer({ row, B: 1150, H: 1000, flow: 10000, density: 1.2 });
+  near(r.gap, 87.5, 1e-9);
+  near(r.aFree, 0.35, 1e-9); // 4 · 0.0875 · 1.0 = B − n·d
+  near(r.face, 1.15, 1e-9);
+});
+
+test('2b. the same silencer as a row: installation factor and net effect', () => {
+  const spec = { series: 'trox-xk', d: 200, s: 100, L: 1500, B: 1200, H: 1000 };
+  const duct = rowResult(pathOf([{ type: 'source', lw: flat(90), unit: 'dBA' }, rect(spec)], { flow: 10000 }), 'r2');
+  const outlet = rowResult(pathOf([{ type: 'source', lw: flat(90), unit: 'dBA' }, rect(spec, { install: 'freeOutlet' })], { flow: 10000 }), 'r2');
   near(outlet.dp / duct.dp, 1.3, 1e-9, 'free outlet');
   assert.ok(duct.row && duct.row.dataVersion);
-  // (L − D_e) ⊕ L_W,flow per octave
-  duct.lwOut.forEach((l, i) => near(l, sumLevels([90 - duct.de[i], duct.lwFlow[i]]), 1e-9));
+  // (L − D_e) ⊕ L_W,flow per octave, all in dB(A)
+  duct.levelOut.forEach((l, i) => near(l, sumLevels([90 - duct.de[i], duct.lwFlow[i] + A_WEIGHTING[i]]), 1e-9));
+  // the flow noise line is shown in dB(A)
+  const line = resultOf(pathOf([{ type: 'source', lw: flat(90) }, rect(spec)], { flow: 10000 })).lines.find((l) => l.kind === 'flow');
+  assert.equal(line.unit, 'dBA');
+  near(line.total, duct.lwaFlow, 1e-9);
 });
 
 // ---- 3. branch split -----------------------------------------------------------------------
 
-test('3. branch split: 6000 → 2000 m³/h gives −4.77 dB in every octave', () => {
-  const lw = [80, 80, 80, 80, 80, 80, 80, 80];
-  const inputs = normalizeInputs({
-    strands: [
-      {
-        id: 'st1',
-        flow: 6000,
-        elements: [
-          { id: 'e1', after: null, type: 'source', lw },
-          { id: 'e2', after: 'e1', type: 'component', flow: 2000 },
-          { id: 'e3', after: 'e1', type: 'component', flow: 4000 },
-          { id: 'e4', after: 'e1', type: 'component', split: -10 },
-        ],
-      },
-    ],
-  });
-  const s = compute(inputs).strands[0];
-  near(s.elements.get('e2').split, -4.77, 0.005);
-  nearAll(s.elements.get('e2').lwOut, new Array(8).fill(75.23), 0.005);
-  near(s.elements.get('e3').split, -1.76, 0.005);
-  assert.equal(s.elements.get('e4').split, -10, 'manual value wins');
-  assert.equal(s.elements.get('e4').flow, 6000, 'inherited flow');
-  // 2000 + 4000 = 6000: no continuity warning; e4 has a manual split: no hint.
-  assert.deepEqual(s.issues, []);
+test('3. branch row: 6000 → 2000 m³/h gives −4.77 dB in every octave; the flow after it carries on', () => {
+  const inputs = pathOf([{ type: 'source', lw: flat(80), unit: 'dBA' }, { type: 'branch', flow: 2000 }, rect({ series: 'trox-xk', d: 200, s: 100, L: 1500, B: 600, H: 600 })], { flow: 6000 });
+  const p = resultOf(inputs);
+  const b = p.rows.get('r2');
+  near(b.dl, 4.77, 0.005);
+  nearAll(b.levelOut, flat(75.23), 0.005);
+  assert.equal(p.rows.get('r3').flow, 2000, 'the silencer after the branch sees 2000 m³/h');
+  assert.deepEqual(p.lines.find((l) => l.kind === 'branch').values.map((v) => Math.round(v * 100) / 100), flat(4.77));
+
+  const manual = rowResult(pathOf([{ type: 'source', lw: flat(80) }, { type: 'branch', dl: 10 }], { flow: 6000 }), 'r2');
+  assert.equal(manual.dl, 10, 'a value typed in wins');
+  assert.deepEqual(manual.issues, []);
 });
 
-test('branch without own flow is flagged; flows above the feeder are flagged', () => {
-  const inputs = normalizeInputs({
-    strands: [
-      {
-        id: 'st1',
-        flow: 1000,
-        elements: [
-          { id: 'e1', after: null, type: 'source', lw: [80] },
-          { id: 'e2', after: 'e1', type: 'component', flow: 800 },
-          { id: 'e3', after: 'e1', type: 'component', flow: 700 },
-          { id: 'e4', after: 'e1', type: 'component' },
-        ],
-      },
-    ],
-  });
-  const s = compute(inputs).strands[0];
-  assert.deepEqual(codes(s.elements.get('e1')), ['flow-continuity']);
-  assert.deepEqual(codes(s.elements.get('e4')), ['split-missing']);
+test('branch without flows or with more flow after it is flagged', () => {
+  assert.deepEqual(codes(rowResult(pathOf([{ type: 'source', lw: flat(80) }, { type: 'branch', flow: 2000 }]), 'r2')), ['branch-flow-missing']);
+  const up = rowResult(pathOf([{ type: 'source', lw: flat(80) }, { type: 'branch', flow: 8000 }], { flow: 6000 }), 'r2');
+  assert.deepEqual(codes(up), ['branch-flow']);
+  assert.equal(up.dl, undefined);
+});
+
+test('loss row: subtracts D (a difference, the same in dB and dB(A))', () => {
+  const p = resultOf(pathOf([{ type: 'source', lw: flat(80), unit: 'dBA' }, { type: 'loss', d: [10, 5] }]));
+  assert.deepEqual(p.level, [70, 75, 80, 80, 80, 80, 80, 80]);
 });
 
 // ---- 4. receiver ------------------------------------------------------------------------------
@@ -163,21 +173,19 @@ test('4. receiver with room term: A = 20 m², r = 1 m, Q = 2 → −4.45 dB', ()
   near(absorptionArea({ volume: 100, reverb: 0.815 }), 20, 1e-9); // 0.163 · 100 / 0.815
   assert.equal(absorptionArea({ area: 12, volume: 100, reverb: 0.815 }), 12, 'A given wins');
 
-  const lw = [60, 60, 60, 60, 60, 60, 60, 60];
-  const inputs = strandOf([{ type: 'source', lw }, { type: 'receiver', r: 1, q: 2, volume: 100, reverb: 0.815, basis: 'manual', target: 50 }]);
-  const rec = resultOf(inputs, 'e2');
-  nearAll(rec.lp, new Array(8).fill(55.55), 0.005);
-  near(rec.lpa, aWeighted(rec.lp), 1e-9);
-  assert.equal(rec.status, 'over');
-  assert.deepEqual(codes(rec), ['target-exceeded']);
+  const p = resultOf(pathOf([{ type: 'source', lw: flat(60), unit: 'dBA' }], { receiver: { r: 1, q: 2, volume: 100, reverb: 0.815, basis: 'manual', target: 50 } }));
+  nearAll(p.receiver.lp, flat(55.55), 0.005);
+  near(p.receiver.lpa, sumLevels(p.receiver.lp), 1e-9);
+  assert.equal(p.receiver.status, 'over');
+  assert.deepEqual(p.issues.map((i) => i.code), ['target-exceeded']);
 });
 
 test('receiver status is judged on the shown value (one decimal)', () => {
   // L_pA = 35.04 → shown 35.0 → meets a target of 35.
   const lw = [null, null, null, null, 35.04 + 14.0024, null, null, null];
-  const rec = resultOf(strandOf([{ type: 'source', lw }, { type: 'receiver', r: 2, q: 2, basis: 'manual', target: 35 }]), 'e2');
-  near(rec.lpa, 35.04, 0.01);
-  assert.equal(rec.status, 'ok');
+  const rc = resultOf(pathOf([{ type: 'source', lw, unit: 'dBA' }], { receiver: { r: 2, q: 2, basis: 'manual', target: 35 } })).receiver;
+  near(rc.lpa, 35.04, 0.01);
+  assert.equal(rc.status, 'ok');
 });
 
 // ---- targets ------------------------------------------------------------------------------------
@@ -185,7 +193,8 @@ test('receiver status is judged on the shown value (one decimal)', () => {
 /** Receiver at r = 2 m, Q = 2 in free field behind a source that gives L_pA = lpa (1000 Hz only). */
 function receiverWith(lpa, receiver) {
   const lw = [null, null, null, null, lpa - roomTerm({ r: 2, q: 2 }), null, null, null];
-  return resultOf(strandOf([{ type: 'source', lw }, { type: 'receiver', r: 2, q: 2, ...receiver }]), 'e2');
+  const p = resultOf(pathOf([{ type: 'source', lw, unit: 'dBA' }], { receiver: { r: 2, q: 2, ...receiver } }));
+  return { ...p.receiver, issues: p.issues };
 }
 
 test('room target: SIA 2024 room use → noise sensitivity → SIA 181 L_H, or the SIA 2024 design value', () => {
@@ -199,8 +208,8 @@ test('room target: SIA 2024 room use → noise sensitivity → SIA 181 L_H, or t
   assert.equal(receiverWith(30, { basis: 'room', room: { type: '4.01', requirement: 'design' } }).target, 28, 'no design value: minimum');
   assert.deepEqual(receiverWith(60, { basis: 'room', room: { type: '12.04' } }).checks, [], 'Nebenraum: no requirement');
   assert.deepEqual(receiverWith(60, { basis: 'room', room: { type: 'unknown' } }).checks, []);
-  const flat = receiverWith(30, { basis: 'room', room: { type: '1.01' } });
-  assert.deepEqual(flat.issues.map((i) => i.code), ['room-note', 'target-exceeded'], 'footnote of table 12');
+  const home = receiverWith(30, { basis: 'room', room: { type: '1.01' } });
+  assert.deepEqual(home.issues.map((i) => i.code), ['room-note', 'target-exceeded'], 'footnote of table 12');
 });
 
 test('SIA 2024 table 12: 45 room uses, continuous noise 33 (gering) / 28 (mittel) dB as in the table', () => {
@@ -222,8 +231,7 @@ test('LSV target: L_r = L_pA + K1 + K2 + K3 + 10·lg(t/12 h) against the limit o
   near(r.margin, 2.63, 1e-9);
 
   // K2 = 2 (weakly audible tone), 6 h at night: 32.37 + 10 + 2 + 10·lg(6/12) = 41.36
-  const t = receiverWith(32.37, { basis: 'lsv', lsv: { es: 2, k2: 2, hoursNight: 6 } });
-  near(t.checks[1].level, 41.36, 0.005);
+  near(receiverWith(32.37, { basis: 'lsv', lsv: { es: 2, k2: 2, hoursNight: 6 } }).checks[1].level, 41.36, 0.005);
 
   // Immissionsgrenzwert, business room (+5 dB in ES I to III), no operation at night
   const b = receiverWith(52, { basis: 'lsv', lsv: { es: 3, limit: 'immission', business: true, hoursNight: 0 } });
@@ -235,12 +243,14 @@ test('LSV target: L_r = L_pA + K1 + K2 + K3 + 10·lg(t/12 h) against the limit o
   assert.deepEqual(iv.issues.map((i) => [i.code, i.period]), [['target-exceeded', 'night']]);
 });
 
-test('manual target and the example: the worst check gives the status of the file', () => {
-  const m = receiverWith(40, { basis: 'manual', target: 40 });
-  assert.equal(m.status, 'ok');
+test('manual target and the example: the worst path gives the status of the file', () => {
+  assert.equal(receiverWith(40, { basis: 'manual', target: 40 }).status, 'ok');
   assert.deepEqual(receiverWith(40, { basis: 'manual', target: null }).checks, []);
   const res = compute(exampleInputs());
-  assert.deepEqual([res.worst.elementId, res.worst.target, res.worst.status], ['e5', 28, 'over']);
+  assert.equal(res.paths.length, 2);
+  // Zuluft Büro: 32.4 > 28 (4.4 over); Zuluft Sitzung: further over its target of 33
+  assert.deepEqual([res.worst.pathId, res.worst.target, res.worst.status], ['w2', 33, 'over']);
+  near(res.paths[0].receiver.lpa, 32.37, 0.01, 'paths are independent');
 });
 
 // ---- 5. pressure loss models --------------------------------------------------------------------
@@ -249,7 +259,6 @@ test('5a. dpModel duct: Trox CA 200/1000 like a straight duct', () => {
   const row = rowCopy(lookupRow('round', { series: 'trox-ca', dn: 200, L: 1000, insulation: 50 }), 'round');
   const r = roundSilencer({ row, flow: 1000, density: 1.2 });
   near(r.v, 8.842, 0.001, 'v'); // 1000 / 3600 / (π/4 · 0.2²)
-  // Re = 8.842 · 0.2 / (1.813e-5 / 1.2) = 1.17e5, k/d = 0.15/200 → λ ≈ 0.021 (Moody; Haaland 0.0207)
   near(r.lambda, frictionFactor((8.842 * 0.2 * 1.2) / 1.8134e-5, 0.00075), 1e-4, 'λ');
   near(r.lambda, 0.021, 0.0005, 'λ Moody');
   near(r.dp, 4.91, 0.01, 'Δp'); // 0.02094 · 1.0/0.2 · 0.6 · 8.842²
@@ -262,8 +271,7 @@ test('5b. dpModel flow-points: Trox CK 250/1500, insulation 100, splitter 100', 
   // v_i = 700 and 1200 m³/h in π/4 · 0.25² → 3.961, 6.791 m/s; ζ_i = 44 / (0.6 · 3.961²) = 4.674, 127 / (0.6 · 6.791²) = 4.590
   near(r.zeta, 4.632, 0.001, 'mean ζ');
   near(r.dp, 89.0, 0.05, 'Δp'); // 4.632 · 0.6 · 5.659²
-  // flow noise with v in the free cross-section π/4 · 0.25² − 0.1 · 0.25 = 0.02409 m², A = π/4 · 0.25²
-  near(r.aFree, 0.024087, 1e-6);
+  near(r.aFree, 0.024087, 1e-6); // π/4 · 0.25² − 0.1 · 0.25
   near(r.v, 11.532, 0.001);
   near(r.lwaFlow, flowNoise(11.532, 0.049087).lwa, 0.01);
 });
@@ -288,10 +296,8 @@ test('5c. dpModel velocity-table: Schako RS-N (free cross-section ød) and RS-M 
 
 test('ζ outside the table holds the end values', () => {
   const row = rowCopy(lookupRow('rect', { series: 'trox-xk', d: 200, s: 100, L: 1500 }), 'rect');
-  const slow = splitterSilencer({ row, n: 4, H: 1000, flow: 3000, density: 1.2 });
-  near(slow.zeta, 14 / (0.6 * 36), 1e-9);
-  const fast = splitterSilencer({ row, n: 4, H: 1000, flow: 30000, density: 1.2 });
-  near(fast.zeta, 78 / (0.6 * 196), 1e-9);
+  near(splitterSilencer({ row, B: 1200, H: 1000, flow: 3000, density: 1.2 }).zeta, 14 / (0.6 * 36), 1e-9);
+  near(splitterSilencer({ row, B: 1200, H: 1000, flow: 30000, density: 1.2 }).zeta, 78 / (0.6 * 196), 1e-9);
 });
 
 test('flow noise: table inside 4 … 20 m/s, own fit outside, continuous at the edges', () => {
@@ -305,121 +311,95 @@ test('flow noise: table inside 4 … 20 m/s, own fit outside, continuous at the 
 
 // ---- warnings -------------------------------------------------------------------------------------
 
-test('warnings: velocity, Δp, flow noise margin, Trox height, source note, edge gap', () => {
-  const lw = [80, 80, 80, 80, 80, 80, 80, 80];
-  // 200/50/1500, n = 2, H = 600 at 9000 m³/h: v_s = 9000 / 3600 / (2 · 0.05 · 0.6) = 41.7 m/s
-  const fast = resultOf(strandOf([{ type: 'source', lw }, rect({ series: 'trox-xk', d: 200, s: 50, L: 1500, n: 2, H: 600, B: 600 })], { flow: 9000 }), 'e2');
-  assert.deepEqual(new Set(codes(fast)), new Set(['velocity-high', 'dp-high', 'flow-noise', 'height-dp', 'edge-gap']));
+test('warnings: velocity, Δp, flow noise margin, Trox height, source note, gap deviation', () => {
+  const src = { type: 'source', lw: flat(80) };
+  // 200/50/1500 in B 500 × H 600 (n = 2, s′ = 50) at 9000 m³/h: v_s = 9000 / 3600 / (2 · 0.05 · 0.6) = 41.7 m/s
+  const fast = rowResult(pathOf([src, rect({ series: 'trox-xk', d: 200, s: 50, L: 1500, B: 500, H: 600 })], { flow: 9000 }), 'r2');
+  assert.deepEqual(new Set(codes(fast)), new Set(['velocity-high', 'dp-high', 'flow-noise', 'height-dp']));
   near(fast.v, 41.67, 0.01);
 
-  const noted = resultOf(strandOf([{ type: 'source', lw }, rect({ series: 'schako-mwk-ob', d: 100, s: 50, L: 2000, n: 4, H: 1000 })], { flow: 3000 }), 'e2');
+  const noted = rowResult(pathOf([src, rect({ series: 'schako-mwk-ob', d: 100, s: 50, L: 2000, B: 600, H: 1000 })], { flow: 3000 }), 'r2');
   assert.ok(codes(noted).includes('row-note'));
   assert.match(noted.issues.find((i) => i.code === 'row-note').note, /250 Hz/);
 
-  const quiet = resultOf(strandOf([{ type: 'source', lw }, rect({ series: 'trox-xk', d: 200, s: 100, L: 1500, n: 4, H: 1000 })], { flow: 10000 }), 'e2');
+  // B 1000 with 200/100: n = 3, s′ = 133 (33 % off): warning; B 1150: s′ = 87.5 (12.5 % off): info
+  const wide = rowResult(pathOf([src, rect({ series: 'trox-xk', d: 200, s: 100, L: 1500, B: 1000, H: 1000 })], { flow: 10000 }), 'r2');
+  assert.deepEqual(wide.issues.map((i) => [i.code, i.severity]), [['gap-deviation', 'warning']]);
+  const close = rowResult(pathOf([src, rect({ series: 'trox-xk', d: 200, s: 100, L: 1500, B: 1150, H: 1000 })], { flow: 10000 }), 'r2');
+  assert.deepEqual(close.issues.map((i) => [i.code, i.severity]), [['gap-deviation', 'info']]);
+
+  const quiet = rowResult(pathOf([src, rect({ series: 'trox-xk', d: 200, s: 100, L: 1500, B: 1200, H: 1000 })], { flow: 10000 }), 'r2');
   assert.deepEqual(codes(quiet), []);
 });
 
-test('missing data: no row, no geometry, no flow, no source', () => {
-  const lw = [80, 80, 80, 80, 80, 80, 80, 80];
-  const noRow = resultOf(strandOf([{ type: 'source', lw }, rect({ series: 'trox-xk', d: 200, s: 90, L: 1500, n: 4, H: 1000 })], { flow: 1000 }), 'e2');
+test('missing data: no row, no housing, too narrow, no flow, empty source, no distance', () => {
+  const src = { type: 'source', lw: flat(80), unit: 'dBA' };
+  const noRow = rowResult(pathOf([src, rect({ series: 'trox-xk', d: 200, s: 90, L: 1500, B: 1200, H: 1000 })], { flow: 1000 }), 'r2');
   assert.deepEqual(codes(noRow), ['row-missing']);
-  assert.deepEqual(noRow.lwOut, lw, 'no row: no effect');
+  assert.deepEqual(noRow.levelOut, flat(80), 'no row: no effect');
 
-  const noN = resultOf(strandOf([{ type: 'source', lw }, rect({ series: 'trox-xk', d: 200, s: 100, L: 1500, H: 1000 })], { flow: 1000 }), 'e2');
-  assert.deepEqual(codes(noN), ['geometry-missing']);
-  assert.deepEqual(noN.de, [5, 12, 22, 44, 50, 46, 30, 19], 'D_e does not depend on n');
+  const noB = rowResult(pathOf([src, rect({ series: 'trox-xk', d: 200, s: 100, L: 1500, H: 1000 })], { flow: 1000 }), 'r2');
+  assert.deepEqual(codes(noB), ['geometry-missing']);
+  assert.deepEqual(noB.de, [5, 12, 22, 44, 50, 46, 30, 19], 'D_e does not depend on the housing');
 
-  const noFlow = resultOf(strandOf([{ type: 'source', lw }, rect({ series: 'trox-xk', d: 200, s: 100, L: 1500, n: 4, H: 1000 })]), 'e2');
+  const narrow = rowResult(pathOf([src, rect({ series: 'trox-xk', d: 200, s: 100, L: 1500, B: 150, H: 1000 })], { flow: 1000 }), 'r2');
+  assert.deepEqual(codes(narrow), ['housing-small']);
+
+  const noFlow = rowResult(pathOf([src, rect({ series: 'trox-xk', d: 200, s: 100, L: 1500, B: 1200, H: 1000 })]), 'r2');
   assert.deepEqual(codes(noFlow), ['flow-missing']);
   assert.equal(noFlow.lwFlow, null);
 
-  const s = compute(strandOf([{ type: 'component', lw }, { type: 'receiver' }])).strands[0];
-  assert.deepEqual(codes(s.elements.get('e1')), ['root-not-source']);
-  assert.deepEqual(codes(s.elements.get('e2')), ['receiver-incomplete']);
+  const p = resultOf(pathOf([{ type: 'source' }]));
+  assert.deepEqual(p.issues.map((i) => i.code), ['lw-missing', 'receiver-incomplete']);
 });
 
 test('manual silencer: D_e above 50 dB is flagged, empty cells are 0 dB / no noise', () => {
-  const lw = [80, 80, 80, 80, 80, 80, 80, 80];
-  const r = resultOf(strandOf([{ type: 'source', lw }, { type: 'silencer', kind: 'manual', manual: { de: [10, 55], dp: 120 } }]), 'e2');
+  const r = rowResult(pathOf([{ type: 'source', lw: flat(80), unit: 'dBA' }, { type: 'silencer', kind: 'manual', manual: { de: [10, 55], dp: 120 } }]), 'r2');
   assert.deepEqual(new Set(codes(r)), new Set(['de-cap', 'dp-high']));
-  assert.deepEqual(r.lwOut, [70, 25, 80, 80, 80, 80, 80, 80]);
+  assert.deepEqual(r.levelOut, [70, 25, 80, 80, 80, 80, 80, 80]);
   assert.equal(r.lwaFlow, null);
-});
-
-// ---- strands, tree, worst receiver -------------------------------------------------------------------
-
-test('strands are independent; the worst receiver of the file is the one furthest over its target', () => {
-  const inputs = exampleInputs(); // office, minimum requirement 28 dB(A): 32.4 → 4.4 over
-  const second = newStrand(inputs, { name: 'Abluft' });
-  second.elements[0].lw = [70, 70, 70, 70, 70, 70, 70, 70];
-  Object.assign(second.elements[1], { r: 1, q: 2, basis: 'manual', target: 70 }); // well below
-  inputs.strands.push(second);
-  const res = compute(normalizeInputs(inputs));
-  near(res.strands[0].elements.get('e5').lpa, 32.37, 0.01, 'unchanged by the second strand');
-  assert.deepEqual([res.worst.strandId, res.worst.elementId, res.worst.status], ['st1', 'e5', 'over']);
-  assert.equal(res.strands[1].worstId, second.elements[1].id);
-});
-
-test('cycles and unknown predecessors are cut instead of crashing', () => {
-  const inputs = normalizeInputs({
-    strands: [
-      {
-        id: 'st1',
-        elements: [
-          { id: 'e1', after: null, type: 'source', lw: [80] },
-          { id: 'e2', after: 'e3', type: 'component' },
-          { id: 'e3', after: 'e2', type: 'component' },
-          { id: 'e4', after: 'nope', type: 'component' },
-        ],
-      },
-    ],
-  });
-  const s = compute(inputs).strands[0];
-  assert.equal(s.order.length, 4);
-  assert.ok(s.issues.some((i) => i.code === 'cycle'));
-  assert.ok(s.issues.some((i) => i.code === 'after-missing'));
 });
 
 test('empty document computes without errors', () => {
   const res = compute(emptyInputs());
-  assert.equal(res.strands.length, 1);
+  assert.equal(res.paths.length, 1);
   assert.equal(res.worst, null);
-  assert.deepEqual(res.issues.map((i) => i.code), ['lw-missing', 'receiver-incomplete']);
+  assert.ok(res.issues.some((i) => i.code === 'lw-missing'));
+  assert.ok(res.issues.some((i) => i.code === 'receiver-incomplete'));
 });
 
 // ---- stored data rows --------------------------------------------------------------------------------
 
 test('database silencer keeps its stored row; changed data is reported, not used', () => {
-  const inputs = strandOf([{ type: 'source', lw: [90, 90, 90, 90, 90, 90, 90, 90] }, rect({ series: 'trox-xk', d: 200, s: 100, L: 1500, n: 4, H: 1000 })], { flow: 10000 });
-  const el = inputs.strands[0].elements[1];
-  assert.deepEqual(el.row.de, [5, 12, 22, 44, 50, 46, 30, 19]);
+  const inputs = pathOf([{ type: 'source', lw: flat(90) }, rect({ series: 'trox-xk', d: 200, s: 100, L: 1500, B: 1200, H: 1000 })], { flow: 10000 });
+  const sd = inputs.paths[0].rows[1];
+  assert.deepEqual(sd.row.de, [5, 12, 22, 44, 50, 46, 30, 19]);
   assert.deepEqual(staleRows(inputs), []);
 
   // A file saved with other data: the stored values are used and the difference is reported.
   const old = structuredClone(inputs);
-  old.strands[0].elements[1].row.de = [1, 1, 1, 1, 1, 1, 1, 1];
-  old.strands[0].elements[1].row.dataVersion = '2020-01-01';
+  old.paths[0].rows[1].row.de = flat(1);
+  old.paths[0].rows[1].row.dataVersion = '2020-01-01';
   const back = normalizeInputs(JSON.parse(JSON.stringify(old)));
-  assert.deepEqual(back.strands[0].elements[1].row.de, [1, 1, 1, 1, 1, 1, 1, 1]);
-  assert.equal(back.strands[0].elements[1].row.dataVersion, '2020-01-01');
-  assert.deepEqual(resultOf(back, 'e2').de, [1, 1, 1, 1, 1, 1, 1, 1]);
-  assert.deepEqual(staleRows(back), [{ strandId: 'st1', elementId: 'e2', missing: false }]);
+  assert.deepEqual(back.paths[0].rows[1].row.de, flat(1));
+  assert.equal(back.paths[0].rows[1].row.dataVersion, '2020-01-01');
+  assert.deepEqual(rowResult(back, 'r2').de, flat(1));
+  assert.deepEqual(staleRows(back), [{ pathId: 'w1', rowId: 'r2', missing: false }]);
 
   // A new selection takes the row from the current data.
-  back.strands[0].elements[1].rect.L = 2000;
+  back.paths[0].rows[1].rect.L = 2000;
   const sel = normalizeInputs(back);
-  assert.equal(sel.strands[0].elements[1].row.L, 2000);
+  assert.equal(sel.paths[0].rows[1].row.L, 2000);
   assert.deepEqual(staleRows(sel), []);
 });
 
-test('selects offer only existing rows; a changed selection snaps to the nearest one', () => {
+test('choices offer only existing rows; a changed selection snaps to the nearest one', () => {
   const c = rectChoices({ series: 'schako-mwk-ob', d: 100, s: 70, L: 1000 });
   assert.deepEqual(c.d, [100, 200]);
   assert.deepEqual(c.s, [50, 60, 70, 80, 90, 100]);
   assert.ok(c.L.includes(1000));
-  // Trox XK has no s = 60 for d = 100: nearest gap, the other keys stay
-  assert.deepEqual(snapRect({ series: 'trox-xk', d: 100, s: 60, L: 1000, n: 3, H: 800, B: null }), { series: 'trox-xk', d: 100, s: 50, L: 1000, n: 3, H: 800, B: null });
+  // Trox XK has no s = 60 for d = 100: nearest gap, the housing stays
+  assert.deepEqual(snapRect({ series: 'trox-xk', d: 100, s: 60, L: 1000, B: 800, H: 800 }), { series: 'trox-xk', d: 100, s: 50, L: 1000, B: 800, H: 800 });
   assert.equal(snapRect({ series: 'nope', d: 200, s: 100, L: 1000 }).series, 'trox-xk');
   // round: CK has two splitter widths per size, CA none
   assert.deepEqual(roundChoices({ series: 'trox-ck', dn: 315, L: 1000, insulation: 50, core: 50 }).core, [50, 100]);
@@ -428,160 +408,139 @@ test('selects offer only existing rows; a changed selection snaps to the nearest
   assert.ok(lookupRow('round', ca));
 });
 
-// ---- 6. proposal -------------------------------------------------------------------------------------
+// ---- 6. variants ---------------------------------------------------------------------------------------
 
-/** Fan 85 … 90 dB, 20’000 m³/h, one silencer to search, receiver at 3 m with a target of 40 dB(A). */
-function proposalCase(propose, { flow = 20000, kind = 'rect' } = {}) {
-  return normalizeInputs({
-    strands: [
-      {
-        id: 'st1',
-        flow,
-        elements: [
-          { id: 'e1', after: null, type: 'source', lw: [85, 88, 90, 88, 85, 82, 78, 74] },
-          { id: 'e2', after: 'e1', type: 'silencer', kind, rect: { series: 'trox-xk', d: 200, s: 100, L: 1500, n: 4, H: 1000 }, round: { series: 'trox-ca', dn: 315, L: 1000, insulation: 50 }, propose: { active: true, ...propose } },
-          { id: 'e3', after: 'e2', type: 'receiver', r: 3, q: 2, basis: 'manual', target: 40 },
-        ],
-      },
+/** Fan 85 … 90 dB, 20’000 m³/h, one silencer in a housing, receiver at 3 m with a target of 40 dB(A). */
+function variantCase(rectSpec, { flow = 20000, kind = 'rect', roundSpec = { series: 'trox-ca', dn: 315, L: 1000, insulation: 50 } } = {}) {
+  return pathOf(
+    [
+      { type: 'source', lw: [85, 88, 90, 88, 85, 82, 78, 74] },
+      { type: 'silencer', kind, rect: { series: 'trox-xk', d: 200, s: 100, L: 1500, ...rectSpec }, round: roundSpec },
     ],
-  });
+    { flow, receiver: { r: 3, q: 2, basis: 'manual', target: 40 } },
+  );
 }
 
-test('6. proposal: narrow gaps that would meet the target are rejected for their flow noise; ranked by Δp', () => {
-  const r = proposeSilencer(proposalCase({ H: 1000, bMax: 1500 }), 'st1', 'e2');
-  assert.equal(r.tried, 305, 'one candidate per data row');
-  assert.ok(r.fitting.length >= 1);
-  for (const c of r.fitting) {
-    assert.ok(c.v <= PROPOSE_DEFAULTS.vMax && c.dp <= PROPOSE_DEFAULTS.dpMax, 'limits');
-    assert.ok(c.noiseMargin >= 10, 'flow noise margin');
-    assert.ok(c.spec.n * (c.spec.d + c.spec.s) <= 1500, 'B max');
-    assert.ok(c.margin > -0.05, 'target');
+test('6. variants: one per d / s that fits the housing; shortest L that meets the target; ranked by Δp', () => {
+  const inputs = variantCase({ series: 'trox-mk', B: 1500, H: 1000 });
+  const v = silencerVariants(inputs, 'w1', 'r2');
+  assert.equal(v.missing, null);
+  assert.ok(v.list.length >= 3);
+  const keys = v.list.map((c) => `${c.spec.d}/${c.n}`);
+  assert.equal(new Set(keys).size, keys.length, 'one variant per d and n');
+  for (const c of v.list) {
+    assert.ok(Math.abs(c.gap - c.spec.s) <= GAP_TOLERANCE * c.spec.s + 1e-9, `${c.spec.d}/${c.spec.s}: s′ ${c.gap}`);
+    near(c.n * (c.spec.d + c.gap), 1500, 1e-9, 'fills B');
   }
-  r.fitting.forEach((c, i) => i && assert.ok(c.dp >= r.fitting[i - 1].dp, 'ranked by Δp'));
-  // Trox MK 100/50/3000 (n = 10, v_s = 11.1 m/s) leaves more margin at the receiver than the winner,
-  // but its flow noise is only 5.4 dB below the level after it: rejected.
-  const narrow = r.all.find((c) => c.spec.series === 'trox-mk' && c.spec.d === 100 && c.spec.s === 50 && c.spec.L === 3000);
-  assert.equal(narrow.spec.n, 10);
-  assert.ok(narrow.margin > r.fitting[0].margin);
-  near(narrow.noiseMargin, 5.4, 0.05);
+  const fitting = v.list.filter((c) => c.ok);
+  assert.ok(fitting.length >= 1);
+  for (const c of fitting) {
+    assert.ok(c.v <= VARIANT_LIMITS.vMax && c.dp <= VARIANT_LIMITS.dpMax, 'limits');
+    assert.ok(c.margin >= -0.05, 'target');
+    // shortest length: one step shorter misses the target
+    const shorter = rectChoices(c.spec).L.filter((L) => L < c.spec.L).pop();
+    if (shorter) {
+      const trial = structuredClone(inputs);
+      Object.assign(trial.paths[0].rows[1].rect, { d: c.spec.d, s: c.spec.s, L: shorter });
+      const rc = compute(normalizeInputs(trial)).paths[0].receiver;
+      assert.equal(rc.status, 'over', `${c.spec.d}/${c.spec.s}/${shorter} should miss`);
+    }
+  }
+  fitting.forEach((c, i) => i && assert.ok(c.dp >= fitting[i - 1].dp, 'ranked by Δp'));
+  assert.ok(v.list.findIndex((c) => !c.ok) === -1 || v.list.findIndex((c) => !c.ok) >= fitting.length, 'fitting first');
+});
+
+test('variants: narrow gaps are rejected for their flow noise even when they meet the target', () => {
+  // Trox MK 100/50/3000 in B 1500: n = 10, v_s = 11.1 m/s; it meets the target with 3.3 dB to spare, but its flow
+  // noise is only 5.4 dB below the level after it (10 dB needed).
+  const inputs = variantCase({ series: 'trox-mk', d: 100, s: 50, L: 3000, B: 1500, H: 1000 });
+  const p = resultOf(inputs);
+  const r = p.rows.get('r2');
+  assert.equal(r.n, 10);
+  near(r.v, 11.11, 0.01);
+  near(p.receiver.margin, 3.32, 0.01);
+  near(r.noiseMargin, 5.44, 0.01);
+  assert.deepEqual(codes(r), ['flow-noise']);
+  const v = silencerVariants(inputs, 'w1', 'r2');
+  const narrow = v.list.find((c) => c.spec.d === 100 && c.spec.s === 50);
+  assert.notEqual(narrow.spec.L, 3000, 'not offered at L 3000');
   assert.equal(narrow.ok, false);
-  assert.equal(r.closest, null);
+  assert.ok(v.list[0].ok, 'a wider gap fits');
 });
 
-test('proposal: without B max the most compact fitting n per row; round by dn range; nothing fits → closest', () => {
-  const compact = proposeSilencer(proposalCase({ H: 1000 }), 'st1', 'e2');
-  for (const c of compact.fitting.slice(0, 10)) {
-    const smaller = { ...c.spec, n: c.spec.n - 1 };
-    if (smaller.n < 1) continue;
-    const again = proposeSilencer(proposalCase({ H: 1000, bMax: smaller.n * (c.spec.d + c.spec.s), series: c.spec.series, lMax: c.spec.L }), 'st1', 'e2');
-    const same = again.all.find((x) => x.spec.d === c.spec.d && x.spec.s === c.spec.s && x.spec.L === c.spec.L);
-    assert.equal(same.ok, false, `${c.spec.series} ${c.spec.d}/${c.spec.s}/${c.spec.L}: n − 1 must not fit`);
-  }
-  const round = proposeSilencer(proposalCase({ dnMin: 400, dnMax: 630, series: 'trox-ca' }, { flow: 6000, kind: 'round' }), 'st1', 'e2');
-  assert.ok(round.tried > 0);
-  for (const c of round.all) assert.ok(c.spec.series === 'trox-ca' && c.spec.dn >= 400 && c.spec.dn <= 630);
-  const none = proposeSilencer(proposalCase({ H: 1000, bMax: 600 }), 'st1', 'e2');
-  assert.equal(none.fitting.length, 0);
-  assert.ok(none.closest);
+test('variants: missing housing or flow; round by dn; the stored row of a candidate is current', () => {
+  assert.equal(silencerVariants(variantCase({ B: null, H: 1000 }), 'w1', 'r2').missing, 'geometry');
+  assert.equal(silencerVariants(variantCase({ B: 1200, H: 1000 }, { flow: null }), 'w1', 'r2').missing, 'flow');
+  const r = silencerVariants(variantCase({}, { kind: 'round', flow: 6000, roundSpec: { series: 'schako-rs-n', dn: 500, L: 950, insulation: 100 } }), 'w1', 'r2');
+  assert.ok(r.list.length >= 1);
+  for (const c of r.list) assert.equal(c.spec.dn, 500);
+  assert.equal(new Set(r.list.map((c) => `${c.spec.insulation}/${c.spec.core}`)).size, r.list.length, 'one per insulation and core');
+  assert.equal(silencerVariants(pathOf([{ type: 'silencer', kind: 'manual' }]), 'w1', 'r1'), null, 'manual: none');
 });
 
-test('only one element is searched at a time', () => {
-  const inputs = proposalCase({ H: 1000 });
-  inputs.strands[0].elements.splice(2, 0, normalizeElement({ id: 'e4', after: 'e2', type: 'silencer', propose: { active: true } }));
-  inputs.strands[0].elements[3].after = 'e4';
-  const n = normalizeInputs(inputs);
-  assert.deepEqual(n.strands[0].elements.filter((e) => e.propose?.active).map((e) => e.id), ['e2']);
+test('fittingSplitterRows: per d and n only the gap closest to the real one', () => {
+  const rows = fittingSplitterRows('trox-xk', 900);
+  const d100 = rows.filter((r) => r.d === 100);
+  // B 900, d 100: s 50 → n 6 (s′ 50); s 80 → n 5 (s′ 80); s 100 → n 4.5 → 5 (s′ 80): the same silencer as s 80 → dropped
+  assert.deepEqual([...new Set(d100.map((r) => r.s))], [50, 80]);
 });
 
-// ---- structure editing ---------------------------------------------------------------------------------
+// ---- front view ----------------------------------------------------------------------------------------
 
-const shape = (strand) => strand.elements.map((e) => `${e.nr}:${e.type[0]}<${e.after ? strand.elements.find((x) => x.id === e.after).nr : '-'}`).join(' ');
-
-test('structure: insert, branch, numbers, depth, move and remove keep a valid tree', () => {
-  const inputs = exampleInputs(); // 1 source, 2 silencer, 3 component, 4 silencer, 5 receiver
-  const s = inputs.strands[0];
-  assert.ok(isAutoNumbered(s.elements));
-  const b = branchFrom(inputs, s, 'e2', 'component', { flow: 2000 });
-  branchFrom(inputs, s, b.id, 'receiver');
-  assert.equal(shape(s), '1:s<- 2:s<1 3:c<2 4:s<3 5:r<4 2.1:c<2 2.2:r<2.1');
-  assert.deepEqual([...branchDepths(s.elements).values()], [0, 0, 0, 0, 0, 1, 1]);
-  // a second branch from 2 continues the counter of 2
-  branchFrom(inputs, s, 'e2', 'receiver');
-  assert.equal(shape(s), '1:s<- 2:s<1 3:c<2 4:s<3 5:r<4 2.1:c<2 2.2:r<2.1 2.3:r<2');
-  // insert after 2: everything after 2 (main path and both branches) follows the new element
-  insertAfter(inputs, s, 'e2', 'silencer');
-  assert.equal(shape(s), '1:s<- 2:s<1 3:s<2 4:c<3 5:s<4 6:r<5 3.1:c<3 3.2:r<3.1 3.3:r<3');
-  // insert before the receiver at the end
-  insertBefore(inputs, s, 'e5', 'component');
-  assert.equal(shape(s), '1:s<- 2:s<1 3:s<2 4:c<3 5:s<4 6:c<5 7:r<6 3.1:c<3 3.2:r<3.1 3.3:r<3');
-  // move up / down along the path; a branch start cannot move up
-  assert.ok(moveElement(s, 'e3', -1)); // the VAV before the new silencer
-  assert.equal(shape(s), '1:s<- 2:s<1 3:c<2 4:s<3 5:s<4 6:c<5 7:r<6 4.1:c<4 4.2:r<4.1 4.3:r<4');
-  assert.equal(moveElement(s, b.id, -1), false);
-  assert.equal(moveElement(s, s.elements.find((e) => e.nr === '4').id, 1), false, 'branch point has several successors');
-  // remove: the successors move to the predecessor
-  removeElement(s, s.elements.find((e) => e.nr === '4').id);
-  assert.equal(shape(s), '1:s<- 2:s<1 3:c<2 4:s<3 5:c<4 6:r<5 3.1:c<3 3.2:r<3.1 3.3:r<3');
-  assert.deepEqual(normalizeInputs(JSON.parse(JSON.stringify(inputs))), inputs);
+test('front view: housing to scale with n splitters, round with casing and core', () => {
+  const row = rowCopy(lookupRow('rect', { series: 'trox-xk', d: 200, s: 100, L: 1500 }), 'rect');
+  const r = splitterSilencer({ row, B: 1200, H: 600, flow: null, density: 1.2 });
+  const svg = rectFrontView({ B: 1200, H: 600, d: 200 }, r);
+  assert.equal(svg.match(/class="fv-splitter"/g).length, 4);
+  const housing = /class="fv-housing" x="[\d.]+" y="[\d.]+" width="([\d.]+)" height="([\d.]+)"/.exec(svg);
+  near(Number(housing[1]) / Number(housing[2]), 2, 0.02, 'aspect ratio B / H');
+  assert.match(rectFrontView({ B: null, H: null, d: 200 }, null), /fv-empty/);
+  const ck = rowCopy(lookupRow('round', { series: 'trox-ck', dn: 315, L: 1000, insulation: 50, core: 100 }), 'round');
+  const rv = roundFrontView(ck);
+  assert.equal(rv.match(/<circle/g).length, 4, 'casing and duct, each filled and outlined');
+  assert.match(rv, /class="fv-splitter" x=/, 'core');
 });
 
-test('structure: a new predecessor makes the element (with its subtree) a branch there', () => {
+// ---- schema ---------------------------------------------------------------------------------------------
+
+test('newRow, newPath, duplicatePath: unique ids in the whole file, same results', () => {
   const inputs = exampleInputs();
-  const s = inputs.strands[0];
-  assert.ok(setPredecessor(s, 'e4', 'e2')); // silencer 2 and the receiver now branch off after silencer 1
-  assert.equal(shape(s), '1:s<- 2:s<1 3:c<2 2.1:s<2 2.2:r<2.1');
-  assert.equal(setPredecessor(s, 'e2', 'e5'), false, 'not onto its own subtree');
-  assert.ok(setPredecessor(s, 'e4', 'e3')); // back: continuation after the VAV
-  assert.equal(shape(s), '1:s<- 2:s<1 3:c<2 4:s<3 5:r<4');
-});
-
-test('structure: own numbers stay, new elements get none', () => {
-  const inputs = exampleInputs();
-  const s = inputs.strands[0];
-  s.elements[1].nr = 'SD1';
-  const el = insertAfter(inputs, s, 'e2', 'component');
-  assert.equal(el.nr, '');
-  assert.equal(s.elements[1].nr, 'SD1');
-  assert.equal(autoNumbers(s.elements).get(el.id), '3');
-});
-
-test('duplicate strand: new ids, same structure and results', () => {
-  const inputs = exampleInputs();
-  const copy = duplicateStrand(inputs, inputs.strands[0]);
-  inputs.strands.push(copy);
-  const ids = inputs.strands.flatMap((x) => x.elements.map((e) => e.id));
-  assert.equal(new Set(ids).size, ids.length);
+  const row = newRow(inputs, 'silencer');
+  assert.equal(row.id, 'r9');
+  assert.ok(row.row, 'a new silencer starts with an existing product');
+  const p = newPath(inputs);
+  assert.deepEqual([p.id, p.rows.length, p.rows[0].type], ['w3', 1, 'source']);
+  const copy = duplicatePath(inputs, inputs.paths[1]);
+  assert.equal(copy.id, 'w3');
+  assert.deepEqual(copy.rows.map((r) => r.id), ['r9', 'r10', 'r11', 'r12']);
+  inputs.paths.push(copy);
   const res = compute(normalizeInputs(inputs));
-  near(res.strands[1].elements.get(copy.elements[4].id).lpa, 32.37, 0.01);
+  near(res.paths[2].receiver.lpa, res.paths[1].receiver.lpa, 1e-9);
 });
 
-// ---- schema and envelope --------------------------------------------------------------------------------
-
-test('normalizeInputs is idempotent and repairs ids', () => {
-  for (const inputs of [exampleInputs(), emptyInputs(), strandOf([rect({ series: 'trox-mk', d: 100, s: 50, L: 1000, n: 6, H: 900 }), round({ series: 'trox-ck', dn: 315, L: 1000, insulation: 50, core: 100 })])]) {
-    assert.deepEqual(normalizeInputs(JSON.parse(JSON.stringify(inputs))), inputs);
+test('normalizeInputs is idempotent, repairs ids and does not throw on old or foreign data', () => {
+  const inputs = exampleInputs();
+  assert.deepEqual(normalizeInputs(JSON.parse(JSON.stringify(inputs))), inputs);
+  const twice = normalizeInputs({ paths: [{ id: 'w1', rows: [{ id: 'x', type: 'source' }, { id: 'x', type: 'loss' }] }, { id: 'w1' }] });
+  assert.deepEqual(twice.paths.map((p) => p.id), ['w1', 'w2']);
+  assert.notEqual(twice.paths[0].rows[0].id, twice.paths[0].rows[1].id);
+  // input version 1 (tree of strands) or garbage: an empty file, no exception (beta: no migration)
+  for (const raw of [{ strands: [{ elements: [{ type: 'receiver' }] }] }, null, 42, { paths: 'x', catalogs: { roomTypes: 5 } }, { paths: [null, 7] }]) {
+    const n = normalizeInputs(raw);
+    assert.ok(n.paths.length >= 1);
+    assert.deepEqual(normalizeInputs(JSON.parse(JSON.stringify(n))), n);
+    compute(n);
   }
-  const fixed = normalizeInputs({
-    strands: [
-      { id: 'st1', elements: [{ id: 'e1', type: 'source' }, { id: 'e1', type: 'receiver', q: 3 }] },
-      { id: 'st1', elements: [{ type: 'bogus' }] },
-    ],
-  });
-  assert.deepEqual(fixed.strands.map((s) => s.id), ['st1', 'st2']);
-  assert.deepEqual(fixed.strands.flatMap((s) => s.elements.map((e) => e.id)), ['e1', 'e2', 'e3']);
-  assert.equal(fixed.strands[0].elements[1].q, 2, 'Q outside 1, 2, 4, 8');
-  assert.equal(fixed.strands[1].elements[0].type, 'source');
-  assert.equal(fixed.density, 1.2);
 });
 
 test('envelope round trip keeps the inputs and the snapshot', () => {
   const inputs = exampleInputs();
-  const project = { name: 'Beispiel Kilian', number: '', author: '', date: '2026-10-12' };
-  const env = createEnvelope({ tool: TOOL_ID, version: INPUT_VERSION, calcVersion: CALC_VERSION, project, inputs, snapshot: snapshotOf(compute(inputs)) });
-  const back = parseEnvelope(JSON.stringify(env));
+  const snapshot = snapshotOf(compute(inputs));
+  assert.deepEqual(Object.keys(snapshot.paths), ['w1', 'w2']);
+  near(snapshot.paths.w1.lpa, 32.37, 0.01);
+  const env = createEnvelope({ tool: TOOL_ID, version: INPUT_VERSION, calcVersion: CALC_VERSION, project: { name: 'X' }, inputs, snapshot });
+  const back = parseEnvelope(JSON.parse(JSON.stringify(env)));
   assert.deepEqual(checkCompatibility(back, { tool: TOOL_ID, version: INPUT_VERSION, calcVersion: CALC_VERSION }), []);
-  const again = normalizeInputs(back.inputs);
-  assert.deepEqual(again, inputs);
-  assert.deepEqual(snapshotOf(compute(again)), back.snapshot);
-  assert.equal(back.snapshot.worst.lpa, 32.375);
+  assert.deepEqual(normalizeInputs(back.inputs), inputs);
+  assert.deepEqual(snapshotOf(compute(normalizeInputs(back.inputs))), snapshot);
 });

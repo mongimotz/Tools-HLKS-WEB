@@ -1,64 +1,45 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// CSV export (opens in Excel: semicolon separated, UTF-8 with BOM). One line per element of every strand. No DOM, no pdf-lib.
+// CSV export (opens in Excel: semicolon separated, UTF-8 with BOM). One line per table line of every path, like the
+// page: the rows, then the sum and the receiver. No DOM, no pdf-lib.
 
-import { seriesOf } from './calc.js';
-import { TYPE_LABELS, OCTAVE_LABELS, elementLabel, productText, geometryText, placeText, targetText, checkLevelLabel } from './labels.js';
-
-const seriesLabel = (kind, id) => seriesOf(kind, id)?.label ?? id;
+import { OCTAVE_LABELS, TYPE_LABELS, LINE_LABELS, UNIT_LABELS, rowLabel, pathLabel, productText, geometryText, placeText, targetText, checkLevelLabel, fmtLimit } from './labels.js';
 
 export function buildCsv(doc, result) {
   const { inputs } = doc;
   const n = (v, d) => (v == null || !Number.isFinite(v) ? '' : v.toFixed(d));
   const q = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
-  const oct = (prefix) => OCTAVE_LABELS.map((l) => `${prefix} ${l} [dB]`);
-  const head = [
-    'Strang', 'Nr.', 'Typ', 'Bezeichnung', 'Vorgänger', 'V [m3/h]', 'dL Abzweig [dB]', 'Angaben',
-    ...oct('D / De'), ...oct('LW eigen / LW,Str'), ...oct('LW nach'), 'LWA nach [dB(A)]',
-    'v [m/s]', 'dp [Pa]', 'LWA,Str [dB(A)]', ...oct('Lp'), 'LpA [dB(A)]', 'Beurteilung', 'Pegel [dB(A)]', 'Ziel [dB(A)]', 'Reserve [dB]', 'Ziel eingehalten',
-  ];
-  const lines = [head.map(q).join(';')];
-  inputs.strands.forEach((strand, si) => {
-    const res = result.strands[si];
-    const byId = new Map(strand.elements.map((e) => [e.id, e]));
-    for (const el of strand.elements) {
-      const r = res.elements.get(el.id);
-      if (!r) continue;
-      const loss = el.type === 'component' ? el.d : el.type === 'silencer' ? r.de : null;
-      const own = el.type === 'source' || el.type === 'component' ? el.lw : el.type === 'silencer' ? r.lwFlow : null;
-      const info =
-        el.type === 'silencer'
-          ? [productText(el, seriesLabel), geometryText(el, r)].filter(Boolean).join(', ')
-          : el.type === 'receiver'
-            ? `${placeText(el, r)} | ${targetText(el, inputs.catalogs)}`
-            : '';
-      const g = r.governing;
-      lines.push(
-        [
-          q(strand.name || `Strang ${si + 1}`),
-          q(el.nr),
-          q(TYPE_LABELS[el.type]),
-          q(el.name),
-          q(el.after ? elementLabel(byId.get(el.after)) : ''),
-          n(r.flow, 0),
-          r.parent ? n(r.split, 2) : '',
-          q(info),
-          ...OCTAVE_LABELS.map((_, i) => n(loss?.[i], 1)),
-          ...OCTAVE_LABELS.map((_, i) => n(own?.[i], 1)),
-          ...OCTAVE_LABELS.map((_, i) => n(r.lwOut[i], 2)),
-          n(r.lwaOut, 2),
-          n(r.v, 2),
-          n(r.dp, 1),
-          n(r.lwaFlow, 2),
-          ...OCTAVE_LABELS.map((_, i) => n(r.lp?.[i], 2)),
-          n(r.lpa, 2),
-          g ? q(checkLevelLabel(g.period)) : '',
-          n(g?.level, 2),
-          n(g?.limit, 1),
-          n(g?.margin, 2),
-          g ? (g.status === 'ok' ? 'ja' : 'nein') : '',
-        ].join(';'),
-      );
+  const head = ['Weg', 'Element', 'Zeile', 'Einheit', 'Operation', ...OCTAVE_LABELS.map((l) => `${l} Hz`), 'Summe [dB(A)]', 'V [m3/h]', 'v [m/s]', 'dp [Pa]', 'Angaben'];
+  const out = [head.map(q).join(';')];
+  inputs.paths.forEach((path, pi) => {
+    const res = result.paths[pi];
+    const name = pathLabel(path, pi);
+    const byId = new Map(path.rows.map((r) => [r.id, r]));
+    let last = null;
+    for (const l of res.lines) {
+      const row = byId.get(l.rowId);
+      const r = res.rows.get(l.rowId);
+      const first = l.rowId !== last;
+      last = l.rowId;
+      const info = first && row.type === 'silencer' ? [productText(row), geometryText(row, r)].filter(Boolean).join(' | ') : '';
+      out.push([
+        q(name),
+        q(rowLabel(row)),
+        q(first ? TYPE_LABELS[row.type] : LINE_LABELS[l.kind]),
+        q(l.unit ? UNIT_LABELS[l.unit] : ''),
+        q(l.op),
+        ...l.values.map((v) => n(v, 1)),
+        n(l.total, 2),
+        first ? n(row.type === 'branch' ? r.flowAfter : r.flow, 0) : '',
+        first ? n(r.v, 2) : '',
+        first ? n(r.dp, 1) : '',
+        q(info),
+      ].join(';'));
     }
+    out.push([q(name), q('Summe'), q(''), q('dB(A)'), q(''), ...res.level.map((v) => n(v, 2)), n(res.lwa, 2), '', '', '', q('')].join(';'));
+    const rc = res.receiver;
+    const checks = rc.checks.map((c) => `${checkLevelLabel(c.period)} ${n(c.level, 1)} ${c.status === 'ok' ? '<=' : '>'} ${fmtLimit(c.limit)}`).join(' | ');
+    const info = [placeText(path.receiver, rc), targetText(path.receiver, inputs.catalogs), checks].filter(Boolean).join(' | ');
+    out.push([q(name), q(path.receiver.name || 'Empfänger'), q('Empfänger LpA'), q('dB(A)'), q('+'), ...(rc.lp ?? new Array(8).fill(null)).map((v) => n(v, 2)), n(rc.lpa, 2), '', '', '', q(info)].join(';'));
   });
-  return '﻿' + lines.join('\r\n') + '\r\n';
+  return '﻿' + out.join('\r\n') + '\r\n';
 }

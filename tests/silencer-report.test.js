@@ -9,7 +9,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { extractDataJson, isPdf } from '../lib/core/pdf.js';
 import { createEnvelope, parseEnvelope, checkCompatibility } from '../lib/core/envelope.js';
 import { compute, snapshotOf, CALC_VERSION } from '../tools/silencer/calc.js';
-import { normalizeInputs, exampleInputs, newStrand, insertBefore, TOOL_ID, INPUT_VERSION } from '../tools/silencer/defaults.js';
+import { normalizeInputs, exampleInputs, newPath, newRow, TOOL_ID, INPUT_VERSION } from '../tools/silencer/defaults.js';
 import { buildReport } from '../tools/silencer/report.js';
 import { buildCsv } from '../tools/silencer/csv.js';
 
@@ -28,20 +28,23 @@ async function importPdf(bytes) {
   return { env, doc: { project: env.project, inputs: normalizeInputs(env.inputs) } };
 }
 
-/** The example plus a second strand with a database silencer and an LSV receiver. */
-function twoStrands() {
+/** The example plus a third path with a source in dB(A), a database silencer and an LSV receiver. */
+function threePaths() {
   const inputs = exampleInputs();
-  inputs.strands[0].elements[0].name = 'Sonderzeichen: ζ λ Δp → ≤ ² ³ ° Ø “Zitat” <tag> & ;';
-  const s = newStrand(inputs, { name: 'Fortluft', flow: 6000 });
-  s.elements[0].lw = [80, 82, 84, 86, 84, 80, 76, 70];
-  Object.assign(s.elements[1], { r: 5, basis: 'lsv', lsv: { es: 3, hoursNight: 6 } });
-  insertBefore(inputs, s, s.elements[1].id, 'silencer', { kind: 'rect', rect: { series: 'trox-mk', d: 200, s: 100, L: 2000, n: 3, H: 1000 } });
-  inputs.strands.push(s);
+  inputs.paths[0].rows[0].name = 'Sonderzeichen: ζ λ Δp → ≤ ² ³ ° Ø “Zitat” <tag> & ;';
+  const p = newPath(inputs, { name: 'Fortluft', flow: 6000 });
+  Object.assign(p.rows[0], { lw: [53, 66, 75, 83, 84, 81, 77, 69], unit: 'dBA' });
+  inputs.paths.push(p);
+  const sd = newRow(inputs, 'silencer', { kind: 'rect', rect: { series: 'trox-mk', d: 200, s: 100, L: 2000, B: 900, H: 1000 } });
+  p.rows.push(sd);
+  p.rows.push(newRow(inputs, 'silencer', { kind: 'round', round: { series: 'trox-ck', dn: 630, L: 1500, insulation: 100, core: 100 } }));
+  p.rows.push(newRow(inputs, 'loss', { name: 'Mündung', d: [10, 6, 3, 1, 0, 0, 0, 0] }));
+  Object.assign(p.receiver, { name: 'Nachbar', r: 5, basis: 'lsv', lsv: { es: 3, hoursNight: 6 } });
   return normalizeInputs(inputs);
 }
 
 test('7. PDF round trip keeps project and inputs identical', async () => {
-  const doc = { project, inputs: twoStrands() };
+  const doc = { project, inputs: threePaths() };
   const { doc: back1 } = await importPdf(await exportPdf(doc));
   assert.deepEqual(back1, doc);
   const { doc: back2, env } = await importPdf(await exportPdf(back1));
@@ -49,12 +52,13 @@ test('7. PDF round trip keeps project and inputs identical', async () => {
   assert.deepEqual(env.snapshot, snapshotOf(compute(doc.inputs)));
 });
 
-test('CSV export has one line per element of every strand plus header', () => {
-  const inputs = twoStrands();
-  const csv = buildCsv({ project, inputs }, compute(inputs));
+test('CSV export has one line per table line of every path, plus sum and receiver, plus header', () => {
+  const inputs = threePaths();
+  const result = compute(inputs);
+  const csv = buildCsv({ project, inputs }, result);
   const lines = csv.trim().split('\r\n');
-  assert.equal(lines.length, inputs.strands.reduce((n, s) => n + s.elements.length, 0) + 1);
-  assert.ok(csv.startsWith('﻿'));
+  assert.equal(lines.length, result.paths.reduce((n, p) => n + p.lines.length + 2, 0) + 1);
+  assert.ok(csv.startsWith('\uFEFF'));
   // fields separated by ; outside of "…"
   const fields = (line) => {
     let n = 1;
@@ -66,7 +70,7 @@ test('CSV export has one line per element of every strand plus header', () => {
     return n;
   };
   const columns = fields(lines[0]);
-  assert.equal(columns, 50);
+  assert.equal(columns, 18);
   for (const l of lines.slice(1)) assert.equal(fields(l), columns, l);
 });
 

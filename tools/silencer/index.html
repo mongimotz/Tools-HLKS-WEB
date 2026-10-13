@@ -5,7 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Schalldämpfer – HLKS-Tools</title>
-  <meta name="description" content="Schallpegel von der Quelle bis zum Empfänger je Oktave, mit Schalldämpfern aus Herstellerdaten: Einfügungsdämpfung, Druckverlust und Strömungsgeräusch." />
+  <meta name="description" content="Schallpegel je Oktave von der Quelle bis zum Empfänger, Schalldämpfer aus Herstellerdaten auslegen: Einfügungsdämpfung, Druckverlust und Strömungsgeräusch." />
   <script>try { const t = localStorage.getItem('hlks-tools:theme'); if (t && t !== 'system') document.documentElement.dataset.theme = t; } catch {}</script>
   <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="../../assets/css/tokens.css" />
@@ -46,32 +46,27 @@
       <div id="project"></div>
     </section>
 
-    <section class="result-strip" id="summary" aria-live="polite" aria-label="Ergebnis"></section>
-
-    <section class="block" aria-labelledby="strand-title">
-      <div class="section-head"><h2 class="section-title" id="strand-title">Strang</h2><div class="head-actions" id="strand-actions"></div></div>
-      <nav class="tabs strand-tabs" id="strand-tabs" role="tablist" aria-label="Stränge" hidden></nav>
-      <div id="strand" class="system-grid"></div>
-    </section>
-
-    <section class="block" aria-labelledby="chain-title">
-      <div class="section-head"><h2 class="section-title" id="chain-title">Elemente</h2><div class="seg" id="mode" role="radiogroup" aria-label="Modus"></div></div>
-      <div class="table-wrap panel">
-        <table class="chain" id="chain-table"></table>
+    <section class="block" id="work" aria-label="Berechnung">
+      <div class="path-bar">
+        <nav class="tabs path-tabs" id="path-tabs" role="tablist" aria-label="Wege"></nav>
+        <div class="head-actions" id="path-actions"></div>
       </div>
-      <div class="below-table" id="add-buttons"></div>
+      <div class="work-grid">
+        <div class="panel levels-panel">
+          <div class="path-head" id="path-head"></div>
+          <div class="table-wrap">
+            <table class="levels" id="levels"></table>
+          </div>
+          <div class="below-table" id="add-buttons"></div>
+          <div class="receiver" id="receiver"></div>
+        </div>
+        <aside class="panel design" id="design" aria-label="Auslegung"></aside>
+      </div>
     </section>
 
     <section class="block" id="issues-block" aria-labelledby="issues-title" hidden>
       <div class="section-head"><h2 class="section-title" id="issues-title">Hinweise</h2></div>
       <ul class="issues" id="issues"></ul>
-    </section>
-
-    <section class="block charts" aria-label="Diagramm">
-      <figure class="panel chart-panel" id="spectrum-panel">
-        <figcaption><h3>Spektren</h3></figcaption>
-        <div class="chart" id="spectrum-chart"></div>
-      </figure>
     </section>
   </main>
 

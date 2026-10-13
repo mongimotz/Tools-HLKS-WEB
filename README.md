@@ -10,7 +10,7 @@ Rechenwerkzeuge für Heizung, Lüftung, Klima und Sanitär. Die Werkzeuge laufen
 |---|---|---|---|
 | Lüftung | Druckverlust Lüftung | Teilstrecken mit Formstücken und Einbauteilen, kritischer Strang, Drosselbedarf, Reserve des Ventilators | Testversion |
 | Lüftung | Kanalrechner | Rohre und Kanäle (rund, eckig, flachoval) nach SIA 382/1, Tabellen 49 und 50: Abmessung oder Prüfung, Druckgefälle, Pins | Testversion |
-| Lüftung | Schalldämpfer | Schallpegel je Oktave von der Quelle bis zum Empfänger, Schalldämpfer aus Herstellerdaten (Trox, Schako, Lindab), Ziel nach SIA 2024 / SIA 181 oder LSV, Vorschlag passender Produkte | Testversion |
+| Lüftung | Schalldämpfer | Schallpegel je Oktave von der Quelle bis zum Empfänger, Schalldämpfer aus Herstellerdaten (Trox, Schako, Lindab), Ziel nach SIA 2024 / SIA 181 oder LSV, Varianten für ein vorgegebenes Gehäuse | Testversion |
 | Lüftung | Monoblock | Ventilatorleistung, Heiz- und Kühlleistung, Befeuchtung, Filter | geplant |
 | Heizung | Heizlast | Heizlast eines Raums oder Gebäudes | geplant |
 | Heizung | Rohrnetz Heizung | Rohrdimensionen und Druckverlust im Heiznetz | geplant |
@@ -162,65 +162,65 @@ Formeln, Ansätze, Rundung und Grenzen: [docs/duct-sizing-method.md](docs/duct-s
 
 ## Schalldämpfer
 
-Das Werkzeug rechnet den Schallpegel je Oktave (63 bis 8000 Hz) von der Quelle bis zum Empfänger. Es legt die Schalldämpfer auf dem Weg aus Herstellerdaten aus: Einfügungsdämpfung, Druckverlust und Strömungsgeräusch. Du gibst nur bekannte Werte ein, zum Beispiel die Schallleistung des Monoblocks aus dem Datenblatt.
+Das Werkzeug rechnet den Schallpegel je Oktave (63 bis 8000 Hz) von der Quelle bis zum Empfänger. Links steht die Pegelliste wie in einer Excel-Tabelle: eine Zeile pro Quelle, Dämpfung, Schalldämpfer und Abzweig. Rechts legst du den gewählten Schalldämpfer aus Herstellerdaten aus: Einfügungsdämpfung, Druckverlust und Strömungsgeräusch.
 
 ### Eingabe
 
-1. **Strang:** Bezeichnung, Auslegungs-Volumenstrom V̇ und Luftdichte ρ. Ein Projekt kann mehrere Stränge haben (zum Beispiel Zuluft und Fortluft). Das Plus neben der Überschrift legt einen neuen Strang an, das Kopier-Symbol dupliziert ihn. Ab zwei Strängen erscheinen Reiter.
-2. **Elemente:** Die Knöpfe unter der Tabelle fügen eine Quelle, ein Bauteil, einen Schalldämpfer oder einen Empfänger ein. Ein neues Element kommt vor den Empfänger am Ende des Strangs.
-3. **Quelle:** Schallleistung L_W je Oktave. Die erste Quelle gibt den Startwert, eine spätere Quelle addiert sich zum Pegel.
-4. **Bauteil:** Dämpfung D und Eigengeräusch L_W je Oktave, beide frei. So erfasst du einen Volumenstromregler, eine Brandschutzklappe oder eine bekannte Mündungsreflexion.
-5. **Schalldämpfer:** Die Auswahl links wechselt zwischen Kulisse, Rohr und Eingabe.
-   - Kulisse: Serie, Kulissendicke d, Spalt s und Länge L aus der Datenbank, dazu Anzahl Kulissen n, Höhe H und Einbau (Kanal, Ansaugung frei, Ausblasen frei). Die Breite B folgt aus n · (d + s).
-   - Rohr: Serie, Durchmesser, Länge, Dämmdicke und, wo es sie gibt, Kernbreite.
-   - Eingabe: D_e, L_W,Str je Oktave und Δp von Hand, für Produkte ausserhalb der Datenbank.
-   - Die Listen zeigen nur Kombinationen, die in den Herstellertabellen stehen. Passt eine Wahl nicht mehr, springt das Werkzeug zur nächsten vorhandenen Zeile.
-6. **Empfänger:** Abstand r, Richtfaktor Q und Raum: Absorptionsfläche A oder Volumen V mit Nachhallzeit T. Ohne Raum gilt Freifeld (aussen). Das Ziel wählst du nach Raumtyp (innen: Raumnutzung nach SIA 2024, Anforderung nach SIA 181 oder empfohlene Auslegung), nach LSV (aussen, Empfindlichkeitsstufe, Tag und Nacht) oder als Wert.
+1. **Weg:** Ein Weg geht von der Quelle bis zu einem Empfänger, zum Beispiel „Zuluft Büro“. Gib oben die Bezeichnung und den Volumenstrom V̇ am Anfang ein. Mehrere Wege stehen als Reiter nebeneinander. Jeder Reiter zeigt den L_pA am Empfänger, rot bei Überschreitung. Plus legt einen neuen Weg an, das Kopier-Symbol dupliziert ihn, der Papierkorb löscht ihn.
+2. **Zeilen:** Die Knöpfe unter der Liste fügen eine Zeile am Ende an:
+   - **Quelle** (+): Schallleistung L_W je Oktave, zum Beispiel Ventilator oder VAV. Der Pegel davor und L_W addieren sich energetisch.
+   - **Dämpfung** (−): D je Oktave, zum Beispiel Bogen oder Mündungsreflexion.
+   - **Schalldämpfer** (−): Einfügungsdämpfung D_e. Darunter steht das Strömungsgeräusch (+).
+   - **Abzweig** (−): V̇ nach dem Abzweig. Die Schallleistung teilt sich im Verhältnis der Volumenströme: ΔL = 10·lg(V̇ davor / V̇ danach). Einen eigenen Wert tippst du ins Feld ΔL. Nach dem Abzweig rechnen die Schalldämpfer mit dem neuen V̇.
+3. **Empfänger:** Er steht unter der Liste. Gib den Abstand r, den Richtfaktor Q und den Raum ein: Absorptionsfläche A oder Volumen V mit Nachhallzeit T. Ohne Raum gilt Freifeld (aussen). Das Ziel wählst du nach Raumtyp (innen: Raumnutzung nach SIA 2024, Anforderung nach SIA 181 oder empfohlene Auslegung), nach LSV (aussen: Empfindlichkeitsstufe, Tag und Nacht) oder als Wert.
 
-Ein Element hat einen eigenen Volumenstrom V̇, wenn er sich ändert. Sonst übernimmt es den Wert davor. Bei einem Abzweig teilt sich die Schallleistung im Verhältnis der Volumenströme. Den Wert ΔL zeigt die Spalte V̇ unter dem Feld.
+### dB und dB(A)
 
-Der Pfeil links öffnet die Details eines Elements: Zwischenwerte, Vorgänger, ΔL von Hand und die Knöpfe ↑ und ↓ zum Verschieben auf dem Weg.
+Jede Zeile mit einem Pegel hat in der Spalte Einheit einen Knopf: **dB** oder **dB(A)**. Ein Klick wechselt die Einheit. Die Werte bleiben dabei gleich, nur ihre Bedeutung ändert sich.
 
-### Abzweige
+- Eine Zeile in dB bekommt darunter eine Zeile A-Bewertung (−26.2 … −1.1 dB). So siehst du, dass das Werkzeug die Werte auf dB(A) umrechnet.
+- Eine Zeile in dB(A) ist blau markiert und hat keine A-Bewertung.
+- Dämpfungen, D_e und ΔL sind Differenzen. Sie gelten gleich für dB und dB(A) und haben keinen Knopf.
+- Die Summe und der Empfänger stehen immer in dB(A). Die Spalte Σ zeigt für jede Zeile den A-bewerteten Summenpegel.
 
-- Das Plus in der Zeile fügt direkt nach dem Element ein neues Element ein. Alles, was danach kam, folgt dem neuen Element.
-- Das Abzweig-Symbol startet einen neuen Weg ab diesem Element. Beide öffnen eine Liste mit den vier Elementarten.
-- Die Nummern folgen dem Weg: 1, 2, 3 auf dem Hauptweg, 2.1, 2.2 im Abzweig ab Element 2. Ein Abzweig ist in der Spalte Nr. eingerückt. Änderst du eine Nummer von Hand, bleiben die Nummern danach stehen.
+### Schalldämpfer auslegen
 
-### Vorschlag
+Ein Klick in eine Schalldämpfer-Zeile zeigt ihn rechts.
 
-Der Schalter über der Tabelle wechselt zwischen **Prüfen** und **Vorschlag**. Im Vorschlag hat jeder Schalldämpfer eine Lupe. Die Lupe startet die Suche für diesen Schalldämpfer.
+1. **Typ:** Wähle die Serie: rechteckige Kulissen (Trox XK und MK, Schako MWK-OB und MWK-MB), Rohrschalldämpfer (Trox CA und CK, Schako RS-N und RS-M, Lindab SLU) oder Hand.
+2. **Kulisse:** Gib die Grösse des Gehäuses ein, B × H innen in mm, und den Einbau (Kanal, Ansaugung frei, Ausblasen frei).
+   - Die Frontansicht zeigt das Gehäuse im richtigen Seitenverhältnis mit den Kulissen darin.
+   - Wähle Kulissendicke d, Spalt s und Länge L. Es gibt nur Werte, die in den Herstellertabellen stehen.
+   - Die Anzahl Kulissen n folgt aus B: n = B / (d + s), gerundet. Die Kulissen sitzen gleichmässig im Gehäuse, mit dem Spalt s′ = B / n − d. Weicht s′ von s ab, nennt ein Hinweis die Abweichung.
+3. **Rohr:** Wähle den Durchmesser, die Dämmdicke, die Kernbreite (wo es sie gibt) und die Länge.
+4. **Hand:** D_e und Strömungsgeräusch tippst du in der Liste ein, Δp rechts. So erfasst du Produkte ausserhalb der Datenbank.
+5. **Varianten:** Die Liste unter den Werten zeigt die Varianten für dieses Gehäuse (Kulisse) oder diesen Durchmesser (Rohr):
+   - Kulisse: eine Zeile pro Kulissendicke und Spalt, die ins Gehäuse passt (s′ höchstens 20 % von s entfernt).
+   - Rohr: eine Zeile pro Dämmdicke und Kern.
+   - Je Variante steht die kürzeste Länge, die das Ziel erfüllt. Erfüllt keine Länge das Ziel, steht die Länge mit dem tiefsten L_pA.
+   - Zuerst stehen die Varianten, die alles einhalten (v ≤ 12 m/s, Δp ≤ 100 Pa, Strömungsgeräusch mindestens 10 dB unter dem Pegel, Ziel), sortiert nach Δp. Graue Varianten halten etwas nicht ein.
+   - Ein Klick auf eine Zeile übernimmt die Variante.
 
-- Kulisse: Serie, Höhe H, B max, L max, v max und Δp max. Leere Felder heissen: keine Grenze. v max ist ohne Eingabe 12 m/s, Δp max 100 Pa.
-- Rohr: Serie, Durchmesser von … bis, Aussen-Ø max, L max, v max und Δp max.
-- Die Liste zeigt die besten 10 Produkte, sortiert nach Δp und dann nach L. Über der Liste steht, wie viele Produkte passen und wie viele das Werkzeug geprüft hat.
-- Der Haken in einer Zeile übernimmt das Produkt. Die Suche endet dann.
-- Passt kein Produkt, zeigt die Liste das Produkt, das am knappsten verfehlt. Rote Werte zeigen, welche Grenze es nicht einhält.
+### Bedienung
 
-### Ergebnisse
-
-- Oben steht der schlechteste Empfänger der Datei mit seinem Pegel (L_pA, bei LSV L_r Tag oder Nacht), dem Ziel und der Reserve oder Überschreitung.
-- Die Tabelle zeigt je Element das Spektrum danach („nach“) und den A-bewerteten Summenpegel Σ. Schalldämpfer zeigen auch v, Δp und das Strömungsgeräusch L_W,Str.
-- Ein roter Strich links markiert ein Element mit Fehler, ein oranger Strich eine Warnung. Ein Wert mit ↑ liegt über seiner Grenze.
-- Das Diagramm zeigt die Spektren auf dem Weg zum schlechtesten Empfänger des Strangs: Quelle, nach jedem Schalldämpfer und am Empfänger. Die gestrichelte Linie ist das Spektrum am Empfänger, um die Reserve oder Überschreitung verschoben. Sie zeigt, wo das Spektrum liegen muss, damit das Ziel knapp erfüllt ist.
-- Die Hinweise nennen Grenzen, die ein Element nicht einhält, zum Beispiel ein zu lautes Strömungsgeräusch. Der Pfeil springt zum Element.
+- **Ziehen:** Mit dem Griff (sechs Punkte) ziehst du eine Zeile an eine andere Stelle. Ein Schalldämpfer nimmt sein Strömungsgeräusch mit. Esc bricht ab.
+- **Aus Excel einfügen:** Kopiere acht Oktavwerte einer Excel-Zeile. Füge sie in das erste Oktavfeld ein. Das Werkzeug verteilt sie auf die Oktaven.
+- **Hinweise:** Sie nennen Grenzen, die eine Zeile nicht einhält, zum Beispiel ein zu lautes Strömungsgeräusch. Der Pfeil springt zur Zeile. Ein roter Strich links markiert eine Zeile mit Fehler, ein oranger Strich eine Warnung.
 
 ### Herstellerdaten
 
-Die Datenbank enthält Kulissen von Trox (XK, MK) und Schako (MWK) sowie Rohrschalldämpfer von Trox (CA, CK), Schako (RS-N, RS-M) und Lindab (SLU). Jede Datei speichert eine Kopie der Tabellenzeilen, die sie verwendet. Eine alte Datei rechnet deshalb mit ihren Werten weiter, auch wenn sich die Daten ändern. Nach dem Öffnen nennt ein Hinweis die Schalldämpfer mit geänderten Daten. Das Symbol ↺ im Hinweis übernimmt die neuen Daten.
+Jede Datei speichert eine Kopie der Tabellenzeilen, die sie verwendet. Eine alte Datei rechnet deshalb mit ihren Werten weiter, auch wenn sich die Daten ändern. Nach dem Öffnen nennt ein Hinweis die Schalldämpfer mit geänderten Daten. Das Symbol ↺ im Hinweis übernimmt die neuen Daten.
 
 ### Symbole und Tastatur
 
 | Symbol, Taste | Bedeutung |
 |---|---|
-| + in der Zeile | Element danach einfügen |
-| Abzweig | Neuer Weg ab diesem Element |
-| Papierkorb | Element löschen. Die Meldung danach hat ein Symbol für Rückgängig. |
-| Lupe (Vorschlag) | Produkte für diesen Schalldämpfer suchen |
-| Haken (Vorschlag) | Produkt übernehmen |
-| + und Kopie bei Strang | Strang anlegen, Strang duplizieren |
+| Sechs Punkte | Zeile ziehen |
+| dB, dB(A) | Einheit der Zeile wechseln |
+| Papierkorb | Zeile löschen. Die Meldung danach hat ein Symbol für Rückgängig. |
+| +, Kopie, Papierkorb bei den Reitern | Weg anlegen, duplizieren, löschen |
 | ↺ im Hinweis nach dem Öffnen | Aktuelle Herstellerdaten übernehmen |
-| Enter, Umschalt+Enter | Gleiche Oktave im nächsten oder vorherigen Element |
+| Enter, Umschalt+Enter | Gleiche Oktave in der nächsten oder vorherigen Zeile |
 | Strg+Z, Strg+Y, Strg+S, Strg+O | Rückgängig, Wiederholen, PDF speichern, Öffnen |
 
 ### Rechenweg

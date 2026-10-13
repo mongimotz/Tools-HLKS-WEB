@@ -1,6 +1,6 @@
 # Schalldämpfer: Rechenweg
 
-Berechnungsversion 1.0.0, Herstellerdaten Stand 2026-10-12. Jede gespeicherte Datei enthält die Berechnungsversion. Öffnest du eine Datei aus einer anderen Version, zeigt das Werkzeug die alte und die neue Version. Weicht der Pegel am schlechtesten Empfänger ab, zeigt es auch den alten und den neuen Wert.
+Berechnungsversion 2.0.0, Herstellerdaten Stand 2026-10-12. Jede gespeicherte Datei enthält die Berechnungsversion. Öffnest du eine Datei aus einer anderen Version, zeigt das Werkzeug die alte und die neue Version. Dateien der Version 1 (Stränge als Baum) übernimmt die Version 2 nicht (Testphase).
 
 ## 1. Pegel und Oktaven
 
@@ -17,36 +17,37 @@ L_A = 10 · lg Σ 10^((L_i + A_i)/10)
 A_i = −26.2  −16.1  −8.6  −3.2  0  +1.2  +1.0  −1.1 dB     (63 … 8000 Hz)
 ```
 
+Das Werkzeug rechnet die Pegel durchgehend in dB(A) je Oktave. Eine Zeile in dB rechnet es mit A_i um: L_A,i = L_i + A_i. Eine Zeile in dB(A) übernimmt es direkt. Dämpfungen sind Differenzen und gelten gleich für dB und dB(A). Das Ergebnis ist dasselbe wie im Excel-Blatt, das in dB summiert und erst am Schluss A-bewertet: Die A-Bewertung ist je Oktave eine Konstante, und eine Konstante ändert weder die energetische Summe noch eine Differenz.
+
 Ein leeres Feld in einem Pegelspektrum heisst: kein Schall in dieser Oktave. Ein leeres Feld in einer Dämpfung heisst: 0 dB.
 
-## 2. Stränge und Elemente
+## 2. Wege und Zeilen
 
-Eine Datei enthält einen oder mehrere Stränge, zum Beispiel Aussenluft, Zuluft, Abluft und Fortluft eines Monoblocks. Die Stränge beeinflussen sich nicht. Das Werkzeug rechnet kein Übersprechen und keine Abstrahlung über das Gehäuse.
+Eine Datei enthält einen oder mehrere Wege. Ein Weg führt von der Quelle zu einem Empfänger, zum Beispiel „Zuluft Büro“. Er ist eine einfache Liste von Zeilen, wie das Excel-Blatt. Der Pegel läuft von oben nach unten durch die Zeilen. Die Reihenfolge zählt: Ein Schalldämpfer dämpft nur, was vor ihm in der Liste steht.
 
-Ein Strang ist ein Baum aus Elementen. Jedes Element hat einen Vorgänger, das erste Element ist eine Quelle. Der Schall läuft von der Quelle zum Empfänger. Das Eigengeräusch eines Bauteils läuft nicht zurück in andere Abzweige.
-
-| Element | Eingabe | Wirkung auf das Spektrum L |
+| Zeile | Eingabe | Wirkung auf den Pegel L [dB(A) je Oktave] |
 |---|---|---|
-| Quelle | L_W je Oktave | am Anfang: Startwert, später im Strang: L ⊕ L_W |
-| Bauteil | D und L_W je Oktave, beide frei | (L − D) ⊕ L_W |
-| Schalldämpfer | Datenbank oder Eingabe | (L − D_e) ⊕ L_W,Str |
-| Empfänger | Abstand, Richtfaktor, Raum, Ziel | gibt L_p, ändert L nicht |
+| Quelle | L_W je Oktave, in dB oder dB(A) | L ⊕ L_W,A |
+| Dämpfung | D je Oktave | L − D |
+| Schalldämpfer | Datenbank oder Eingabe | (L − D_e) ⊕ L_W,Str,A |
+| Abzweig | V̇ nach dem Abzweig oder ΔL | L − ΔL |
+| Empfänger (am Ende) | Abstand, Richtfaktor, Raum, Ziel | gibt L_p |
 
-Ein Bauteil deckt bekannte Werte ab, zum Beispiel einen Volumenstromregler, eine Brandschutzklappe oder eine Mündungsreflexion.
+Eine Dämpfung deckt bekannte Werte ab, zum Beispiel einen Bogen, eine Brandschutzklappe oder eine Mündungsreflexion. Das Eigengeräusch eines Bauteils, zum Beispiel eines Volumenstromreglers, gibst du als Quelle ein.
+
+Die Wege beeinflussen sich nicht. Das Werkzeug rechnet kein Übersprechen und keine Abstrahlung über das Gehäuse. Teile, die mehrere Wege gemeinsam haben (zum Beispiel Ventilator und Schalldämpfer in der Zentrale), stehen in jedem Weg. Das Kopier-Symbol dupliziert einen Weg, damit du sie nicht neu eingibst.
 
 ## 3. Volumenstrom und Abzweig
 
-Der Strang hat einen Auslegungs-Volumenstrom. Jedes Element übernimmt den Volumenstrom seines Vorgängers, ausser es hat einen eigenen Wert.
-
-Ist der Volumenstrom eines Elements kleiner als der seines Vorgängers, teilt sich die Schallleistung im Verhältnis der Volumenströme:
+Der Weg hat am Anfang einen Volumenstrom V̇. Ein Abzweig setzt den Volumenstrom für alle Zeilen danach auf seinen Wert. Die Schallleistung teilt sich im Verhältnis der Volumenströme:
 
 ```
-ΔL = 10 · lg(V̇_Abzweig / V̇_davor)
+ΔL = 10 · lg(V̇_davor / V̇_danach)
 ```
 
-Beispiel: 6000 m³/h auf 2000 m³/h gibt −4.8 dB in jeder Oktave. Ein eingegebener Wert ΔL ersetzt den gerechneten Wert. VDI 2081 teilt nach dem Flächenverhältnis. Bei ähnlichen Geschwindigkeiten gibt das dasselbe Ergebnis.
+Beispiel: 6000 m³/h auf 2000 m³/h gibt 4.8 dB weniger in jeder Oktave. Ein eingegebener Wert ΔL ersetzt den gerechneten Wert. VDI 2081 teilt nach dem Flächenverhältnis. Bei ähnlichen Geschwindigkeiten gibt das dasselbe Ergebnis.
 
-Hat ein Abzweig keinen eigenen Volumenstrom, teilt das Werkzeug nichts auf und zeigt einen Hinweis. Das Ergebnis liegt dann auf der sicheren Seite. Führen die Elemente nach einem Element zusammen mehr Luft als das Element selbst, zeigt das Werkzeug eine Warnung.
+Fehlt ein Volumenstrom vor oder nach dem Abzweig, teilt das Werkzeug nichts auf und zeigt eine Warnung. Das Ergebnis liegt dann auf der sicheren Seite. Ist der Volumenstrom nach dem Abzweig grösser als davor, zeigt das Werkzeug ebenfalls eine Warnung.
 
 ## 4. Schalldämpfer
 
@@ -68,13 +69,16 @@ Die Datenbank enthält die Tabellen von Trox, Schako und Lindab (Quellen und Dat
 
 ### 4.2 Kulissenschalldämpfer
 
-Geometrie mit n Kulissen der Dicke d, Spalt s und Höhe H:
+Du gibst das Gehäuse vor: Breite B und Höhe H innen. Das Werkzeug setzt so viele Kulissen der Dicke d hinein, wie mit dem Spalt s der Tabelle am besten passen, und verteilt sie gleichmässig:
 
 ```
-B      = n · (d + s)          Breite, mit zwei Randspalten s/2
-A_frei = n · s · H            freier Querschnitt
-v_s    = V̇ / A_frei           Spaltgeschwindigkeit
+n      = B / (d + s), gerundet, mindestens 1
+s′     = B / n − d                tatsächlicher Spalt, an den Wänden je s′/2
+A_frei = n · s′ · H = (B − n · d) · H
+v_s    = V̇ / A_frei               Spaltgeschwindigkeit
 ```
+
+Ist B = n · (d + s), gilt s′ = s. Sonst rechnet das Werkzeug v_s, Δp und das Strömungsgeräusch mit s′, die Einfügungsdämpfung D_e aber mit dem Tabellenwert für s. Ein grösserer Spalt dämpft weniger, ein kleinerer mehr. Weicht s′ von s ab, zeigt das Werkzeug einen Hinweis, ab 20 % eine Warnung.
 
 Der Druckverlust folgt aus der Herstellertabelle Δp(v_s):
 
@@ -85,8 +89,6 @@ Der Druckverlust folgt aus der Herstellertabelle Δp(v_s):
 ```
 
 Die Δp-Werte von Trox gelten für H = 1000 mm. Bei kleinerer Höhe ist der Wandanteil grösser und Δp etwas höher. Das Werkzeug korrigiert das nicht und zeigt einen Hinweis.
-
-Gibst du eine feste Breite B ein, die nicht n · (d + s) ist, rechnet das Werkzeug trotzdem mit B = n · (d + s) und zeigt eine Warnung. Die Korrektur für andere Randspalte folgt in einer späteren Version.
 
 ### 4.3 Rohrschalldämpfer
 
@@ -127,7 +129,7 @@ Die Trox-Tabelle reicht von 4 bis 20 m/s. Ausserhalb gilt die Ausgleichsgerade L
 
 ### 4.5 Eingegebene Werte
 
-Für ein Produkt ausserhalb der Datenbank gibst du D_e, Δp und L_W,Str je Oktave ein. Das Werkzeug rechnet dann wie mit Datenbankwerten.
+Für ein Produkt ausserhalb der Datenbank gibst du D_e und L_W,Str je Oktave ein, L_W,Str in dB oder dB(A), dazu Δp. Das Werkzeug rechnet dann wie mit Datenbankwerten.
 
 ### 4.6 Warnungen
 
@@ -140,16 +142,18 @@ Die Warnungen blockieren nichts.
 | Strömungsgeräusch | L_WA nach (L − D_e) weniger als 10 dB über L_WA,Str |
 | Spalt bei Trox | s < 0.25 · d, s < 40 mm oder s > 2 · d |
 | Höhe bei Trox | H ≠ 1000 mm (Δp gilt für 1000 mm) |
-| Breite | feste Breite B ≠ n · (d + s) |
+| Spalt im Gehäuse | s′ ≠ s: Hinweis, ab 20 % Abweichung Warnung |
+| Gehäuse | B ≤ d (keine Kulisse passt) oder B, H fehlen: Fehler |
+| Abzweig | Volumenstrom fehlt oder ist nach dem Abzweig grösser |
 | Eingegebene Dämpfung | D_e > 50 dB in einer Oktave |
 | Tabellenzeile | die Herstellerangabe ist auffällig, der Hinweis nennt den Grund |
 
 ## 5. Empfänger
 
 ```
-L_p,i = L_W,i + 10 · lg(Q / (4π r²) + 4 / A)
-A     = 0.163 · V / T                 wenn V und T statt A gegeben sind
-L_pA  = 10 · lg Σ 10^((L_p,i + A_i)/10)
+L_pA,i = L_WA,i + 10 · lg(Q / (4π r²) + 4 / A)       L_WA,i: Pegel nach der letzten Zeile, dB(A) je Oktave
+A      = 0.163 · V / T                 wenn V und T statt A gegeben sind
+L_pA   = 10 · lg Σ 10^(L_pA,i/10)
 ```
 
 r ist der Abstand in m, Q der Richtfaktor (1 Raummitte, 2 Wand oder Boden, 4 Kante, 8 Ecke), A die äquivalente Absorptionsfläche des Raums in m². Ohne A rechnet das Werkzeug nur mit dem Direktschall (Freifeld, zum Beispiel aussen).
@@ -194,35 +198,34 @@ t   = Betriebsdauer in der Periode, leer = 12 h, 0 h = Periode nicht beurteilt
 
 Neue Anlagen halten den Planungswert ein (Art. 7), wesentlich geänderte Anlagen den Immissionsgrenzwert (Art. 8). Für Räume in Betrieben in ES I bis III gelten die Werte um 5 dB höher (Art. 42), nicht aber für Schulen, Anstalten und Heime. Massgebend ist der Pegel in der Mitte des offenen Fensters eines lärmempfindlichen Raums (Art. 39). Wird ein Gebäude nur am Tag oder nur in der Nacht genutzt, setze die Betriebsdauer der anderen Periode auf 0 h (Art. 41 Abs. 3).
 
-Grenze: Das Werkzeug beurteilt jeden Empfänger in seinem Strang. Wirken zum Beispiel Aussenluft und Fortluft desselben Monoblocks auf dasselbe Fenster, addiere die Pegel selbst. Eine Summe über Stränge folgt in einer späteren Version.
+Grenze: Das Werkzeug beurteilt jeden Empfänger in seinem Weg. Wirken zum Beispiel Aussenluft und Fortluft desselben Monoblocks auf dasselbe Fenster, addiere die Pegel selbst. Eine Summe über Wege folgt in einer späteren Version.
 
 ### 6.3 Wert
 
 Ein eingegebener Wert gilt direkt für L_pA, zum Beispiel eine Vorgabe der Bauherrschaft.
 
-## 7. Vorschlag
+## 7. Varianten
 
-Im Modus „Vorschlag“ sucht das Werkzeug für einen Schalldämpfer passende Produkte. Es setzt jede Tabellenzeile der gewählten Art (Kulisse oder Rohr) an die Stelle des Schalldämpfers. Der Rest des Strangs bleibt, wie er ist.
+Für den gewählten Schalldämpfer zeigt das Werkzeug Varianten derselben Serie. Es setzt jede Variante an die Stelle des Schalldämpfers. Der Rest des Wegs bleibt, wie er ist.
 
-- Kulissen mit B max: n ist die grösste Zahl mit n · (d + s) ≤ B max. Damit sind v_s, Δp und Strömungsgeräusch dieser Zeile am kleinsten.
-- Kulissen ohne B max: n ist die kleinste Zahl ab v_s ≤ v max, die alle Bedingungen erfüllt. Das ist der kleinste passende Schalldämpfer dieser Zeile.
-- Rohrschalldämpfer: jede Zeile im Bereich Ø von … bis, mit Aussen-Ø max und L max.
+- Kulissen: das Gehäuse B × H bleibt. Eine Variante ist eine Kulissendicke d mit einem Spalt s, deren tatsächlicher Spalt s′ höchstens 20 % von s abweicht. Geben zwei Spalte s dieselbe Zahl n, zeigt das Werkzeug nur den Spalt, der näher bei s′ liegt.
+- Rohrschalldämpfer: der Durchmesser bleibt. Eine Variante ist eine Dämmdicke mit einer Kernbreite.
 
-Ein Kandidat passt, wenn er alle Bedingungen erfüllt:
+Je Variante wählt das Werkzeug die Länge L: die kürzeste Länge, mit der die Variante alle Bedingungen erfüllt. Gibt es keine, nimmt es die Länge mit dem tiefsten L_pA, die die Grenzen einhält. Eine Variante erfüllt die Bedingungen, wenn:
 
-- v ≤ v max (Standard 12 m/s, Planungswert)
-- Δp ≤ Δp max (Standard 100 Pa)
-- L_WA nach (L − D_e) liegt mindestens 10 dB über L_WA,Str
-- jeder Empfänger nach dem Schalldämpfer hält sein Ziel ein
+- v ≤ 12 m/s (Planungswert)
+- Δp ≤ 100 Pa
+- L_WA nach (L − D_e) mindestens 10 dB über L_WA,Str liegt
+- der Empfänger sein Ziel einhält
 
-Die Liste zeigt die besten 10 Kandidaten, je Tabellenzeile einen, sortiert nach Δp und dann nach L. Passt keiner, zeigt sie den Kandidaten, der die Grenzen einhält und das Ziel am knappsten verfehlt.
+Die Liste zeigt zuerst die Varianten, die alles erfüllen, sortiert nach Δp und dann nach L. Danach folgen die übrigen: zuerst die, die die Grenzen einhalten, dann nach L_pA. Ein Klick übernimmt eine Variante.
 
-Mit mehreren Schalldämpfern auf einem Weg sucht das Werkzeug für einen Schalldämpfer nach dem anderen. Die übrigen bleiben, wie sie gewählt sind.
+Mit mehreren Schalldämpfern auf einem Weg legst du einen nach dem anderen aus. Die übrigen bleiben, wie sie gewählt sind.
 
 ## 8. Nicht enthalten
 
-- Dämpfung in Kanälen und Bögen, Mündungsreflexion, Eigengeräusch von Formstücken. Kennst du solche Werte, gib sie als Bauteil ein.
+- Dämpfung in Kanälen und Bögen, Mündungsreflexion, Eigengeräusch von Formstücken. Kennst du solche Werte, gib sie als Dämpfung oder als Quelle ein.
 - Ventilatorgeräusch aus Formeln (VDI 2081). Gib die Schallleistung aus dem Datenblatt ein.
-- Übersprechen zwischen Strängen und Abstrahlung über Gehäuse und Kanalwände.
+- Übersprechen zwischen Wegen und Abstrahlung über Gehäuse und Kanalwände.
 - NR-Kurven und Zielwerte je Oktave.
-- Interpolation in L und s, Kulissendicken 150, 160 und 250 mm, Korrektur für andere Randspalte.
+- Interpolation in L und s (D_e für den tatsächlichen Spalt s′), Kulissendicken 150, 160 und 250 mm.

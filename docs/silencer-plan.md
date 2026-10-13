@@ -4,6 +4,15 @@ Implementation plan for the silencer tool. Set by the owner on 2026-10-12. AGENT
 
 When this plan leaves a decision open or you want to deviate: ask the owner, do not guess.
 
+**Overhaul 2026-10-13 (owner, after using version 1: "viel zu kompliziert").** Version 2 (`CALC_VERSION` 2.0.0, `INPUT_VERSION` 2) replaces the parts of this plan that differ; `docs/silencer-method.md` describes the current state.
+
+- Structure (sections 3, 4.1, 4.2): no tree. A file holds **paths** (source → one receiver), each a plain list of rows like the Excel sheet: `source` (+ L_W), `loss` (− D), `silencer` (− D_e, + flow noise), `branch` (− ΔL from V̇ before / after, or typed in; sets V̇ for the rows after it). Shared parts of several paths are repeated per path (duplicate a path to copy them). Rows can be dragged.
+- Units: every level line (source, manual flow noise) is in dB or dB(A); the calculation runs in dB(A) per octave, a dB line shows an A-weighting line below it. Sum and receiver always in dB(A).
+- Layout: level list left (focus), design of the selected silencer right. Type chips per series (Trox XK, MK; Schako MWK-OB, MWK-MB; Trox CA, CK; Schako RS-N, RS-M; Lindab SLU; Hand).
+- Rectangular silencers (4.3, 4.4): the user gives the housing B × H. n = round(B / (d + s)), splitters evenly spaced, real gap s′ = B / n − d, A_free = n·s′·H; D_e from the row for s, deviation reported. Front view to scale on the page and in the PDF.
+- Mode "Vorschlag" (section 5) is gone: the design panel lists variants of the selected series for the given housing (rect: d / s with |s′ − s| ≤ 20 % of s) or diameter (round: insulation / core), each with the shortest L that meets everything; a click takes it.
+- Beta: no migration of version-1 files (AGENTS.md).
+
 ## 1. Goal
 
 One tool that calculates the sound level from the noise sources of a ventilation system to the receiver, per octave band, and sizes the silencers on the way.
@@ -187,12 +196,11 @@ Run `npm test` after every milestone and give a short summary. Stop after milest
 | Target | per receiver, three bases (2026-10-12): room type (indoor: noise sensitivity per SIA 2024 Anhang A, table 12; limit L_H for continuous noise per SIA 181:2020, minimum or raised requirement, or the recommended design value of SIA 2024 where given), LSV (outdoor: Anhang 6, ES I to IV, day and night, Planungswert or Immissionsgrenzwert, L_r = L_pA + K1 + K2 + K3 + 10·lg(t/t0), Art. 42 business rooms +5 dB) or a value typed in. No NR curves in version 1 |
 | Room types | the 45 room uses of SIA 2024:2021, Anhang A, table 12 (supplied by the owner on 2026-10-12), ids = SIA codes; footnotes as info hints; the catalogue is saved with every file |
 | LSV, several strands | version 1 judges each receiver within its strand; summing the openings of one installation (AUL + FOL at the same window) is a later extension, stated in the method doc |
-| Fixed B ≠ n·(d + s) | version 1 calculates with B = n·(d + s) and warns (edge-gap correction: milestone 6) |
+| Housing B ≠ n·(d + s) | version 2: B is given, splitters evenly spaced with s′ = B / n − d; v, Δp, flow noise with s′, D_e of the row for s; info, warning above 20 % deviation |
 | Trox CK free cross-section | π/4·dn² − T·dn (splitter across the full diameter, as RS-M) |
 | Installation factor | splitter silencers only |
 | Δp model `duct` | ν of air at 20 °C, k = 0.15 mm, ρ from the inputs; ζ from tables always with ρ = 1.2 |
 | Velocity of round silencers | shown and checked in the free cross-section (CA, SLU: duct velocity) |
 | Extra hints | branch without own flow (no split), successors with more air than the predecessor, manual D_e > 50 dB; targets judged on the shown value (one decimal) |
-| Ranking in "Vorschlag" | Δp, then L |
-| Candidates in "Vorschlag" | one per data row. Rect with B max: the largest n with n·(d + s) ≤ B max; without B max: the smallest n (from v ≤ v max upwards) that fits. Filters: v max, Δp max, flow noise margin (10 dB) and the targets of all receivers after the element. Nothing fits: the candidate that keeps the limits and misses the targets least |
+| Variants (version 2) | one per d / s (rect, fitting the housing) or insulation / core (round, at dn); per variant the shortest L that keeps v ≤ 12 m/s, Δp ≤ 100 Pa, flow noise margin 10 dB and the target, else the L with the lowest L_pA; ranking: fitting first by Δp then L, then limits kept, then L_pA |
 | Interpolation | none in L or s in version 1; Δp and flow noise interpolated over v |

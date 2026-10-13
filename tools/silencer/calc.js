@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Silencer calculation: sound power per octave band along each strand, from the sources to the receivers,
+// Silencer calculation: sound power per octave band along a path, from the first source to the receiver,
 // with insertion loss, pressure loss and flow noise of the silencers. Pure functions, no DOM: runs in the
 // browser and in Node tests. Method: docs/silencer-method.md, data: docs/silencer-data.md.
 //
-// Units: lengths in mm (inputs) and m (calculation), flow in m³/h, velocity in m/s, pressure in Pa,
-// levels in dB / dB(A). Spectra are arrays of 8 values for OCTAVES; "no sound" is -Infinity.
+// A path is a plain list of rows, like the owner's Excel sheet. The level runs through the rows in dB(A) per
+// octave: rows entered in dB are A-weighted on the way in, losses are differences and need no weighting.
+// Units: lengths in mm (inputs) and m (calculation), flow in m³/h, velocity in m/s, pressure in Pa.
+// Spectra are arrays of 8 values for OCTAVES; "no sound" is -Infinity.
 
-export const CALC_VERSION = '1.0.0';
+export const CALC_VERSION = '2.0.0';
 
 import { dynamicViscosity, frictionFactor } from '../../lib/core/air.js';
 import {
@@ -24,7 +26,7 @@ import {
   LIMITS,
 } from './data/index.js';
 
-export { OCTAVES, A_WEIGHTING, DATA_VERSION };
+export { OCTAVES, A_WEIGHTING, DATA_VERSION, LIMITS, SPLITTER_SERIES, ROUND_SERIES };
 
 /** The manufacturer tables refer to standard air; ζ is derived with this density. */
 export const RHO_TABLE = 1.2;
@@ -34,6 +36,7 @@ export const DUCT_TEMPERATURE = 20;
 
 const BANDS = OCTAVES.length;
 const LG = Math.log10;
+const EPS = 1e-9;
 
 // ---- levels -------------------------------------------------------------------------
 
@@ -51,10 +54,13 @@ export function addSpectra(a, b) {
   return a.map((l, i) => sumLevels([l, b[i]]));
 }
 
-/** A-weighted total of a spectrum [dB(A)]. */
+/** A-weighted total of a spectrum in dB [dB(A)]. */
 export function aWeighted(spectrum) {
   return sumLevels(spectrum.map((l, i) => l + A_WEIGHTING[i]));
 }
+
+/** Spectrum in dB(A) per octave from a spectrum in `unit` ('dB' or 'dBA'). */
+export const toA = (spectrum, unit) => (unit === 'dBA' ? spectrum.slice() : spectrum.map((l, i) => l + A_WEIGHTING[i]));
 
 /** Input spectrum of levels: empty cells carry no sound. */
 const levels = (arr) => Array.from({ length: BANDS }, (_, i) => (Number.isFinite(arr?.[i]) ? arr[i] : -Infinity));
@@ -99,7 +105,7 @@ export function ductLoss({ v, dMm, lengthMm, density }) {
 
 /**
  * Flow noise after the Trox table: L_WA for 1 m² face area over v (interpolated over lg v, own fit outside
- * 4 … 20 m/s) + 10·lg A, octaves from the relative spectrum. v ≤ 0 → null.
+ * 4 … 20 m/s) + 10·lg A, octaves in dB from the relative spectrum. v ≤ 0 → null.
  */
 export function flowNoise(v, area) {
   if (!(v > 0 && area > 0)) return null;
@@ -126,26 +132,26 @@ export const LSV_BUSINESS_BONUS = 5;
  * (day, night) for LSV. Level compared: L_pA, for LSV the rating level L_r = L_pA + K1 + K2 + K3 + 10·lg(t/t0).
  * Returns [{ period, level, limit }]; periods without operation (t = 0) and rooms without requirement drop out.
  */
-export function targetChecks(el, lpa, catalogs) {
+export function targetChecks(rc, lpa, catalogs) {
   if (!Number.isFinite(lpa)) return [];
-  if (el.basis === 'manual') return el.target != null ? [{ period: null, level: lpa, limit: el.target }] : [];
-  if (el.basis === 'room') {
-    const room = catalogs.roomTypes.find((t) => t.id === el.room.type);
+  if (rc.basis === 'manual') return rc.target != null ? [{ period: null, level: lpa, limit: rc.target }] : [];
+  if (rc.basis === 'room') {
+    const room = catalogs.roomTypes.find((t) => t.id === rc.room.type);
     const sens = room && catalogs.sensitivities.find((s) => s.id === room.sensitivity);
     if (!sens) return [];
-    const req = el.room.requirement;
+    const req = rc.room.requirement;
     const limit = req === 'raised' ? sens.raised : req === 'design' ? room.design ?? sens.min : sens.min;
     return limit != null ? [{ period: null, level: lpa, limit }] : [];
   }
-  const row = catalogs.lsv.find((r) => r.es === el.lsv.es);
+  const row = catalogs.lsv.find((r) => r.es === rc.lsv.es);
   if (!row) return [];
-  const bonus = el.lsv.business && el.lsv.es <= 3 ? LSV_BUSINESS_BONUS : 0;
+  const bonus = rc.lsv.business && rc.lsv.es <= 3 ? LSV_BUSINESS_BONUS : 0;
   const out = [];
   for (const period of ['day', 'night']) {
-    const hours = el.lsv[period === 'day' ? 'hoursDay' : 'hoursNight'] ?? LSV_PERIOD_HOURS;
-    const base = row[`${el.lsv.limit === 'immission' ? 'immission' : 'planning'}${period === 'day' ? 'Day' : 'Night'}`];
+    const hours = rc.lsv[period === 'day' ? 'hoursDay' : 'hoursNight'] ?? LSV_PERIOD_HOURS;
+    const base = row[`${rc.lsv.limit === 'immission' ? 'immission' : 'planning'}${period === 'day' ? 'Day' : 'Night'}`];
     if (!(hours > 0) || base == null) continue;
-    const level = lpa + LSV_K1[period] + el.lsv.k2 + el.lsv.k3 + 10 * LG(Math.min(hours, LSV_PERIOD_HOURS) / LSV_PERIOD_HOURS);
+    const level = lpa + LSV_K1[period] + rc.lsv.k2 + rc.lsv.k3 + 10 * LG(Math.min(hours, LSV_PERIOD_HOURS) / LSV_PERIOD_HOURS);
     out.push({ period, level, limit: base + bonus });
   }
   return out;
@@ -183,14 +189,14 @@ export function lookupRow(kind, spec) {
   return rows.find((r) => rowMatches(r, kind, spec)) ?? null;
 }
 
-// Choices for the selects: only combinations that exist in the data. Each level is filtered by the levels
-// before it (rect: series → d → s → L; round: series → dn → L → insulation → core).
+// Choices for the selection: only combinations that exist in the data. Each level is filtered by the levels
+// before it (rect: series → d → s → L; round: series → dn → insulation → core → L).
 
 const uniqueSorted = (xs) => [...new Set(xs)].sort((a, b) => a - b);
 const nearest = (list, v) => (list.includes(v) ? v : list.reduce((best, x) => (best == null || Math.abs(x - v) < Math.abs(best - v) ? x : best), null));
 
 export const RECT_KEYS = ['d', 's', 'L'];
-export const ROUND_KEYS = ['dn', 'L', 'insulation', 'core'];
+export const ROUND_KEYS = ['dn', 'insulation', 'core', 'L'];
 
 function choicesOf(rows, keys, spec) {
   const out = {};
@@ -215,19 +221,18 @@ function snapOf(rows, keys, spec, seriesIds) {
 
 /** Values of d, s, L that exist for the selection (rectangular splitter silencers). */
 export const rectChoices = (spec) => choicesOf(SPLITTER_ROWS, RECT_KEYS, spec);
-/** Values of dn, L, insulation, core that exist for the selection (round silencers). */
+/** Values of dn, insulation, core, L that exist for the selection (round silencers). */
 export const roundChoices = (spec) => choicesOf(ROUND_ROWS, ROUND_KEYS, spec);
-/** The selection moved to the nearest existing row (level by level). Other keys (n, H, B) stay. */
+/** The selection moved to the nearest existing row (level by level). Other keys (B, H) stay. */
 export const snapRect = (spec) => snapOf(SPLITTER_ROWS, RECT_KEYS, spec, SPLITTER_SERIES.map((s) => s.id));
 export const snapRound = (spec) => snapOf(ROUND_ROWS, ROUND_KEYS, spec, ROUND_SERIES.map((s) => s.id));
-export { SPLITTER_SERIES, ROUND_SERIES };
 
 const n0 = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const numbers = (arr) => (Array.isArray(arr) ? arr.map((v) => n0(v)) : []);
 const clone = (v) => (v == null ? null : JSON.parse(JSON.stringify(v)));
 
 /**
- * Copy of a data row as stored in the element (the file stays reproducible when the data changes).
+ * Copy of a data row as stored in the silencer row (the file stays reproducible when the data changes).
  * Also the normaliser of stored rows: same keys in the same order, idempotent.
  */
 export function rowCopy(row, kind, dataVersion = row?.dataVersion ?? DATA_VERSION) {
@@ -269,27 +274,24 @@ export function rowCopy(row, kind, dataVersion = row?.dataVersion ?? DATA_VERSIO
   };
 }
 
-/** The row a database silencer uses: its stored copy if it fits the selection, else the current data. */
-export function rowOf(el) {
-  if (el.kind !== 'rect' && el.kind !== 'round') return null;
-  const spec = el[el.kind];
-  if (rowMatches(el.row, el.kind, spec)) return el.row;
-  return rowCopy(lookupRow(el.kind, spec), el.kind, DATA_VERSION);
+/** The data row a database silencer uses: its stored copy if it fits the selection, else the current data. */
+export function rowOf(sd) {
+  if (sd.kind !== 'rect' && sd.kind !== 'round') return null;
+  const spec = sd[sd.kind];
+  if (rowMatches(sd.row, sd.kind, spec)) return sd.row;
+  return rowCopy(lookupRow(sd.kind, spec), sd.kind, DATA_VERSION);
 }
 
-/**
- * Database silencers whose stored row differs from the current data (or is no longer in it).
- * For the hint after import: [{ strandId, elementId, missing }].
- */
+/** Database silencers whose stored row differs from the current data (or is no longer in it): [{ pathId, rowId, missing }]. */
 export function staleRows(inputs) {
   const out = [];
   const strip = (r) => JSON.stringify({ ...r, dataVersion: '' });
-  for (const strand of inputs.strands) {
-    for (const el of strand.elements) {
-      if (el.type !== 'silencer' || !el.row || (el.kind !== 'rect' && el.kind !== 'round')) continue;
-      const current = lookupRow(el.kind, el.row);
-      if (!current) out.push({ strandId: strand.id, elementId: el.id, missing: true });
-      else if (strip(rowCopy(current, el.kind)) !== strip(el.row)) out.push({ strandId: strand.id, elementId: el.id, missing: false });
+  for (const path of inputs.paths) {
+    for (const row of path.rows) {
+      if (row.type !== 'silencer' || !row.row || (row.kind !== 'rect' && row.kind !== 'round')) continue;
+      const current = lookupRow(row.kind, row.row);
+      if (!current) out.push({ pathId: path.id, rowId: row.id, missing: true });
+      else if (strip(rowCopy(current, row.kind)) !== strip(row.row)) out.push({ pathId: path.id, rowId: row.id, missing: false });
     }
   }
   return out;
@@ -297,14 +299,41 @@ export function staleRows(inputs) {
 
 // ---- silencers ---------------------------------------------------------------------------
 
+/** Gap deviation a variant may have: |s′ − s| ≤ this share of s. */
+export const GAP_TOLERANCE = 0.2;
+
 /**
- * Rectangular splitter silencer. B = n·(d + s), A_free = n·s·H, v_s = V̇ / A_free,
- * Δp = ζ(v_s)·ρ/2·v_s² × installation factor, flow noise from the Trox table with A = B·H.
- * Without flow: geometry and D_e only.
+ * Number of splitters in a housing of width B: n = round(B / (d + s)), at least 1; 0 if B ≤ d.
+ * The splitters sit evenly: gap s′ = B / n − d, half a gap at each wall, so n·(d + s′) = B.
  */
-export function splitterSilencer({ row, n, H, flow, density, install = 'duct' }) {
-  const B = n * (row.d + row.s);
-  const out = { de: row.de.slice(), B, H, n, aFree: (n * row.s * H) / 1e6, face: (B * H) / 1e6, v: null, zeta: null, dp: null, lwFlow: null, lwaFlow: null };
+export function splitterCount(B, d, s) {
+  if (!(B > d)) return 0;
+  return Math.max(1, Math.round(B / (d + s)));
+}
+
+/**
+ * Rectangular splitter silencer in a housing B × H (inner size, given by the user), splitters evenly spaced:
+ * n = splitterCount, gap s′ = B / n − d. D_e is the value of the data row (gap s); s′ ≠ s is reported.
+ * A_free = n·s′·H, v = V̇ / A_free, Δp = ζ(v)·ρ/2·v² × installation factor, flow noise from the Trox table
+ * with the face area B·H. Without flow: geometry and D_e only.
+ */
+export function splitterSilencer({ row, B, H, flow, density, install = 'duct' }) {
+  const n = splitterCount(B, row.d, row.s);
+  const gap = n > 0 ? B / n - row.d : null;
+  const out = {
+    de: row.de.slice(),
+    B,
+    H,
+    n,
+    gap,
+    aFree: n > 0 && H > 0 ? (n * gap * H) / 1e6 : 0,
+    face: B > 0 && H > 0 ? (B * H) / 1e6 : 0,
+    v: null,
+    zeta: null,
+    dp: null,
+    lwFlow: null,
+    lwaFlow: null,
+  };
   if (!(flow > 0) || !(out.aFree > 0)) return out;
   out.v = flow / 3600 / out.aFree;
   out.installFactor = INSTALL_FACTORS[install] ?? 1;
@@ -348,82 +377,19 @@ export function roundSilencer({ row, flow, density }) {
   return out;
 }
 
-// ---- tree ------------------------------------------------------------------------------------
-
-/**
- * Resolve the tree of a strand: predecessor (`after`) of each element, successors, DFS order, depth.
- * Unknown predecessors and cycles are cut and reported.
- */
-export function resolveTree(elements) {
-  const byId = new Map(elements.map((e) => [e.id, e]));
-  const parent = new Map();
-  const issues = [];
-  for (const e of elements) {
-    let p = e.after ?? null;
-    if (p !== null && (!byId.has(p) || p === e.id)) {
-      issues.push({ elementId: e.id, severity: 'error', code: 'after-missing' });
-      p = null;
+/** Silencer row: D_e, Δp, flow noise (dB and dB(A) per octave) and warnings. `levelIn` is the level before it [dB(A)]. */
+function silencerResult(sd, flow, density, levelIn, issue) {
+  const r = { kind: sd.kind, de: null, lwFlow: null, lwFlowA: null, lwaFlow: null, v: null, dp: null };
+  if (sd.kind === 'manual') {
+    r.de = losses(sd.manual.de);
+    r.dp = sd.manual.dp;
+    if (hasValue(sd.manual.lwFlow)) {
+      r.lwFlowA = toA(levels(sd.manual.lwFlow), sd.manual.unit);
+      r.lwaFlow = sumLevels(r.lwFlowA);
     }
-    parent.set(e.id, p);
-  }
-  for (const e of elements) {
-    const seen = new Set([e.id]);
-    let cur = parent.get(e.id);
-    while (cur !== null) {
-      if (seen.has(cur)) {
-        issues.push({ elementId: e.id, severity: 'error', code: 'cycle' });
-        parent.set(e.id, null);
-        break;
-      }
-      seen.add(cur);
-      cur = parent.get(cur);
-    }
-  }
-  const children = new Map(elements.map((e) => [e.id, []]));
-  for (const e of elements) {
-    const p = parent.get(e.id);
-    if (p !== null) children.get(p).push(e.id);
-  }
-  const order = [];
-  const depth = new Map();
-  const visit = (id, d) => {
-    order.push(id);
-    depth.set(id, d);
-    for (const c of children.get(id)) visit(c, d + 1);
-  };
-  for (const e of elements) if (parent.get(e.id) === null) visit(e.id, 0);
-  return { parent, children, order, depth, issues };
-}
-
-/** Ids of all elements after `id` (to prevent cycles when choosing a predecessor). */
-export function descendantsOf(elements, id) {
-  const { children } = resolveTree(elements);
-  const out = new Set();
-  const stack = [...(children.get(id) ?? [])];
-  while (stack.length) {
-    const c = stack.pop();
-    if (out.has(c)) continue;
-    out.add(c);
-    stack.push(...(children.get(c) ?? []));
-  }
-  return out;
-}
-
-// ---- main calculation ------------------------------------------------------------------------
-
-/** Silencer element: D_e, Δp, flow noise and warnings. `lwIn` is the spectrum before the silencer. */
-function silencerResult(el, flow, density, lwIn, issue) {
-  const r = { kind: el.kind, de: null, lwFlow: null, lwaFlow: null, v: null, dp: null };
-  if (el.kind === 'manual') {
-    r.de = losses(el.manual.de);
-    r.dp = el.manual.dp;
-    if (hasValue(el.manual.lwFlow)) {
-      r.lwFlow = levels(el.manual.lwFlow);
-      r.lwaFlow = aWeighted(r.lwFlow);
-    }
-    if (el.manual.de.some((v) => v > LIMITS.insertionLossCap.value)) issue('warning', 'de-cap', { limit: LIMITS.insertionLossCap.value });
+    if (sd.manual.de.some((v) => v > LIMITS.insertionLossCap.value)) issue('warning', 'de-cap', { limit: LIMITS.insertionLossCap.value });
   } else {
-    const row = rowOf(el);
+    const row = rowOf(sd);
     if (!row) {
       issue('error', 'row-missing');
       r.de = losses(null);
@@ -431,55 +397,54 @@ function silencerResult(el, flow, density, lwIn, issue) {
     }
     r.row = row;
     if (row.note) issue('warning', 'row-note', { note: row.note });
-    if (el.kind === 'rect') {
-      const { n, H } = el.rect;
-      if (!(n > 0 && H > 0)) {
-        issue('error', 'geometry-missing');
-        r.de = row.de.slice();
-        return r;
-      }
-      Object.assign(r, splitterSilencer({ row, n, H, flow, density, install: el.install }));
+    if (sd.kind === 'rect') {
+      const { B, H } = sd.rect;
+      Object.assign(r, splitterSilencer({ row, B, H, flow, density, install: sd.install }));
+      if (!(B > 0 && H > 0)) issue('error', 'geometry-missing');
+      else if (r.n < 1) issue('error', 'housing-small', { value: B, limit: row.d });
+      else if (Math.abs(r.gap - row.s) > 0.5) issue(Math.abs(r.gap - row.s) > GAP_TOLERANCE * row.s + EPS ? 'warning' : 'info', 'gap-deviation', { value: r.gap, limit: row.s });
       const series = seriesOf('rect', row.series);
-      if (el.rect.B != null && Math.abs(el.rect.B - r.B) > 0.5) issue('warning', 'edge-gap', { value: el.rect.B, limit: r.B });
       if (series?.maker === 'Trox') {
         const min = Math.max(LIMITS.troxGapMin.value, 0.25 * row.d);
         const max = LIMITS.troxGapMaxFactor.value * row.d;
-        if (row.s < min - 1e-9 || row.s > max + 1e-9) issue('warning', 'trox-gap', { value: row.s, min, max });
+        if (row.s < min - EPS || row.s > max + EPS) issue('warning', 'trox-gap', { value: row.s, min, max });
       }
-      if (series?.dpValidHeight && H !== series.dpValidHeight) issue('info', 'height-dp', { value: H, limit: series.dpValidHeight });
+      if (series?.dpValidHeight && H > 0 && H !== series.dpValidHeight) issue('info', 'height-dp', { value: H, limit: series.dpValidHeight });
     } else {
       Object.assign(r, roundSilencer({ row, flow, density }));
     }
+    if (r.lwFlow) r.lwFlowA = toA(r.lwFlow, 'dB');
     if (!(flow > 0)) issue('warning', 'flow-missing');
   }
-  if (r.v != null && r.v > LIMITS.vGapMax.value + 1e-9) issue('warning', 'velocity-high', { value: r.v, limit: LIMITS.vGapMax.value });
-  if (r.dp != null && r.dp > LIMITS.dpPerSilencer.value + 1e-9) issue('warning', 'dp-high', { value: r.dp, limit: LIMITS.dpPerSilencer.value });
+  if (r.v != null && r.v > LIMITS.vGapMax.value + EPS) issue('warning', 'velocity-high', { value: r.v, limit: LIMITS.vGapMax.value });
+  if (r.dp != null && r.dp > LIMITS.dpPerSilencer.value + EPS) issue('warning', 'dp-high', { value: r.dp, limit: LIMITS.dpPerSilencer.value });
   // Net effect: the flow noise must stay clearly below the level the silencer lets through.
-  const lwaThrough = aWeighted(lwIn.map((l, i) => l - r.de[i]));
-  if (r.lwaFlow != null && Number.isFinite(lwaThrough) && lwaThrough - r.lwaFlow < LIMITS.flowNoiseMargin.value - 1e-9) {
-    issue('warning', 'flow-noise', { value: lwaThrough - r.lwaFlow, limit: LIMITS.flowNoiseMargin.value });
+  const through = sumLevels(levelIn.map((l, i) => l - r.de[i]));
+  r.noiseMargin = r.lwaFlow != null && Number.isFinite(through) ? through - r.lwaFlow : null;
+  if (r.noiseMargin != null && r.noiseMargin < LIMITS.flowNoiseMargin.value - EPS) {
+    issue('warning', 'flow-noise', { value: r.noiseMargin, limit: LIMITS.flowNoiseMargin.value });
   }
   return r;
 }
 
 /**
- * Receiver element: L_p per octave, L_pA and the checks against the target. `governing` is the check with the
- * smallest margin; `level`, `target`, `margin` and `status` are taken from it.
+ * Receiver at the end of a path: L_p per octave [dB(A)], L_pA and the checks against the target. `governing` is
+ * the check with the smallest margin; `level`, `target`, `margin` and `status` are taken from it.
  */
-function receiverResult(el, lwIn, issue, catalogs) {
-  const r = { area: absorptionArea(el), term: null, lp: null, lpa: null, checks: [], governing: null, level: null, target: null, margin: null, status: null };
-  if (!(el.r > 0 && el.q > 0)) {
+function receiverResult(rc, levelIn, issue, catalogs) {
+  const r = { area: absorptionArea(rc), term: null, lp: null, lpa: null, checks: [], governing: null, level: null, target: null, margin: null, status: null };
+  if (rc.basis === 'room') {
+    const note = catalogs.roomTypes.find((t) => t.id === rc.room.type)?.note;
+    if (note) issue('info', 'room-note', { note });
+  }
+  if (!(rc.r > 0 && rc.q > 0)) {
     issue('warning', 'receiver-incomplete');
     return r;
   }
-  if (el.basis === 'room') {
-    const note = catalogs.roomTypes.find((t) => t.id === el.room.type)?.note;
-    if (note) issue('info', 'room-note', { note });
-  }
-  r.term = roomTerm({ r: el.r, q: el.q, area: r.area });
-  r.lp = lwIn.map((l) => l + r.term);
-  r.lpa = aWeighted(r.lp);
-  for (const c of targetChecks(el, r.lpa, catalogs)) {
+  r.term = roomTerm({ r: rc.r, q: rc.q, area: r.area });
+  r.lp = levelIn.map((l) => l + r.term);
+  r.lpa = sumLevels(r.lp);
+  for (const c of targetChecks(rc, r.lpa, catalogs)) {
     c.margin = c.limit - c.level;
     // Judged on the shown value (one decimal), so "35.0 dB(A)" never fails a target of 35.
     c.status = Math.round(c.level * 10) / 10 <= c.limit ? 'ok' : 'over';
@@ -491,253 +456,225 @@ function receiverResult(el, lwIn, issue, catalogs) {
   return r;
 }
 
-/** Worst receiver of a list of receiver results: largest excess over the target, else the loudest. */
-function worstOf(receivers) {
+// ---- main calculation ------------------------------------------------------------------------
+
+/**
+ * Calculate one path: the rows in order, then the receiver.
+ * Every row gives its lines as shown in the table and the PDF (one line per operation, like the Excel sheet):
+ *   { rowId, kind, op ('+' | '−'), unit ('dB' | 'dBA' | null for differences), values, total (dB(A) or null), edit }
+ *   kind: source | aweight | loss | branch | de | flow; `edit` names the input array of an editable line.
+ * `level` is the spectrum after the last row [dB(A) per octave].
+ */
+export function computePath(path, { density = RHO_TABLE, catalogs }) {
+  const issues = [];
+  const rows = new Map();
+  const lines = [];
+  let level = silent();
+  let flow = path.flow > 0 ? path.flow : null;
+
+  for (const row of path.rows) {
+    const r = { id: row.id, type: row.type, flow, levelIn: level, lwaIn: sumLevels(level), issues: [] };
+    const issue = (severity, code, params = {}) => {
+      const it = { pathId: path.id, rowId: row.id, severity, code, ...params };
+      r.issues.push(it);
+      issues.push(it);
+    };
+    const line = (kind, op, values, extra = {}) => lines.push({ rowId: row.id, kind, op, unit: null, values, total: null, edit: null, ...extra });
+    const aweight = () => line('aweight', '+', A_WEIGHTING.slice(), { unit: 'dB' });
+
+    switch (row.type) {
+      case 'source': {
+        if (!hasValue(row.lw)) issue('warning', 'lw-missing');
+        const lwA = toA(levels(row.lw), row.unit);
+        r.lwa = sumLevels(lwA);
+        level = addSpectra(level, lwA);
+        line('source', '+', row.lw.slice(), { unit: row.unit, total: r.lwa, edit: 'lw' });
+        if (row.unit === 'dB') aweight();
+        break;
+      }
+      case 'loss': {
+        const d = losses(row.d);
+        level = level.map((l, i) => l - d[i]);
+        line('loss', '−', row.d.slice(), { edit: 'd' });
+        break;
+      }
+      case 'branch': {
+        // Sound power divides with the volume flow: ΔL = 10·lg(V̇ before / V̇ after), or a value typed in.
+        r.flowAfter = row.flow > 0 ? row.flow : flow;
+        if (Number.isFinite(row.dl)) r.dl = row.dl;
+        else if (!(row.flow > 0) || !(flow > 0)) issue('warning', 'branch-flow-missing');
+        else if (row.flow > flow * (1 + EPS)) issue('warning', 'branch-flow', { value: row.flow, limit: flow });
+        else r.dl = 10 * LG(flow / row.flow);
+        level = level.map((l) => l - (r.dl ?? 0));
+        flow = r.flowAfter;
+        line('branch', '−', new Array(BANDS).fill(r.dl ?? null));
+        break;
+      }
+      case 'silencer': {
+        Object.assign(r, silencerResult(row, flow, density, level, issue));
+        level = addSpectra(level.map((l, i) => l - r.de[i]), r.lwFlowA ?? silent());
+        const manual = row.kind === 'manual';
+        line('de', '−', manual ? row.manual.de.slice() : r.de.slice(), { edit: manual ? 'manual.de' : null });
+        if (manual) {
+          line('flow', '+', row.manual.lwFlow.slice(), { unit: row.manual.unit, total: r.lwaFlow, edit: 'manual.lwFlow' });
+          if (row.manual.unit === 'dB') aweight();
+        } else if (row.kind === 'rect' || rowOf(row)?.core > 0) {
+          // flow noise line also without a value yet (flow or housing missing), so the table keeps its lines
+          line('flow', '+', r.lwFlowA ? r.lwFlowA.slice() : new Array(BANDS).fill(null), { unit: 'dBA', total: r.lwaFlow });
+        }
+        break;
+      }
+    }
+    r.levelOut = level;
+    r.lwaOut = sumLevels(level);
+    rows.set(row.id, r);
+  }
+
+  const receiver = receiverResult(path.receiver, level, (severity, code, params = {}) => issues.push({ pathId: path.id, rowId: null, severity, code, ...params }), catalogs);
+  return { id: path.id, rows, lines, level, lwa: sumLevels(level), flow, receiver, issues };
+}
+
+/** Worst of a list of path results: largest excess over the target, else the loudest receiver. */
+function worstOf(results) {
   let worst = null;
-  const key = (r) => (r.margin != null ? [1, -r.margin] : [0, r.lpa]);
-  for (const r of receivers) {
-    if (!Number.isFinite(r.lpa)) continue;
+  const key = (p) => (p.receiver.margin != null ? [1, -p.receiver.margin] : [0, p.receiver.lpa]);
+  for (const p of results) {
+    if (!Number.isFinite(p.receiver.lpa)) continue;
     if (!worst) {
-      worst = r;
+      worst = p;
       continue;
     }
-    const [a1, a2] = key(r);
+    const [a1, a2] = key(p);
     const [b1, b2] = key(worst);
-    if (a1 > b1 || (a1 === b1 && a2 > b2)) worst = r;
+    if (a1 > b1 || (a1 === b1 && a2 > b2)) worst = p;
   }
   return worst;
 }
 
-/** Calculate one strand. `catalogs` holds the target tables (defaults.js). */
-export function computeStrand(strand, { density = RHO_TABLE, catalogs }) {
-  const tree = resolveTree(strand.elements);
-  const byId = new Map(strand.elements.map((e) => [e.id, e]));
-  const issues = tree.issues.map((it) => ({ strandId: strand.id, ...it }));
-  const results = new Map();
-
-  for (const id of tree.order) {
-    const el = byId.get(id);
-    const parentId = tree.parent.get(id);
-    const p = parentId ? results.get(parentId) : null;
-    const r = {
-      id,
-      type: el.type,
-      parent: parentId,
-      children: tree.children.get(id),
-      depth: tree.depth.get(id),
-      flow: el.flow > 0 ? el.flow : p ? p.flow : strand.flow > 0 ? strand.flow : null,
-      split: 0,
-      issues: [],
-    };
-    const issue = (severity, code, params = {}) => {
-      const it = { strandId: strand.id, elementId: id, severity, code, ...params };
-      r.issues.push(it);
-      issues.push(it);
-    };
-
-    // Branch split: sound power divides with the volume flow (or a manual value in dB).
-    if (p) {
-      if (Number.isFinite(el.split)) r.split = el.split;
-      else if (r.flow > 0 && p.flow > 0 && r.flow < p.flow) r.split = 10 * LG(r.flow / p.flow);
-    }
-    r.lwIn = p ? p.lwOut.map((l) => l + r.split) : silent();
-
-    if (!p && el.type !== 'source') issue('error', 'root-not-source');
-    switch (el.type) {
-      case 'source':
-        if (!hasValue(el.lw)) issue('warning', 'lw-missing');
-        r.lwOut = p ? addSpectra(r.lwIn, levels(el.lw)) : levels(el.lw);
-        break;
-      case 'component': {
-        const d = losses(el.d);
-        r.lwOut = addSpectra(r.lwIn.map((l, i) => l - d[i]), levels(el.lw));
-        break;
-      }
-      case 'silencer': {
-        Object.assign(r, silencerResult(el, r.flow, density, r.lwIn, issue));
-        r.lwOut = addSpectra(r.lwIn.map((l, i) => l - r.de[i]), r.lwFlow ?? silent());
-        break;
-      }
-      case 'receiver':
-        r.lwOut = r.lwIn.slice();
-        Object.assign(r, receiverResult(el, r.lwIn, issue, catalogs));
-        break;
-      default:
-        r.lwOut = r.lwIn.slice();
-    }
-    r.lwaIn = aWeighted(r.lwIn);
-    r.lwaOut = aWeighted(r.lwOut);
-    results.set(id, r);
-  }
-
-  // Flows of the successors: own flows must not add up to more than the predecessor carries;
-  // at a branch point every successor needs its own flow (or a manual split), else nothing is split.
-  for (const r of results.values()) {
-    const own = r.children.map((c) => byId.get(c)).filter((e) => e.flow > 0);
-    const sum = own.reduce((acc, e) => acc + e.flow, 0);
-    if (own.length && r.flow > 0 && sum > r.flow * 1.005) {
-      const it = { strandId: strand.id, elementId: r.id, severity: 'warning', code: 'flow-continuity', value: sum, limit: r.flow };
-      r.issues.push(it);
-      issues.push(it);
-    }
-    if (r.children.length < 2) continue;
-    for (const c of r.children) {
-      const e = byId.get(c);
-      if (e.flow > 0 || Number.isFinite(e.split)) continue;
-      const it = { strandId: strand.id, elementId: c, severity: 'info', code: 'split-missing' };
-      results.get(c).issues.push(it);
-      issues.push(it);
-    }
-  }
-
-  const receivers = tree.order.map((id) => results.get(id)).filter((r) => r.type === 'receiver');
-  const worst = worstOf(receivers);
-  return { id: strand.id, elements: results, order: tree.order, receivers: receivers.map((r) => r.id), worstId: worst?.id ?? null, issues };
-}
-
-/** Calculate the whole file: every strand on its own (no cross talk between strands). */
+/** Calculate the whole file: every path on its own (no cross talk between paths). */
 export function compute(inputs) {
-  const strands = inputs.strands.map((s) => computeStrand(s, { density: inputs.density, catalogs: inputs.catalogs }));
-  const all = strands.flatMap((s) => s.receivers.map((id) => ({ strandId: s.id, ...s.elements.get(id) })));
-  const worst = worstOf(all);
+  const paths = inputs.paths.map((p) => computePath(p, { density: inputs.density, catalogs: inputs.catalogs }));
+  const worst = worstOf(paths);
+  const rc = worst?.receiver;
   return {
-    strands,
-    issues: strands.flatMap((s) => s.issues),
+    paths,
+    issues: paths.flatMap((p) => p.issues),
     worst: worst
-      ? { strandId: worst.strandId, elementId: worst.id, lpa: worst.lpa, period: worst.governing?.period ?? null, level: worst.level, target: worst.target, margin: worst.margin, status: worst.status }
+      ? { pathId: worst.id, lpa: rc.lpa, period: rc.governing?.period ?? null, level: rc.level, target: rc.target, margin: rc.margin, status: rc.status }
       : null,
   };
 }
 
-// ---- proposal (mode "Vorschlag") ----------------------------------------------------------------
+// ---- variants (silencer design) ----------------------------------------------------------------
 
-/** Search limits used when the element sets none. */
-export const PROPOSE_DEFAULTS = { vMax: LIMITS.vGapPlan.value, dpMax: LIMITS.dpPerSilencer.value };
-/** Without B max, n grows from the smallest n with v ≤ v max by at most this many splitters. */
-const N_SEARCH = 30;
+/** Limits a variant must keep (planning values of docs/silencer-data.md). */
+export const VARIANT_LIMITS = { vMax: LIMITS.vGapPlan.value, dpMax: LIMITS.dpPerSilencer.value };
 
 /**
- * Candidates for one silencer element: every data row of the kind (rect: with the number of splitters n, see
- * below) is put into the strand in place of the element; the rest of the strand stays as it is.
- * A candidate fits when v ≤ v max, Δp ≤ Δp max, the flow noise keeps its margin and every receiver after the
- * element meets its target.
- *   rect with B max:    n = the largest n with n·(d + s) ≤ B max (lowest v, Δp and flow noise of the row)
- *   rect without B max: n = the smallest n that fits (the most compact silencer of the row)
- * One candidate per data row. Ranking: Δp, then L. If nothing fits, `closest` is the candidate that misses least
- * (limits kept first, then the largest receiver margin).
+ * Variants for one database silencer, in the housing the user gave (rect: B × H) or for its size (round: dn).
+ * Every variant is the silencer row put into the path in place of the current one; the rest stays as it is.
+ *   rect:  one variant per splitter thickness d and gap s of the series that fits B: n from splitterCount, the
+ *          real gap s′ within GAP_TOLERANCE of s
+ *   round: one variant per insulation and core of the series at dn
+ * Within a variant the length L is chosen: with a target the shortest L that meets it, else (or if no L meets
+ * it) the L with the lowest L_pA. A variant fits when v ≤ v max, Δp ≤ Δp max, the flow noise keeps its margin
+ * and the receiver meets its target.
+ * Ranking: fitting variants first (Δp, then L), then the others (limits kept first, then the lowest L_pA).
+ * Returns { kind, missing: null | 'geometry' | 'flow', list }.
  */
-export function proposeSilencer(inputs, strandId, elementId) {
-  const strand = inputs.strands.find((s) => s.id === strandId);
-  const el = strand?.elements.find((e) => e.id === elementId);
-  if (!el || el.type !== 'silencer') return null;
-  const p = el.propose ?? {};
-  const kind = el.kind === 'round' ? 'round' : 'rect';
-  const vMax = p.vMax ?? PROPOSE_DEFAULTS.vMax;
-  const dpMax = p.dpMax ?? PROPOSE_DEFAULTS.dpMax;
-  const tree = resolveTree(strand.elements);
-  const receivers = [];
-  const stack = [...(tree.children.get(elementId) ?? [])];
-  while (stack.length) {
-    const id = stack.pop();
-    if (strand.elements.find((e) => e.id === id)?.type === 'receiver') receivers.push(id);
-    stack.push(...tree.children.get(id));
-  }
+export function silencerVariants(inputs, pathId, rowId) {
+  const path = inputs.paths.find((p) => p.id === pathId);
+  const sd = path?.rows.find((r) => r.id === rowId);
+  if (!sd || sd.type !== 'silencer' || (sd.kind !== 'rect' && sd.kind !== 'round')) return null;
+  const kind = sd.kind;
+  const spec0 = sd[kind];
+  const ctx = { density: inputs.density, catalogs: inputs.catalogs };
+  const flowAt = computePath(path, ctx).rows.get(rowId)?.flow;
+  if (kind === 'rect' && !(spec0.B > 0 && spec0.H > 0)) return { kind, missing: 'geometry', list: [] };
+  if (!(flowAt > 0)) return { kind, missing: 'flow', list: [] };
 
-  const evaluate = (spec, row) => {
-    const trial = { ...el, kind, [kind]: spec, row, propose: null };
-    const res = computeStrand({ ...strand, elements: strand.elements.map((e) => (e.id === el.id ? trial : e)) }, { density: inputs.density, catalogs: inputs.catalogs });
-    const r = res.elements.get(el.id);
-    const margins = receivers.map((id) => res.elements.get(id)).filter((x) => x.margin != null);
-    const lwaThrough = aWeighted(r.lwIn.map((l, i) => l - r.de[i]));
-    const noiseMargin = r.lwaFlow != null && Number.isFinite(lwaThrough) ? lwaThrough - r.lwaFlow : null;
-    const limitsOk = r.v != null && r.v <= vMax + 1e-9 && r.dp != null && r.dp <= dpMax + 1e-9 && (noiseMargin == null || noiseMargin >= LIMITS.flowNoiseMargin.value - 1e-9);
-    const targetsOk = margins.every((x) => x.status === 'ok');
+  const evaluate = (dataRow) => {
+    const spec = kind === 'rect'
+      ? { ...spec0, d: dataRow.d, s: dataRow.s, L: dataRow.L }
+      : { ...spec0, dn: dataRow.dn, insulation: dataRow.insulation, core: dataRow.core, L: dataRow.L };
+    const row = rowCopy(dataRow, kind, DATA_VERSION);
+    const trial = { ...sd, [kind]: spec, row };
+    const res = computePath({ ...path, rows: path.rows.map((r) => (r.id === rowId ? trial : r)) }, ctx);
+    const r = res.rows.get(rowId);
+    const rc = res.receiver;
+    const limitsOk = (kind === 'round' || r.n >= 1) && r.v != null && r.v <= VARIANT_LIMITS.vMax + EPS && r.dp != null && r.dp <= VARIANT_LIMITS.dpMax + EPS
+      && (r.noiseMargin == null || r.noiseMargin >= LIMITS.flowNoiseMargin.value - EPS);
     return {
-      kind,
       spec,
-      row,
-      de: r.de,
+      n: r.n ?? null,
+      gap: r.gap ?? null,
       v: r.v,
       dp: r.dp,
       lwaFlow: r.lwaFlow,
-      B: r.B ?? null,
-      noiseMargin,
-      margin: margins.length ? Math.min(...margins.map((x) => x.margin)) : null,
+      lpa: rc.lpa,
+      margin: rc.margin,
       limitsOk,
-      ok: limitsOk && targetsOk,
+      ok: limitsOk && (rc.status == null || rc.status === 'ok'),
+      hasTarget: rc.status != null,
     };
   };
 
-  const all = [];
-  if (kind === 'rect') {
-    const H = p.H ?? el.rect.H;
-    if (!(H > 0) || !(strandFlowAt(strand, tree, elementId) > 0)) return { kind, tried: 0, all: [], fitting: [], closest: null, receivers: receivers.length };
-    const flow = strandFlowAt(strand, tree, elementId);
-    for (const r of SPLITTER_ROWS) {
-      if ((p.series && r.series !== p.series) || (p.lMax != null && r.L > p.lMax)) continue;
-      const row = rowCopy(r, 'rect', DATA_VERSION);
-      const nMin = Math.max(1, Math.ceil(flow / 3600 / (vMax * (r.s / 1000) * (H / 1000)) - 1e-9));
-      const spec = (n) => ({ series: r.series, d: r.d, s: r.s, L: r.L, n, H, B: null });
-      if (p.bMax != null) {
-        const n = Math.floor(p.bMax / (r.d + r.s) + 1e-9);
-        if (n >= 1) all.push(evaluate(spec(n), row));
-        continue;
-      }
-      let first = null;
-      for (let n = nMin; n <= nMin + N_SEARCH; n++) {
-        const c = evaluate(spec(n), row);
-        first ??= c;
-        if (c.ok) {
-          first = c;
-          break;
-        }
-      }
-      if (first) all.push(first);
-    }
-  } else {
-    const dnMin = p.dnMin ?? p.dn ?? el.round.dn;
-    const dnMax = p.dnMax ?? p.dn ?? el.round.dn;
-    for (const r of ROUND_ROWS) {
-      if (p.series && r.series !== p.series) continue;
-      if (r.dn < dnMin || r.dn > dnMax || (p.lMax != null && r.L > p.lMax) || (p.dOuterMax != null && r.dOuter > p.dOuterMax)) continue;
-      const row = rowCopy(r, 'round', DATA_VERSION);
-      all.push(evaluate({ series: r.series, dn: r.dn, L: r.L, insulation: r.insulation, core: r.core }, row));
-    }
+  const pool = kind === 'rect'
+    ? fittingSplitterRows(spec0.series, spec0.B)
+    : ROUND_ROWS.filter((r) => r.series === spec0.series && r.dn === spec0.dn);
+  const groups = new Map();
+  for (const r of pool) {
+    const key = kind === 'rect' ? `${r.d}/${r.s}` : `${r.insulation}/${r.core ?? ''}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(r);
   }
-  const byDp = (a, b) => a.dp - b.dp || a.spec.L - b.spec.L;
-  const fitting = all.filter((c) => c.ok).sort(byDp);
-  let closest = null;
-  if (!fitting.length) {
-    for (const c of all) {
-      if (!closest || (c.limitsOk && !closest.limitsOk) || (c.limitsOk === closest.limitsOk && (c.margin ?? -Infinity) > (closest.margin ?? -Infinity))) closest = c;
+  const lower = (a, b) => (Number.isFinite(a.lpa) ? a.lpa : Infinity) < (Number.isFinite(b.lpa) ? b.lpa : Infinity);
+  const list = [];
+  for (const rows of groups.values()) {
+    const cands = rows.slice().sort((a, b) => a.L - b.L).map(evaluate);
+    const fit = cands.find((c) => c.ok && c.hasTarget);
+    if (fit) {
+      list.push(fit);
+      continue;
     }
+    let best = null;
+    for (const c of cands) if (!best || (c.limitsOk && !best.limitsOk) || (c.limitsOk === best.limitsOk && lower(c, best))) best = c;
+    list.push(best);
   }
-  return { kind, tried: all.length, all, fitting, closest, receivers: receivers.length };
+  list.sort((a, b) => {
+    if (a.ok !== b.ok) return a.ok ? -1 : 1;
+    if (a.ok) return a.dp - b.dp || a.spec.L - b.spec.L;
+    if (a.limitsOk !== b.limitsOk) return a.limitsOk ? -1 : 1;
+    return (a.lpa ?? Infinity) - (b.lpa ?? Infinity);
+  });
+  return { kind, missing: null, list };
 }
 
-/** Volume flow at an element (own, else inherited), without calculating the strand. */
-function strandFlowAt(strand, tree, id) {
-  for (let cur = id; cur; cur = tree.parent.get(cur)) {
-    const e = strand.elements.find((x) => x.id === cur);
-    if (e?.flow > 0) return e.flow;
+/**
+ * Data rows of a series that fit a housing width B: the real gap s′ within GAP_TOLERANCE of s. Two gaps s of the
+ * same d that give the same n (the same silencer) keep only the s closest to s′.
+ */
+export function fittingSplitterRows(series, B) {
+  const best = new Map();
+  for (const r of SPLITTER_ROWS) {
+    if (r.series !== series) continue;
+    const n = splitterCount(B, r.d, r.s);
+    const dev = n > 0 ? Math.abs(B / n - r.d - r.s) : Infinity;
+    if (dev > GAP_TOLERANCE * r.s + EPS) continue;
+    const key = `${r.d}/${n}`;
+    const cur = best.get(key);
+    if (!cur || dev < cur.dev - EPS) best.set(key, { s: r.s, dev });
   }
-  return strand.flow > 0 ? strand.flow : null;
-}
-
-/** Element ids from the start of the strand to `id` (a strand result from computeStrand). */
-export function pathTo(strandResult, id) {
-  const path = [];
-  for (let cur = id; cur; cur = strandResult.elements.get(cur)?.parent) path.unshift(cur);
-  return path;
+  return SPLITTER_ROWS.filter((r) => r.series === series && best.get(`${r.d}/${splitterCount(B, r.d, r.s)}`)?.s === r.s);
 }
 
 /** Key results stored in the envelope for regression checks (never used as input). */
 export function snapshotOf(result) {
   const round = (v) => (Number.isFinite(v) ? Math.round(v * 1000) / 1000 : null);
-  const receivers = {};
-  for (const s of result.strands) for (const id of s.receivers) receivers[id] = round(s.elements.get(id).lpa);
+  const paths = {};
+  for (const p of result.paths) paths[p.id] = { lwa: round(p.lwa), lpa: round(p.receiver.lpa) };
   return {
-    worst: result.worst ? { strandId: result.worst.strandId, elementId: result.worst.elementId, lpa: round(result.worst.lpa) } : null,
-    receivers,
+    worst: result.worst ? { pathId: result.worst.pathId, lpa: round(result.worst.lpa) } : null,
+    paths,
   };
 }

@@ -1,18 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Input schema, normalisation and the example project (Kilian chain, docs/silencer-plan.md section 2).
 //
-// inputs = { mode, density, strands: [{ id, name, flow, elements: [...] }], catalogs: { roomTypes, sensitivities, lsv } }
-// Elements form a tree per strand (`after` = predecessor, null = start of the strand). Element ids are unique
-// in the whole file. Database silencers keep a copy of their data row (`row`), so a file stays reproducible
-// when the data changes; the full database is not part of the inputs.
+// inputs = { density, paths: [{ id, name, flow, rows: [...], receiver: {...} }], catalogs: { roomTypes, sensitivities, lsv } }
+// A path is a plain list of rows from the first source to the receiver (no tree). Row ids are unique in the whole
+// file. Database silencers keep a copy of their data row (`row`), so a file stays reproducible when the data
+// changes; the full database is not part of the inputs.
+// Beta: files of older input versions are not migrated (AGENTS.md), normalizeInputs only must not throw.
 
-import { lookupRow, rowCopy, rowMatches, RHO_TABLE } from './calc.js';
+import { lookupRow, rowCopy, rowMatches, snapRect, snapRound, RHO_TABLE } from './calc.js';
 
 export const TOOL_ID = 'silencer';
-export const INPUT_VERSION = 1;
+export const INPUT_VERSION = 2;
 
-export const MODES = ['check', 'propose'];
-export const ELEMENT_TYPES = ['source', 'component', 'silencer', 'receiver'];
+/** Row types: source (+ L_W), loss (− D), branch (− ΔL from the flows), silencer (− D_e, + flow noise). */
+export const ROW_TYPES = ['source', 'loss', 'branch', 'silencer'];
+/** Unit of a level line: dB or dB(A). The calculation runs in dB(A); dB lines get an A-weighting line. */
+export const UNITS = ['dB', 'dBA'];
 export const SILENCER_KINDS = ['rect', 'round', 'manual'];
 export const INSTALLS = ['duct', 'freeInlet', 'freeOutlet'];
 /** Directivity Q of the receiver. */
@@ -115,16 +118,17 @@ export function defaultCatalogs() {
 }
 
 function normalizeCatalogs(cat = {}) {
+  const item = (x) => (x && typeof x === 'object' ? x : {});
   return {
-    roomTypes: (cat.roomTypes ?? defaultRoomTypes()).map((t) => ({
+    roomTypes: (Array.isArray(cat.roomTypes) ? cat.roomTypes : defaultRoomTypes()).map(item).map((t) => ({
       id: str(t.id),
       name: str(t.name),
       sensitivity: pick(t.sensitivity, SENSITIVITIES, 'medium'),
       design: num(t.design),
       note: str(t.note),
     })),
-    sensitivities: (cat.sensitivities ?? defaultSensitivities()).map((s) => ({ id: str(s.id), name: str(s.name), min: num(s.min), raised: num(s.raised) })),
-    lsv: (cat.lsv ?? defaultLsv()).map((r) => ({
+    sensitivities: (Array.isArray(cat.sensitivities) ? cat.sensitivities : defaultSensitivities()).map(item).map((s) => ({ id: str(s.id), name: str(s.name), min: num(s.min), raised: num(s.raised) })),
+    lsv: (Array.isArray(cat.lsv) ? cat.lsv : defaultLsv()).map(item).map((r) => ({
       es: num(r.es),
       planningDay: num(r.planningDay),
       planningNight: num(r.planningNight),
@@ -137,6 +141,7 @@ function normalizeCatalogs(cat = {}) {
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const str = (v) => (v == null ? '' : String(v));
 const pick = (v, list, fallback) => (list.includes(v) ? v : fallback);
+const obj = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
 /** Spectrum of 8 octave values, empty cells null. */
 const spectrum = (arr) => Array.from({ length: 8 }, (_, i) => num(Array.isArray(arr) ? arr[i] : null));
 
@@ -152,402 +157,201 @@ function nextId(items, prefix) {
   return `${prefix}${max + 1}`;
 }
 
-export const nextStrandId = (strands) => nextId(strands, 'st');
-/** Element ids are unique in the file, so pass the elements of all strands. */
-export const nextElementId = (elements) => nextId(elements, 'e');
-export const allElements = (inputs) => inputs.strands.flatMap((s) => s.elements);
+export const nextPathId = (paths) => nextId(paths, 'w');
+/** Row ids are unique in the file, so pass the rows of all paths. */
+export const nextRowId = (rows) => nextId(rows, 'r');
+export const allRows = (inputs) => inputs.paths.flatMap((p) => p.rows);
 
-// ---- elements -------------------------------------------------------------------------------
+// ---- rows -------------------------------------------------------------------------------------
 
 export function defaultRect() {
-  return { series: 'trox-xk', d: 200, s: 100, L: 1500, n: null, H: 1000, B: null };
+  return { series: 'trox-xk', d: 200, s: 100, L: 1500, B: null, H: null };
 }
 
 export function defaultRound() {
-  return { series: 'trox-ca', dn: 315, L: 1000, insulation: 50, core: null };
+  return { series: 'trox-ca', dn: 315, insulation: 50, core: null, L: 1000 };
 }
 
-export function defaultManual() {
-  return { de: spectrum(), dp: null, lwFlow: spectrum() };
+function normalizeRect(r) {
+  if (!r || typeof r !== 'object') return defaultRect();
+  return { series: str(r.series || defaultRect().series), d: num(r.d), s: num(r.s), L: num(r.L), B: num(r.B), H: num(r.H) };
 }
 
-function normalizeRect(r = {}) {
-  const d = defaultRect();
-  return { series: str(r.series ?? d.series), d: num(r.d), s: num(r.s), L: num(r.L), n: num(r.n), H: num(r.H), B: num(r.B) };
-}
-
-function normalizeRound(r = {}) {
-  const d = defaultRound();
-  return { series: str(r.series ?? d.series), dn: num(r.dn), L: num(r.L), insulation: num(r.insulation), core: num(r.core) };
+function normalizeRound(r) {
+  if (!r || typeof r !== 'object') return defaultRound();
+  return { series: str(r.series || defaultRound().series), dn: num(r.dn), insulation: num(r.insulation), core: num(r.core), L: num(r.L) };
 }
 
 /**
  * Stored data row of a database silencer: kept while it fits the selection, else taken from the current
  * data (null if the selection is not a product). Manual silencers have no row.
  */
-function normalizeRow(el) {
-  if (el.kind === 'manual') return null;
-  const spec = el[el.kind];
-  if (el.row && rowMatches(el.row, el.kind, spec)) return rowCopy(el.row, el.kind);
-  return rowCopy(lookupRow(el.kind, spec), el.kind);
+function storedRow(sd) {
+  if (sd.kind === 'manual') return null;
+  const spec = sd[sd.kind];
+  if (sd.row && rowMatches(sd.row, sd.kind, spec)) return rowCopy(sd.row, sd.kind);
+  return rowCopy(lookupRow(sd.kind, spec), sd.kind);
 }
 
-/**
- * Constraints of the proposal (mode "Vorschlag"); null until the element is searched once. `active` marks the one
- * element that is searched. Empty values: no limit (v max and Δp max: PROPOSE_DEFAULTS in calc.js).
- * rect: series, H, bMax, lMax; round: series, dn (fixed) or dnMin … dnMax, dOuterMax, lMax; both: vMax, dpMax.
- */
-function normalizePropose(p) {
-  if (!p || typeof p !== 'object') return null;
-  return {
-    active: p.active === true,
-    series: str(p.series),
-    H: num(p.H),
-    bMax: num(p.bMax),
-    lMax: num(p.lMax),
-    dn: num(p.dn),
-    dnMin: num(p.dnMin),
-    dnMax: num(p.dnMax),
-    dOuterMax: num(p.dOuterMax),
-    vMax: num(p.vMax),
-    dpMax: num(p.dpMax),
-  };
-}
-
-/** Bring an element into the schema of its type. All silencer sources stay, so switching kind keeps the values. */
-export function normalizeElement(e = {}) {
-  const type = pick(e.type, ELEMENT_TYPES, 'source');
-  const base = {
-    id: str(e.id),
-    nr: str(e.nr),
-    after: e.after ? str(e.after) : null,
-    type,
-    name: str(e.name),
-    flow: num(e.flow),
-    split: num(e.split),
-  };
+/** Bring a row into the schema of its type. A silencer keeps all three sources, so switching kind keeps the values. */
+export function normalizeRow(e = {}) {
+  e = obj(e);
+  const type = pick(e.type, ROW_TYPES, 'source');
+  const base = { id: str(e.id), type, name: str(e.name) };
   switch (type) {
     case 'source':
-      return { ...base, lw: spectrum(e.lw) };
-    case 'component':
-      return { ...base, d: spectrum(e.d), lw: spectrum(e.lw) };
-    case 'silencer': {
-      const el = {
+      return { ...base, lw: spectrum(e.lw), unit: pick(e.unit, UNITS, 'dB') };
+    case 'loss':
+      return { ...base, d: spectrum(e.d) };
+    case 'branch':
+      return { ...base, flow: num(e.flow), dl: num(e.dl) };
+    default: {
+      const m = obj(e.manual);
+      const sd = {
         ...base,
         kind: pick(e.kind, SILENCER_KINDS, 'rect'),
         install: pick(e.install, INSTALLS, 'duct'),
-        rect: e.rect ? normalizeRect(e.rect) : defaultRect(),
-        round: e.round ? normalizeRound(e.round) : defaultRound(),
-        manual: {
-          de: spectrum(e.manual?.de),
-          dp: num(e.manual?.dp),
-          lwFlow: spectrum(e.manual?.lwFlow),
-        },
+        rect: normalizeRect(e.rect),
+        round: normalizeRound(e.round),
+        manual: { de: spectrum(m.de), lwFlow: spectrum(m.lwFlow), unit: pick(m.unit, UNITS, 'dB'), dp: num(m.dp) },
         row: e.row ?? null,
-        propose: normalizePropose(e.propose),
       };
-      el.row = normalizeRow(el);
-      return el;
-    }
-    case 'receiver': {
-      const hours = (v) => (num(v) == null ? null : Math.min(12, Math.max(0, v)));
-      return {
-        ...base,
-        r: num(e.r),
-        q: pick(num(e.q), DIRECTIVITIES, 2),
-        area: num(e.area),
-        volume: num(e.volume),
-        reverb: num(e.reverb),
-        basis: pick(e.basis, TARGET_BASES, 'room'),
-        target: num(e.target),
-        room: { type: str(e.room?.type ?? '3.01'), requirement: pick(e.room?.requirement, REQUIREMENTS, 'min') },
-        lsv: {
-          es: pick(num(e.lsv?.es), [1, 2, 3, 4], 2),
-          limit: pick(e.lsv?.limit, LSV_LIMITS, 'planning'),
-          business: e.lsv?.business === true,
-          k2: pick(num(e.lsv?.k2), LSV_CORRECTIONS, 0),
-          k3: pick(num(e.lsv?.k3), LSV_CORRECTIONS, 0),
-          hoursDay: hours(e.lsv?.hoursDay),
-          hoursNight: hours(e.lsv?.hoursNight),
-        },
-      };
+      sd.row = storedRow(sd);
+      return sd;
     }
   }
 }
 
-export function newElement(inputs, type, overrides = {}) {
-  return normalizeElement({ id: nextElementId(allElements(inputs)), type, ...overrides });
-}
-
-// ---- structure editing ----------------------------------------------------------------------
-// The table shows the elements in array order. An element directly after its predecessor in the array is the
-// continuation of the path; later successors are branches (they sit below the subtree of the branch point).
-
-function childrenOf(els) {
-  const ids = new Set(els.map((e) => e.id));
-  const map = new Map(els.map((e) => [e.id, []]));
-  for (const e of els) if (e.after && ids.has(e.after)) map.get(e.after).push(e.id);
-  return map;
-}
-
-/** All elements after `id` (its subtree without itself). */
-export function subtreeOf(els, id) {
-  const children = childrenOf(els);
-  const out = new Set();
-  const stack = [...(children.get(id) ?? [])];
-  while (stack.length) {
-    const c = stack.pop();
-    if (out.has(c)) continue;
-    out.add(c);
-    stack.push(...(children.get(c) ?? []));
+export function newRow(inputs, type, overrides = {}) {
+  const row = normalizeRow({ id: nextRowId(allRows(inputs)), type, ...overrides });
+  if (row.type === 'silencer') {
+    row.rect = snapRect(row.rect);
+    row.round = snapRound(row.round);
+    row.row = storedRow(row);
   }
-  return out;
+  return row;
 }
 
-/**
- * Automatic numbers: the main path 1, 2, 3 …; the branches of element N continue as N.1, N.2 … (all branches of
- * N share the counter), their branches as N.k.1 … The first successor of an element is its continuation.
- */
-export function autoNumbers(els) {
-  const children = childrenOf(els);
-  const ids = new Set(els.map((e) => e.id));
-  const out = new Map();
-  const walk = (id, prefix, start) => {
-    let i = start;
-    for (let cur = id; cur && !out.has(cur); i++) {
-      const nr = `${prefix}${i}`;
-      out.set(cur, nr);
-      const [next, ...branches] = children.get(cur);
-      let j = 1;
-      for (const b of branches) j = walk(b, `${nr}.`, j);
-      cur = next;
-    }
-    return i;
-  };
-  let k = 1;
-  for (const e of els) if (!e.after || !ids.has(e.after)) k = walk(e.id, '', k);
-  return out;
-}
+// ---- receiver and paths ----------------------------------------------------------------------
 
-/** True while the numbers are the automatic ones (or empty): then they follow every change of the structure. */
-export function isAutoNumbered(els) {
-  const auto = autoNumbers(els);
-  return els.every((e) => e.nr === '' || e.nr === auto.get(e.id));
-}
-
-/** Branch depth of every element: 0 on the main path, +1 for each branch on the way. */
-export function branchDepths(els) {
-  const children = childrenOf(els);
-  const out = new Map();
-  const visit = (id, d) => {
-    out.set(id, d);
-    children.get(id).forEach((c, i) => visit(c, i === 0 ? d : d + 1));
-  };
-  const ids = new Set(els.map((e) => e.id));
-  for (const e of els) if (!e.after || !ids.has(e.after)) visit(e.id, 0);
-  return out;
-}
-
-/** Apply a structural change; keeps automatic numbers automatic. */
-function restructure(strand, change) {
-  const auto = isAutoNumbered(strand.elements);
-  const result = change(strand.elements);
-  if (auto) {
-    const nrs = autoNumbers(strand.elements);
-    for (const e of strand.elements) e.nr = nrs.get(e.id) ?? '';
-  }
-  return result;
-}
-
-/** New element directly after `afterId` (null: at the start); the elements after it now follow the new one. */
-export function insertAfter(inputs, strand, afterId, type, overrides = {}) {
-  const el = newElement(inputs, type, overrides);
-  return restructure(strand, (els) => {
-    el.after = afterId ?? null;
-    for (const e of els) if ((e.after ?? null) === (afterId ?? null) && (afterId != null || els.indexOf(e) === 0)) e.after = el.id;
-    const idx = afterId ? els.findIndex((e) => e.id === afterId) + 1 : 0;
-    els.splice(idx, 0, el);
-    return el;
-  });
-}
-
-/** New element directly before `beforeId` (only that element moves behind it, not its siblings). */
-export function insertBefore(inputs, strand, beforeId, type, overrides = {}) {
-  const el = newElement(inputs, type, overrides);
-  return restructure(strand, (els) => {
-    const target = els.find((e) => e.id === beforeId);
-    el.after = target.after;
-    target.after = el.id;
-    els.splice(els.indexOf(target), 0, el);
-    return el;
-  });
-}
-
-/** New branch from `fromId`: placed below the subtree of the branch point. */
-export function branchFrom(inputs, strand, fromId, type, overrides = {}) {
-  const el = newElement(inputs, type, { ...overrides, after: fromId });
-  return restructure(strand, (els) => {
-    const sub = subtreeOf(els, fromId);
-    let idx = els.findIndex((e) => e.id === fromId);
-    for (let i = idx + 1; i < els.length && sub.has(els[i].id); i++) idx = i;
-    els.splice(idx + 1, 0, el);
-    return el;
-  });
-}
-
-/**
- * New predecessor for an element. The element and everything after it move below the subtree of the new
- * predecessor, so the element becomes a branch there (or the continuation if it had no successors).
- */
-export function setPredecessor(strand, id, afterId) {
-  return restructure(strand, (els) => {
-    const el = els.find((e) => e.id === id);
-    if (!el || !afterId || afterId === id || subtreeOf(els, id).has(afterId)) return false;
-    const moving = new Set([id, ...subtreeOf(els, id)]);
-    const block = els.filter((e) => moving.has(e.id));
-    const rest = els.filter((e) => !moving.has(e.id));
-    el.after = afterId;
-    const sub = subtreeOf(rest, afterId);
-    let idx = rest.findIndex((e) => e.id === afterId);
-    for (let i = idx + 1; i < rest.length && sub.has(rest[i].id); i++) idx = i;
-    rest.splice(idx + 1, 0, ...block);
-    els.splice(0, els.length, ...rest);
-    return true;
-  });
-}
-
-/** Remove an element; its successors move to its predecessor. */
-export function removeElement(strand, id) {
-  return restructure(strand, (els) => {
-    const idx = els.findIndex((e) => e.id === id);
-    if (idx < 0) return null;
-    const [el] = els.splice(idx, 1);
-    for (const e of els) if (e.after === id) e.after = el.after;
-    return el;
-  });
-}
-
-/**
- * Swap an element with its predecessor on the path (up) or with its only successor (down).
- * The branches stay at their branch point. Returns false if the move is not possible.
- */
-export function moveElement(strand, id, direction) {
-  const els = strand.elements;
-  const el = els.find((e) => e.id === id);
-  if (!el) return false;
-  if (direction > 0) {
-    const kids = els.filter((e) => e.after === id);
-    return kids.length === 1 ? moveElement(strand, kids[0].id, -1) : false;
-  }
-  const p = els.find((e) => e.id === el.after);
-  if (!p || els.find((e) => e.after === p.id) !== el) return false; // only the continuation, not a branch start
-  restructure(strand, () => {
-    for (const e of els) if (e.after === el.id) e.after = p.id;
-    el.after = p.after;
-    p.after = el.id;
-    const i = els.indexOf(el);
-    const j = els.indexOf(p);
-    [els[i], els[j]] = [els[j], els[i]];
-  });
-  return true;
-}
-
-/** Copy of a strand with new ids (elements keep their structure). */
-export function duplicateStrand(inputs, strand) {
-  const copy = JSON.parse(JSON.stringify(strand));
-  copy.id = nextStrandId(inputs.strands);
-  const all = allElements(inputs);
-  const map = new Map();
-  for (const e of copy.elements) {
-    const id = nextElementId([...all, ...[...map.values()].map((x) => ({ id: x }))]);
-    map.set(e.id, id);
-  }
-  for (const e of copy.elements) {
-    e.id = map.get(e.id);
-    e.after = e.after ? map.get(e.after) ?? null : null;
-  }
-  return normalizeStrand(copy);
-}
-
-// ---- strands --------------------------------------------------------------------------------
-
-export function normalizeStrand(s = {}) {
+export function normalizeReceiver(e) {
+  e = obj(e);
+  const room = obj(e.room);
+  const lsv = obj(e.lsv);
+  const hours = (v) => (num(v) == null ? null : Math.min(12, Math.max(0, v)));
   return {
-    id: str(s.id),
-    name: str(s.name),
-    flow: num(s.flow),
-    elements: (Array.isArray(s.elements) ? s.elements : []).map(normalizeElement),
+    name: str(e.name),
+    r: num(e.r),
+    q: pick(num(e.q), DIRECTIVITIES, 2),
+    area: num(e.area),
+    volume: num(e.volume),
+    reverb: num(e.reverb),
+    basis: pick(e.basis, TARGET_BASES, 'room'),
+    target: num(e.target),
+    room: { type: str(room.type || '3.01'), requirement: pick(room.requirement, REQUIREMENTS, 'min') },
+    lsv: {
+      es: pick(num(lsv.es), [1, 2, 3, 4], 2),
+      limit: pick(lsv.limit, LSV_LIMITS, 'planning'),
+      business: lsv.business === true,
+      k2: pick(num(lsv.k2), LSV_CORRECTIONS, 0),
+      k3: pick(num(lsv.k3), LSV_CORRECTIONS, 0),
+      hoursDay: hours(lsv.hoursDay),
+      hoursNight: hours(lsv.hoursNight),
+    },
   };
 }
 
-export function newStrand(inputs, overrides = {}) {
-  const strand = normalizeStrand({ id: nextStrandId(inputs.strands), ...overrides });
-  const all = allElements(inputs);
-  const source = normalizeElement({ id: nextElementId(all), nr: '1', type: 'source' });
-  const receiver = normalizeElement({ id: nextElementId([...all, source]), nr: '2', after: source.id, type: 'receiver' });
-  strand.elements.push(source, receiver);
-  return strand;
+export function normalizePath(p) {
+  p = obj(p);
+  return {
+    id: str(p.id),
+    name: str(p.name),
+    flow: num(p.flow),
+    rows: (Array.isArray(p.rows) ? p.rows : []).map(normalizeRow),
+    receiver: normalizeReceiver(p.receiver),
+  };
+}
+
+/** New path with one empty source row (in dB). */
+export function newPath(inputs, overrides = {}) {
+  const path = normalizePath({ id: nextPathId(inputs.paths), ...overrides });
+  path.rows.push(normalizeRow({ id: nextRowId(allRows(inputs)), type: 'source' }));
+  return path;
+}
+
+/** Copy of a path with new ids. */
+export function duplicatePath(inputs, path) {
+  const copy = normalizePath(JSON.parse(JSON.stringify(path)));
+  copy.id = nextPathId(inputs.paths);
+  const taken = allRows(inputs).slice();
+  for (const row of copy.rows) {
+    row.id = nextRowId(taken);
+    taken.push(row);
+  }
+  return copy;
 }
 
 /**
- * Bring any (older / partial) input object into the current schema. Idempotent.
- * Strand ids and element ids (unique in the whole file) are repaired if empty or doubled.
+ * Bring any input object into the current schema. Idempotent.
+ * Path ids and row ids (unique in the whole file) are repaired if empty or doubled. A file always has a path.
  */
 export function normalizeInputs(raw = {}) {
-  const strands = (Array.isArray(raw.strands) ? raw.strands : []).map(normalizeStrand);
-  const seenStrands = new Set();
-  for (const s of strands) {
-    if (!s.id || seenStrands.has(s.id)) s.id = nextStrandId(strands);
-    seenStrands.add(s.id);
+  raw = obj(raw);
+  const paths = (Array.isArray(raw.paths) ? raw.paths : []).map(normalizePath);
+  const seenPaths = new Set();
+  for (const p of paths) {
+    if (!p.id || seenPaths.has(p.id)) p.id = nextPathId(paths);
+    seenPaths.add(p.id);
   }
-  const elements = strands.flatMap((s) => s.elements);
+  const rows = paths.flatMap((p) => p.rows);
   const seen = new Set();
-  for (const e of elements) {
-    if (!e.id || seen.has(e.id)) e.id = nextElementId(elements);
-    seen.add(e.id);
+  for (const r of rows) {
+    if (!r.id || seen.has(r.id)) r.id = nextRowId(rows);
+    seen.add(r.id);
   }
-  // Only one element is searched at a time (mode "Vorschlag").
-  let active = false;
-  for (const e of elements) {
-    if (!e.propose?.active) continue;
-    if (active) e.propose.active = false;
-    active = true;
-  }
-  return {
-    mode: pick(raw.mode, MODES, 'check'),
+  const inputs = {
     density: num(raw.density) > 0 ? raw.density : RHO_TABLE,
-    strands,
-    catalogs: normalizeCatalogs(raw.catalogs),
+    paths,
+    catalogs: normalizeCatalogs(obj(raw.catalogs)),
   };
-}
-
-export function emptyInputs() {
-  const inputs = normalizeInputs({});
-  inputs.strands.push(newStrand(inputs));
+  if (!paths.length) paths.push(newPath(inputs));
   return inputs;
 }
 
-/** The owner's Excel sheet "Beispiel Kilian": one chain with manual values. */
+export function emptyInputs() {
+  return normalizeInputs({});
+}
+
+/**
+ * Example: the owner's Excel sheet "Beispiel Kilian" (one path, values typed in, all in dB) and a second path with a
+ * splitter silencer from the data and a branch.
+ */
 export function exampleInputs() {
   return normalizeInputs({
-    strands: [
+    paths: [
       {
-        id: 'st1',
-        name: 'Zuluft',
+        id: 'w1',
+        name: 'Zuluft Büro',
         flow: null,
-        elements: [
-          { id: 'e1', nr: '1', after: null, type: 'source', name: 'Ventilator', lw: [78, 85, 87, 89, 78, 79, 78, 74] },
-          {
-            id: 'e2', nr: '2', after: 'e1', type: 'silencer', name: 'Schalldämpfer 1', kind: 'manual',
-            manual: { de: [4, 15, 28, 38, 43, 33, 18, 11], dp: null, lwFlow: [41, 36, 32, 28, 25, 22, 19, 15] },
-          },
-          { id: 'e3', nr: '3', after: 'e2', type: 'component', name: 'VAV', lw: [69, 61, 53, 50, 50, 53, 48, 43] },
-          {
-            id: 'e4', nr: '4', after: 'e3', type: 'silencer', name: 'Schalldämpfer 2', kind: 'manual',
-            manual: { de: [6, 14, 21, 43, 50, 50, 35, 26], dp: null, lwFlow: [49, 44, 40, 36, 32, 28, 25, 22] },
-          },
-          { id: 'e5', nr: '5', after: 'e4', type: 'receiver', name: 'Büro', r: 2, q: 2, basis: 'room', room: { type: '3.01' } },
+        rows: [
+          { id: 'r1', type: 'source', name: 'Ventilator', unit: 'dB', lw: [78, 85, 87, 89, 78, 79, 78, 74] },
+          { id: 'r2', type: 'silencer', name: 'SD 1', kind: 'manual', manual: { de: [4, 15, 28, 38, 43, 33, 18, 11], lwFlow: [41, 36, 32, 28, 25, 22, 19, 15], unit: 'dB' } },
+          { id: 'r3', type: 'source', name: 'VAV', unit: 'dB', lw: [69, 61, 53, 50, 50, 53, 48, 43] },
+          { id: 'r4', type: 'silencer', name: 'SD 2', kind: 'manual', manual: { de: [6, 14, 21, 43, 50, 50, 35, 26], lwFlow: [49, 44, 40, 36, 32, 28, 25, 22], unit: 'dB' } },
         ],
+        receiver: { name: 'Büro', r: 2, q: 2, basis: 'room', room: { type: '3.01' } },
+      },
+      {
+        id: 'w2',
+        name: 'Zuluft Sitzung',
+        flow: 5000,
+        rows: [
+          { id: 'r5', type: 'source', name: 'Ventilator', unit: 'dB', lw: [84, 88, 89, 87, 84, 81, 77, 72] },
+          { id: 'r6', type: 'silencer', name: 'SD 3', kind: 'rect', rect: { series: 'trox-xk', d: 200, s: 100, L: 1500, B: 900, H: 1000 } },
+          { id: 'r7', type: 'branch', name: 'Abzweig', flow: 1500 },
+          { id: 'r8', type: 'loss', name: 'Bogen, Auslass', d: [2, 3, 4, 5, 5, 5, 5, 5] },
+        ],
+        receiver: { name: 'Sitzung', r: 2, q: 2, volume: 150, reverb: 0.6, basis: 'room', room: { type: '3.03' } },
       },
     ],
   });

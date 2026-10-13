@@ -59,7 +59,7 @@ scripts/                   serve.mjs (dev server, --base for a sub-path), make-f
 Planned tools (status `planned` in the registry):
 
 - **Kanalrechner** – done as a test version (SIA 382/1 tables 49 and 50). Idea for later: an experimental version with a 3D model and a fluid simulation.
-- **Schalldämpfer** – done as a test version (manufacturer data Trox, Schako, Lindab; targets SIA 181 / LSV; mode "Vorschlag"). Open: edge-gap correction, interpolation in L, LSV sum over strands (see `docs/silencer-plan.md`).
+- **Schalldämpfer** – done as a test version, version 2 since 2026-10-13 (paths as plain level lists like the owner's Excel sheet, dB / dB(A) per line, design panel with housing B × H, front view and variants; manufacturer data Trox, Schako, Lindab; targets SIA 2024 / SIA 181 / LSV). Open: interpolation in L and s, LSV sum over paths (see `docs/silencer-plan.md`).
 - **Monoblock** – air handling unit: fan power, heating and cooling capacity, humidification, filter sizing.
 - **Dämmung** – insulation thickness estimate.
 - Later candidates: Messprotokoll, Kühllast-Check.
