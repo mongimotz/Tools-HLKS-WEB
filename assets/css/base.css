@@ -217,3 +217,10 @@ body.is-dragging .drop-overlay { display: grid; }
 .combo-list li:hover { background: var(--surface-hover); }
 .combo-list li.is-active { background: var(--primary-subtle); }
 .combo-list li[aria-selected='true'] { font-weight: 600; }
+
+/* dragging rows (lib/core/drag.js) */
+.drag-handle, .icon-btn.drag-handle { cursor: grab; touch-action: none; }
+.is-dragging { opacity: 0.45; }
+.is-dragging .drag-handle { cursor: grabbing; }
+.drop-before > td { box-shadow: inset 0 2px 0 var(--primary); }
+.drop-after > td { box-shadow: inset 0 -2px 0 var(--primary); }

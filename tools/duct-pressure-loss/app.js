@@ -36,6 +36,7 @@ import { mountProjectInfo, newProject } from '../../lib/core/project-info.js';
 import { findTool, toolUrl } from '../../lib/core/registry.js';
 import { html, raw, icon, toast, bindThemeToggle, mountSourceLink } from '../../lib/core/ui.js';
 import { enableCombos } from '../../lib/core/combo.js';
+import { bindRowDrag, moveBefore } from '../../lib/core/drag.js';
 
 const DRAFT_KEY = `hlks-tools:${TOOL_ID}:draft`;
 const UI_KEY = `hlks-tools:${TOOL_ID}:ui`;
@@ -325,7 +326,7 @@ const COLS = [
   { key: 'dp', label: 'Δp TS', unit: 'Pa', cls: 'c-out', out: true, w: 70 },
   { key: 'cum', label: 'Δp kum.', unit: 'Pa', cls: 'c-out c-cum', out: true, w: 80 },
   { key: 'throttle', label: 'Drossel', unit: 'Pa', cls: 'c-out', out: true, w: 70 },
-  { key: 'act', cls: 'c-act', w: 72 },
+  { key: 'act', cls: 'c-act', w: 96 },
 ];
 
 function renderTable() {
@@ -390,6 +391,7 @@ function rowHtml(s, index) {
     <td class="c-sum last-in"><button class="sum-btn" data-act="toggle" aria-label="Einbauteile">${s.components.length ? fmt(compSum, 0) : '–'}</button>${s.components.length ? html`<span class="count">${s.components.length}</span>` : ''}</td>
     ${COLS.filter((c) => c.out).map((c) => html`<td class="${c.cls}" data-out="${c.key}"></td>`)}
     <td class="c-act">
+      <span class="icon-btn drag-handle" title="Ziehen" aria-hidden="true">${icon('grip', { size: 15 })}</span>
       <button class="icon-btn" data-act="branch" title="Abzweig" aria-label="Abzweig hinzufügen">${icon('branch', { size: 15 })}</button>
       <button class="icon-btn" data-act="delete" title="Löschen" aria-label="Löschen">${icon('trash', { size: 15 })}</button>
     </td>
@@ -741,6 +743,16 @@ function addSection({ parent, after, nr } = {}) {
   row?.scrollIntoView({ block: 'nearest' });
 }
 
+/** Index of the last row of a section's block: the section and the rows of its branches below it (deeper level). */
+function blockEnd(id) {
+  const secs = inputs().sections;
+  const level = levelOf(sectionById(id));
+  const desc = descendantsOf(secs, id);
+  let end = secs.findIndex((s) => s.id === id);
+  for (let i = end + 1; i < secs.length && desc.has(secs[i].id) && levelOf(secs[i]) > level; i++) end = i;
+  return end;
+}
+
 function addBranch(id) {
   const p = sectionById(id);
   const secs = inputs().sections;
@@ -748,12 +760,16 @@ function addBranch(id) {
   const used = new Set(secs.map((s) => s.nr.trim()));
   let k = 1;
   while (used.has(`${nr}.${k}`)) k++;
-  // Below the parent and the rows of its existing branches (descendants with a deeper level).
-  const level = levelOf(p);
-  const desc = descendantsOf(secs, id);
-  let after = secs.findIndex((s) => s.id === id);
-  for (let i = after + 1; i < secs.length && desc.has(secs[i].id) && levelOf(secs[i]) > level; i++) after = i;
-  addSection({ parent: id, after: secs[after].id, nr: nr ? `${nr}.${k}` : '' });
+  addSection({ parent: id, after: secs[blockEnd(id)].id, nr: nr ? `${nr}.${k}` : '' });
+}
+
+/** A new predecessor moves the row below it (and below the predecessor's branches), not to where it was. */
+function setParent(s, parent) {
+  s.parent = parent;
+  if (!parent) return;
+  const secs = inputs().sections;
+  secs.splice(secs.indexOf(s), 1);
+  secs.splice(blockEnd(parent) + 1, 0, s);
 }
 
 function deleteSection(id) {
@@ -788,6 +804,14 @@ function moveSection(id, delta) {
 function bindTable() {
   const table = $('#sections-table');
 
+  bindRowDrag(table, {
+    rows: 'tr.sec-row',
+    handle: '.drag-handle',
+    onDrop: (id, beforeId) => {
+      if (moveBefore(inputs().sections, id, beforeId)) commitAndRender();
+    },
+  });
+
   table.addEventListener('input', (e) => {
     const t = e.target;
     const host = t.closest('[data-id]');
@@ -821,7 +845,7 @@ function bindTable() {
     const s = sectionById(host.dataset.id);
     if (!s) return;
     if (t.dataset.field === 'parent') {
-      s.parent = t.value || null;
+      setParent(s, t.value || null);
     } else if (t.dataset.field === 'shape') {
       s.shape = t.value;
     } else if (t.dataset.field === 'material') {

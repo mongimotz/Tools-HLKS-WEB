@@ -47,6 +47,8 @@ Werkzeuge ohne Fachrichtung stehen als Kacheln unter den Netzen, zum Beispiel PD
 3. Für einen Abzweig drücke das Abzweig-Symbol in der Zeile. Die neue Teilstrecke hängt an dieser Zeile und bekommt deren Nummer plus .1, .2 … (Abzweig von 2: 2.1). Ein Abzweig ist in der Spalte Nr. eingerückt. Die Einrückung folgt der Nummer: 2.1 eine Stufe, 2.1.1 zwei Stufen.
 4. Öffne mit dem Pfeil links die Details einer Teilstrecke: Formstücke, Einbauteile, eigene Temperatur, Bemerkung, Dimensionierung und Zwischenwerte.
 
+Wählst du für eine Teilstrecke einen anderen Vorgänger, rückt die Zeile unter diesen Vorgänger und seine Abzweige. Die Nummer änderst du selbst. Mit dem Griff (sechs Punkte) ziehst du eine Zeile an eine andere Stelle der Liste. Das ändert nur die Reihenfolge der Zeilen, nicht den Vorgänger. Esc bricht das Ziehen ab.
+
 Ein runder Kanal zeigt Ø vor dem Durchmesser. Ein Klick ins Feld öffnet die Durchmesser von Lindab (Wickelfalzrohr SR, 63 bis 1600 mm). ↑ und ↓ gehen zum nächsten Lindab-Mass. Ein anderes Mass tippst du direkt ein. Eckige Kanäle nehmen freie Masse.
 
 Der **Zuschlag** ist ein Sicherheitszuschlag in Prozent auf den Druckverlust des kritischen Strangs. Er deckt Unsicherheiten ab: ζ-Werte als Richtwerte, Formstücke, die erst auf der Baustelle dazukommen, Undichtheiten und Verschmutzung. Üblich sind 10 bis 20 %. 0 % schaltet ihn aus.
@@ -62,6 +64,7 @@ Die Strömungsrichtung „Ventilator → Auslass“ gilt für Zuluft und Fortluf
 | ↓ PDF | PDF speichern |
 | ⋯ | Weitere Aktionen |
 | Halbkreis, Sonne, Mond | Farbschema: System, Hell, Dunkel |
+| Sechs Punkte | Zeile ziehen |
 | Abzweig | Neue Teilstrecke, die an dieser Zeile hängt |
 | Papierkorb | Teilstrecke löschen. Die Meldung danach hat ein Symbol für Rückgängig. |
 | ↺ | Katalog auf Standardwerte setzen |
