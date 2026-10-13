@@ -155,7 +155,10 @@ Sketch; refine in milestone 1 and keep `normalizeInputs` idempotent.
 
 ## 7. Files
 
-As in AGENTS.md: `tools/silencer/{index.html, app.js, calc.js, defaults.js, labels.js, report.js, csv.js, charts.js, style.css}` plus the existing `data/`. `docs/silencer-method.md` (German, user-facing: formulas, assumptions, limits, including every own assumption from docs/silencer-data.md). README: tool table row and a section like the other tools. Registry: `status: 'ready'` only at the end.
+As in AGENTS.md: `tools/silencer/{AGENTS.md, index.html, app.js, calc.js, defaults.js, labels.js, report.js, csv.js, charts.js, style.css}` plus the existing `data/`.
+`docs/silencer-method.md` contains German formulas, assumptions and limits, including every own assumption from `docs/silencer-data.md`.
+Keep the README brief: a tool table row and links to the method and agent documentation.
+Detailed tool behavior belongs in `tools/silencer/AGENTS.md`. Registry: `status: 'ready'` only at the end.
 
 `tools/silencer/style.css` exists as a placeholder (needed by `tests/theme.test.js`); replace its content.
 

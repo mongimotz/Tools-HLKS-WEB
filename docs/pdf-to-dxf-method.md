@@ -1,6 +1,6 @@
 # PDF → DXF: Verfahren
 
-Wie das Werkzeug PDF → DXF aus einer PDF eine DXF macht: Umrechnung, Bogenerkennung, Schraffur-Erkennung, Scan-Verfahren, Toleranzen und Grenzen. Die Bedienung steht im [README](../README.md#pdf--dxf).
+Wie das Werkzeug PDF → DXF aus einer PDF eine DXF macht: Umrechnung, Bogenerkennung, Schraffur-Erkennung, Scan-Verfahren, Toleranzen und Grenzen. Details zur Bedienung stehen in den [Agentenhinweisen zum Werkzeug](../tools/pdf-to-dxf/AGENTS.md).
 
 ## Ablauf
 

@@ -17,7 +17,7 @@ The brand mark is inline SVG in each page header and uses `currentColor`, so it 
 ## Principles (set by the owner, these win over everything below)
 
 1. Keep the amount of purely aesthetic elements minimal.
-2. Never explain decisions or functions in the product unless it is specified. Explanations go into documentation: `README.md` (user guide, German) and `docs/*.md` (e.g. `docs/duct-pressure-loss-method.md`).
+2. Never explain decisions or functions in the product unless it is specified. Keep the README brief. Shared behavior belongs in `AGENTS.md`, tool behavior in `tools/<tool-id>/AGENTS.md`, and formulas and limits in German method documents (e.g. `docs/duct-pressure-loss-method.md`).
 3. Use symbols over words for design elements where sensible (icon buttons with `title` + `aria-label`).
 4. No harsh gradients.
 5. Red-green colourblind compatible wherever colour carries an important function.
@@ -109,4 +109,4 @@ Motion only answers an action: on the start page, hovering or focusing a ready t
 
 German, Swiss spelling (ss, not ß). In the product: short labels and short status messages, no explanations (principle 2).
 
-Never use the middle dot (·) as a separator in UI text or in PDFs. Use nothing at all (separate lines, own columns) or ` | `. The dot stays only as a multiplication sign (`R·L`, `1.62·10⁻⁵`). Errors name what is wrong (`PDF nicht lesbar`). User documentation (`README.md`, `docs/*.md`) is German, plain and active.
+Never use the middle dot (·) as a separator in UI text or in PDFs. Use nothing at all (separate lines, own columns) or ` | `. The dot stays only as a multiplication sign (`R·L`, `1.62·10⁻⁵`). Errors name what is wrong (`PDF nicht lesbar`). User documentation (`README.md`, `docs/*-method.md`, test checklists) is German, plain and active. Agent and developer documents are English.

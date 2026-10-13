@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// User-facing texts of the PDF → DXF tool (German, Swiss spelling). No DOM. Explanations go to README.md.
+// User-facing texts of the PDF → DXF tool (German, Swiss spelling). No DOM. Explanations go to AGENTS.md and the method document.
 
 export const TITLE = 'PDF → DXF';
 
@@ -85,7 +85,7 @@ export const ERRORS = {
   worker: 'Browser ohne Web Worker (Modul)',
 };
 
-/** Short status texts for warnings (details in README.md). */
+/** Short status texts for warnings (details in AGENTS.md and docs/pdf-to-dxf-method.md). */
 export function warningText(w) {
   switch (w.code) {
     case 'unmapped':
