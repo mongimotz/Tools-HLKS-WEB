@@ -37,10 +37,10 @@ Branch `feature/pdf-to-dxf`, worktree `../Tools-HLKS-pdf-to-dxf` (see DECISIONS.
 
 - Sub-path check: `node scripts/serve.mjs 8083 --base Tools-HLKS-WEB`; start page, tile, hand-over of a foreign PDF, worker, backend and MuPDF WebAssembly load under `/Tools-HLKS-WEB/`, conversion runs (curves.pdf 13 → 6). `tests/pdf-to-dxf.robust.test.js` rejects absolute paths in the site.
 - No file is in Git LFS; the largest is `mupdf-wasm.wasm` (10.4 MB), checked by `tests/pdf-to-dxf.vendor.test.js`.
-- Merge into `main`: not done. The branch fast-forwards `main` (b174604) and the silencer session reported a clean main working tree (2026-10-13), but a push to `main` deploys the live site and needs the owner's explicit go (see TODO-OWNER.md).
+- Merge into `main`: fast-forward of `origin/main` to this branch on 2026-10-13, on the owner's explicit go, after the silencer session reported a clean main working tree.
 
 ## Log
 
 - 2026-10-12: worktree set up, silencer agent informed. License commit (AGPL, SPDX, source link). MuPDF 1.28.1 vendored, smoke test green in Node and browser (3 pages of `multipage.pdf`). Corpus of 12 PDFs with truth files.
 - 2026-10-12: phases 2–9 done and pushed one by one (see the table). `main` (silencer tool, b174604) merged into the branch without conflicts.
-- 2026-10-13: phase 10 docs done. `npm test` on the branch: 176 tests, 175 pass, 1 skipped (real plans: none on this machine). Final ezdxf check of 24 files clean. State: finished on the branch; release into `main` waits for the owner.
+- 2026-10-13: phase 10 docs done. `npm test` on the branch: 176 tests, 175 pass, 1 skipped (real plans: none on this machine). Final ezdxf check of 24 files clean. State: finished. Released on the owner's go ("release it"): `origin/main` fast-forwarded to the branch.

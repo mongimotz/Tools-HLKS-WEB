@@ -99,4 +99,4 @@ Loading: a test follows the static imports of the start page and every tool page
 
 Sub-path: `node scripts/serve.mjs 8083 --base Tools-HLKS-WEB`; the start page, the tile, the hand-over of a foreign PDF, the worker, the backend and MuPDF's WebAssembly load under `/Tools-HLKS-WEB/`, and curves.pdf converts (13 → 6).
 
-`npm test`: 176 tests, 175 pass, 1 skipped (real plans). The live site is not updated yet (release waits for the owner).
+`npm test`: 176 tests, 175 pass, 1 skipped (real plans). Released to `main` on the owner's go (2026-10-13).
