@@ -1,19 +1,19 @@
 # Silencer data
 
-Developer reference for `tools/silencer/data/`. The data package is complete and checked. Do not research it again and do not change values. If a value looks wrong, keep it, add a `note` to the row, and tell the owner.
+Developer reference for `tools/silencer/data/`. The owner requested a new audit on 2026-10-14 against the eight local PDFs in `Downloads/Schalldämpfer`. This request superseded the earlier data freeze. Keep source quirks as printed with a `note`; change a value only when the source comparison establishes a transcription error.
 
-Data version: `2026-10-12` (`DATA_VERSION` in every module). Collected and transcribed from the manufacturer documents listed in `sources.js`. Tables were read from the PDF text layer, not retyped. `tests/silencer-data.test.js` guards the counts and spot values.
+Data version: `2026-10-14`. The full audit compared every existing insertion-loss and pressure cell with the supplied PDFs and examined their data pages. Evidence, source hashes and limitations are in [the rectangular audit](dev/silencer/RECTANGULAR-AUDIT.md) and [the circular audit](dev/silencer/circular-data-audit.md). The dedicated audit tests guard complete source-cell sets. All 462 circular configurations matched. Of 305 original rectangular configurations, one pressure cell needed correction: MWK-MB 100/100/2000 at 7 m/s is 13 Pa, while MWK-OB prints <10 Pa. LL and LB now have separate entries.
 
 ## Files
 
 | File | Content |
 |---|---|
 | `data/index.js` | Re-exports everything. The tool imports from here. |
-| `data/splitter.js` | `OCTAVES`, `SPLITTER_SERIES` (4), `SPLITTER_ROWS` (305): rectangular splitter silencers |
+| `data/splitter.js` | `OCTAVES`, `SPLITTER_SERIES`, `SPLITTER_ROWS`: manufacturer configurations and explicitly estimated RIO/Schmidlin rows |
 | `data/round.js` | `ROUND_SERIES` (5), `ROUND_ROWS` (462): round duct silencers |
-| `data/flow-noise.js` | Flow noise tables and fits, relative octave spectrum |
+| `data/flow-noise.js` | Trox flow-noise table, fits, relative octave spectrum, digitized Schako source spectra |
 | `data/coefficients.js` | A-weighting, ζ formulas, installation factors, planning limits |
-| `data/sources.js` | `SOURCES` Q01 … Q22 with URL and date |
+| `data/sources.js` | `SOURCES` with manufacturer, issue, supplied filename where audited, and URL |
 
 All modules are plain ES modules with no imports, so `calc.js` and Node tests can use them.
 
@@ -44,9 +44,12 @@ A_free = n · s · H            free cross-section
 v_s    = V̇ / A_free           gap velocity: reference for ALL Δp and flow noise tables
 ```
 
-- No table exists for d = 150, 160 or 250 mm. Do not invent rows. If needed later, scale from the next table (see the scaling rule below) and mark it as an estimate.
-- Trox Δp values are valid for H = 1000 mm (`dpValidHeight`). Lower H has a larger wall share, so Δp is somewhat higher. Show a note, no correction.
-- Trox XK and MK share the same Δp. Schako OB/LL and MB/LB share the same Δp.
+- Manufacturer rows retain only their published thicknesses. RIO d = 100/160/200 and Schmidlin d = 100/150/200/250/300 use marked estimates from open XK and MWK-OB only. MK, RK and all sheet-covered Schako types are excluded from the estimate basis.
+- At matching L and bounded s, interpolate thickness 150/160 between 100 and 200, and 250 between XK 230 and 300. Use the lower D_e per band and larger Δp where both references support the geometry, or the sole supported open reference. Round D_e down to 1 dB and pressure up to 0.1 Pa. No thickness/gap extrapolation. Both estimated brands use the same model.
+- Trox Δp values refer to H = 1000 mm (`dpValidHeight`); D_e is not restricted to this height. The sources give no numerical uncertainty or height correction. Show a note and retain the pressure model.
+- Schako changes from nozzle to bent frame below H = 200 mm. Show a note because the source gives no separate pressure data for that frame.
+- Trox XK and MK share the same Δp. Schako OB/LL share a table; MB/LB share their own table, including the corrected 13 Pa cell.
+- `lookupRow` interpolates D_e and ζ linearly in s within adjacent rows at exact d and L. `dataSpec` uses the actual evenly spaced casing gap. Unsupported actual gaps are errors, never endpoint extrapolations. Saved row copies preserve interpolated flags, notes, estimates and source noise profiles.
 
 ## Round duct silencers (`round.js`)
 
@@ -67,7 +70,7 @@ All models end in `Δp = ζ · ρ/2 · v²`. Compute ζ from the source points, 
 | `dpModel` | Row data | Velocity v | How to get Δp |
 |---|---|---|---|
 | `duct` | `dp: null` | V̇ / (π/4 · dn²) | Straight duct of length L: `Δp = λ · L/dn · ρ/2 · v²`, λ from `lib/core/air.js`, roughness of galvanised duct. Trox states this for CA. Lindab gives no Δp; same assumption. |
-| `flow-points` | `dp: { q, pa }` (m³/h, Pa) | V̇ / (π/4 · dn²) | ζ_i = pa_i / (ρ/2 · v_i²) with v_i from q_i. Use the mean of ζ_i. |
+| `flow-points` | `dp: { q, pa }` (m³/h, Pa) | V̇ / (π/4 · dn²) | ζ_i = pa_i / (ρ/2 · v_i²) with v_i from q_i. Interpolate ζ_i linearly over q, holding endpoints outside. Every published pressure point is reproduced. |
 | `velocity-table` | `dp: { v, pa }` | V̇ / A_free | ζ_i per table point, interpolate ζ linearly over v, hold the end values outside the table. |
 | splitters | `dp: { v, pa }` | v_s = V̇ / (n·s·H) | Same as `velocity-table`. Multiply by the installation factor (`INSTALL_FACTORS`). |
 
@@ -82,7 +85,7 @@ Rows with `dpFromDn` have no own Δp line in the source; the line of the nearest
 
 ## Flow noise (`flow-noise.js`)
 
-Manufacturer data exists only for the Trox splitter series (`TROX_FLOW_NOISE`). Everything else is an estimate from it.
+Manufacturer flow-noise data includes the Trox total-level table (`TROX_FLOW_NOISE`) and the digitized Schako spectra (`SCHAKO_FLOW_NOISE`). Other products and unsupported Schako geometries use marked estimates. Graph shapes and interpolation assumptions remain distinct from exact printed totals.
 
 ```
 L_WA      = interp(TROX_FLOW_NOISE over lg v) + 10 · lg(A / 1 m²)      [dB(A)]
@@ -92,7 +95,8 @@ L_W,oct   = L_WA + FLOW_NOISE_SPECTRUM.dl[i]                            [dB]
 | Silencer | v | A | Basis |
 |---|---|---|---|
 | Trox XK, MK | v_s | B · H | Trox table (Q03) |
-| Schako MWK | v_s | B · H | Trox table. Schako publishes L_W1 only as diagrams (not included). Estimate. |
+| Schako MWK | v_s | B · H | Five source spectra at 10/20 m/s, digitized to 1 dB and normalized to printed L_WA. Outside supported geometries use Trox as an estimate. |
+| RIO, Schmidlin | v_s | B · H | Trox table, estimate. |
 | Trox CK, Schako RS-M (core) | V̇ / A_free | π/4 · dn² | Trox table. Own assumption, no manufacturer data. |
 | Trox CA, Schako RS-N, Lindab SLU (no core) | – | – | No flow noise: the free cross-section equals the duct, like a straight duct. Own assumption. |
 
@@ -100,7 +104,10 @@ L_W,oct   = L_WA + FLOW_NOISE_SPECTRUM.dl[i]                            [dB]
 - `TROX_FLOW_NOISE_FIT` (L_WA = −12.7 + 56·lg v + 10·lg A) matches the table within 0.5 dB.
 - `VDI_FLOW_NOISE_FIT` (Kluth, back-calculated from VDI 2081): plausibility check only.
 - `FLOW_NOISE_SPECTRUM.dl` sums back to L_WA within 0.1 dB with A-weighting.
-- `SCHAKO_KF`: Schako's area correction (≈ 10·lg A). Kept for reference.
+- `SCHAKO_KF`: Schako's printed area correction (≈ 10·lg A), used for the Schako source noise profiles.
+- `SCHAKO_FLOW_NOISE`: use source spectra at matching d and bounded s, interpolate gap linearly and levels over log velocity, then normalize to the interpolated printed total. Apply the printed K_F table over log face area; outside its range use 10·lg A. Velocity extension outside 10–20 m/s and other replacements set `flowNoiseEstimated`. These interpolation rules are model assumptions, not manufacturer instructions. The source's K_F = −5 at A = 0.4 m² remains as printed.
+
+Round rows also retain `bodyLength`, `overallLength` and `dOuterMax`. Automatic maximum length refers to overall length. It excludes the two SLU nominal-900/printed-600 contradictions. Manual selections remain available with their notes. The straight-duct pressure estimate uses the larger of nominal and documented overall length. Optional accessories and loose connectors need separate space checks.
 
 ## Coefficients and limits (`coefficients.js`)
 
@@ -139,8 +146,8 @@ L_W,oct   = L_WA + FLOW_NOISE_SPECTRUM.dl[i]                            [dB]
 
 ## Known gaps
 
-- No rectangular splitter data for d = 150, 160 and 250 mm (Trox CK has round silencers with 150/250 mm splitters).
-- Schako splitter flow noise (L_W1 diagrams) and Wildeboer nomograms are not included.
+- No manufacturer-verified RIO or Schmidlin data. Their rows are planning estimates and do not establish product availability.
+- Schako source spectra have graph-reading uncertainty. The local Trox PDFs contain no numerical flow-noise tables; the prior separate Trox source remains in use.
 - VDI 2081 Blatt 1, chapter 13.2, was not available.
 - Lindab SLCU is not included: its 50 mm table is contradictory (longer silencers attenuate less). Trox CF (flexible) and CAK (cross talk) are not included.
 - Round silencers: no manufacturer flow noise data in the data sheets used.
@@ -149,7 +156,7 @@ L_W,oct   = L_WA + FLOW_NOISE_SPECTRUM.dl[i]                            [dB]
 
 - Schako MWK-OB d 100, s 50, L 2000: 250 Hz = 18 dB (neighbours 21 to 25 dB).
 - Schako MWK-OB d 200, s 200, L 2500: 1000 Hz = 50 dB, higher than s = 180.
-- Schako MWK d 100, s 100, L 2000: Δp at 7 m/s `<10`, lower than at L 1000/1500.
+- Schako MWK-OB/LL d 100, s 100, L 2000: Δp at 7 m/s `<10`, lower than at L 1000/1500. MB/LB correctly prints 13 Pa.
 - Schako MWK d 200, L 3000, s 180/200: Δp at 6 m/s `>10`, probably `<10`.
 - Trox CK NS 315: Δp much lower than NS 250 and 400 (ζ ≈ 0.3 instead of 1 to 4).
 - Schako RS-N L 1950, P 100: D_e at 1000 Hz lower than at L 1450 for NW 400 … 710.

@@ -2,7 +2,7 @@
 // Coefficients, limits and rules for the silencer calculation, each with its source.
 // See docs/silencer-data.md. Generated 2026-10-12.
 
-export const DATA_VERSION = '2026-10-12';
+export const DATA_VERSION = '2026-10-14';
 
 /** A-weighting per octave 63 ... 8000 Hz [dB] (IEC 61672-1). */
 export const A_WEIGHTING = [-26.2, -16.1, -8.6, -3.2, 0, 1.2, 1.0, -1.1];

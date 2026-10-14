@@ -26,7 +26,7 @@ const sourceIds = new Set(SOURCES.map((s) => s.id));
 const increasing = (xs) => xs.every((x, i) => i === 0 || x > xs[i - 1]);
 
 test('row counts', () => {
-  assert.equal(SPLITTER_ROWS.length, 305);
+  assert.equal(SPLITTER_ROWS.length, 847);
   assert.equal(ROUND_ROWS.length, 462);
   assert.deepEqual(OCTAVES, [63, 125, 250, 500, 1000, 2000, 4000, 8000]);
 });

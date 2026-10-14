@@ -1,8 +1,10 @@
 # Plan: tool "Schalldämpfer" (`tools/silencer/`)
 
-Implementation plan for the silencer tool. Set by the owner on 2026-10-12. AGENTS.md and docs/DESIGN.md apply as for every tool. Data: `tools/silencer/data/` and `docs/silencer-data.md` (complete, do not research again).
+Implementation plan for the silencer tool. Set by the owner on 2026-10-12. AGENTS.md and docs/DESIGN.md apply as for every tool. Data: `tools/silencer/data/` and `docs/silencer-data.md`.
 
 When this plan leaves a decision open or you want to deviate: ask the owner, do not guess.
+
+**Audit and sizing update 2026-10-14 (owner).** Calculation 2.1.0 / input version 3 supersede older statements below about un-interpolated gaps and removed sizing modes. Manufacturer tables were rechecked against the owner's local PDFs. `Frei` retains direct selection and bounded actual-gap interpolation; `Maximalmasse` adds explicit searches within internal B/H and maximum L, or circular diameter and maximum overall L. MWK-LL/LB are separate choices. RIO/Schmidlin are estimates from open XK/OB only. CK is confirmed despite the filename `Trox CS.pdf`. Optional one-second cosmetic feedback is controlled in `tools/silencer/settings.js`. The current contracts and formulas are in `tools/silencer/AGENTS.md` and `docs/silencer-method.md`; full numerical audit evidence is in `docs/dev/silencer/`.
 
 **Overhaul 2026-10-13 (owner, after using version 1: "viel zu kompliziert").** Version 2 (`CALC_VERSION` 2.0.0, `INPUT_VERSION` 2) replaces the parts of this plan that differ; `docs/silencer-method.md` describes the current state.
 

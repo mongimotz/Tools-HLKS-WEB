@@ -52,6 +52,53 @@ test('7. PDF round trip keeps project and inputs identical', async () => {
   assert.deepEqual(env.snapshot, snapshotOf(compute(doc.inputs)));
 });
 
+test('PDF round trip preserves automatic sizing, fractional estimated gaps and Schako noise profiles', async () => {
+  const inputs = normalizeInputs({ paths: [{
+    id: 'w1', name: 'Maximalmasse', flow: 5000,
+    rows: [
+      { id: 'r1', type: 'source', lw: [84, 88, 89, 87, 84, 81, 77, 72] },
+      {
+        id: 'r2', type: 'silencer', name: 'RIO', kind: 'rect',
+        design: { mode: 'auto', maxB: 1234, maxH: 1075, maxL: 2000 },
+        rect: { series: 'prod-rio', d: 160, s: 80.25, L: 1500, B: 1234, H: 1075 },
+      },
+      {
+        id: 'r3', type: 'silencer', name: 'Schako', kind: 'rect',
+        design: { mode: 'auto', maxB: 900, maxH: 1000, maxL: 1500 },
+        rect: { series: 'schako-mwk-ob', d: 200, s: 99.5, L: 1500, B: 898.5, H: 1000 },
+      },
+      {
+        id: 'r4', type: 'silencer', kind: 'round',
+        design: { mode: 'auto', maxB: null, maxH: null, maxL: 1200 },
+        round: { series: 'schako-rs-n', dn: 200, insulation: 100, L: 950 },
+      },
+    ],
+    receiver: { name: 'Büro', r: 3, q: 2, basis: 'manual', target: 40 },
+  }] });
+  const [, estimated, schako, circular] = inputs.paths[0].rows;
+  assert.equal(estimated.row.estimated, true);
+  assert.ok(estimated.row.estimateSources.length > 0);
+  assert.ok(estimated.row.interpolation, 'the effective gap lies between source table gaps');
+  assert.equal(estimated.rect.s, 80.25);
+  assert.ok(Math.abs(estimated.row.s - 86.8) < 1e-9, 'the stored row uses the actual casing gap');
+  assert.ok(estimated.row.de.some((v) => !Number.isInteger(v)), 'the estimate retains fractional attenuation');
+  assert.ok(schako.row.noiseProfile?.lw.length > 0, 'the saved Schako row contains octave noise spectra');
+  assert.equal(schako.row.s, 99.5);
+  assert.equal(circular.row.overallLength, 1050);
+
+  const doc = { project, inputs };
+  const result = compute(inputs);
+  const csv = buildCsv(doc, result);
+  assert.match(csv, /Prod\. RIO \(geschätzt\)/, 'the CSV marks the product itself as estimated');
+  assert.match(csv, /L gesamt 1’050/);
+  const { doc: back1 } = await importPdf(await exportPdf(doc));
+  assert.deepEqual(back1, doc, 'all project, design and stored manufacturer fields survive import');
+  const { doc: back2, env } = await importPdf(await exportPdf(back1));
+  assert.deepEqual(back2, doc, 'resaving keeps all inputs unchanged');
+  assert.deepEqual(env.snapshot, snapshotOf(result));
+  assert.equal(buildCsv(back2, compute(back2.inputs)), csv, 'the imported data reproduces the complete CSV');
+});
+
 test('CSV export has one line per table line of every path, plus sum and receiver, plus header', () => {
   const inputs = threePaths();
   const result = compute(inputs);
@@ -80,6 +127,10 @@ test('fixture PDFs still import and reproduce their snapshot', async () => {
   assert.ok(files.length > 0, 'at least one fixture (npm run fixtures)');
   for (const f of files) {
     const env = parseEnvelope(await extractDataJson(new Uint8Array(await readFile(new URL(f, dir)))));
+    if (env.version !== INPUT_VERSION) {
+      assert.throws(() => checkCompatibility(env, { tool: TOOL_ID, version: INPUT_VERSION, calcVersion: CALC_VERSION }), /[Vv]ersion/);
+      continue;
+    }
     checkCompatibility(env, { tool: TOOL_ID, version: INPUT_VERSION, calcVersion: CALC_VERSION });
     const snap = snapshotOf(compute(normalizeInputs(env.inputs)));
     if (env.calcVersion !== CALC_VERSION) continue;

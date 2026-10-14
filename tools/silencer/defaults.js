@@ -7,10 +7,10 @@
 // changes; the full database is not part of the inputs.
 // Beta: files of older input versions are not migrated (AGENTS.md), normalizeInputs only must not throw.
 
-import { lookupRow, rowCopy, rowMatches, snapRect, snapRound, RHO_TABLE } from './calc.js';
+import { lookupRow, rowCopy, rowMatches, dataSpec, snapRect, snapRound, RHO_TABLE } from './calc.js';
 
 export const TOOL_ID = 'silencer';
-export const INPUT_VERSION = 2;
+export const INPUT_VERSION = 3;
 
 /** Row types: source (+ L_W), loss (− D), branch (− ΔL from the flows), silencer (− D_e, + flow noise). */
 export const ROW_TYPES = ['source', 'loss', 'branch', 'silencer'];
@@ -188,7 +188,7 @@ function normalizeRound(r) {
  */
 function storedRow(sd) {
   if (sd.kind === 'manual') return null;
-  const spec = sd[sd.kind];
+  const spec = dataSpec(sd.kind, sd[sd.kind]);
   if (sd.row && rowMatches(sd.row, sd.kind, spec)) return rowCopy(sd.row, sd.kind);
   return rowCopy(lookupRow(sd.kind, spec), sd.kind);
 }
@@ -207,10 +207,12 @@ export function normalizeRow(e = {}) {
       return { ...base, flow: num(e.flow), dl: num(e.dl) };
     default: {
       const m = obj(e.manual);
+      const design = obj(e.design);
       const sd = {
         ...base,
         kind: pick(e.kind, SILENCER_KINDS, 'rect'),
         install: pick(e.install, INSTALLS, 'duct'),
+        design: { mode: pick(design.mode, ['manual', 'auto'], 'manual'), maxB: num(design.maxB), maxH: num(design.maxH), maxL: num(design.maxL) },
         rect: normalizeRect(e.rect),
         round: normalizeRound(e.round),
         manual: { de: spectrum(m.de), lwFlow: spectrum(m.lwFlow), unit: pick(m.unit, UNITS, 'dB'), dp: num(m.dp) },

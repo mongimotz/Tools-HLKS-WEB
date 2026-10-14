@@ -8,7 +8,7 @@
 // Units: lengths in mm (inputs) and m (calculation), flow in m³/h, velocity in m/s, pressure in Pa.
 // Spectra are arrays of 8 values for OCTAVES; "no sound" is -Infinity.
 
-export const CALC_VERSION = '2.0.0';
+export const CALC_VERSION = '2.1.0';
 
 import { dynamicViscosity, frictionFactor } from '../../lib/core/air.js';
 import {
@@ -20,6 +20,8 @@ import {
   ROUND_ROWS,
   TROX_FLOW_NOISE,
   TROX_FLOW_NOISE_FIT,
+  SCHAKO_FLOW_NOISE,
+  SCHAKO_KF,
   FLOW_NOISE_SPECTRUM,
   A_WEIGHTING,
   INSTALL_FACTORS,
@@ -89,10 +91,10 @@ export function zetaFromVelocityTable(dp, v) {
   return interpolate(dp.v, dp.v.map((vi, i) => zetaAt(dp.pa[i], vi)), v);
 }
 
-/** ζ from measured points { q [m³/h], pa } of a round silencer: mean of ζ_i, v_i = q_i / A. */
-export function zetaFromFlowPoints(dp, area) {
+/** ζ from measured points { q [m³/h], pa }: interpolate ζ_i over flow, holding endpoint coefficients. */
+export function zetaFromFlowPoints(dp, area, flow) {
   const z = dp.q.map((q, i) => zetaAt(dp.pa[i], q / 3600 / area));
-  return z.reduce((a, b) => a + b, 0) / z.length;
+  return interpolate(dp.q, z, flow);
 }
 
 /** Δp [Pa] of a straight galvanised duct (Colebrook-White). */
@@ -116,6 +118,56 @@ export function flowNoise(v, area) {
       : interpolate(vs.map(LG), ls, LG(v));
   const lwa = perArea + 10 * LG(area / TROX_FLOW_NOISE.refArea);
   return { lwa, lw: FLOW_NOISE_SPECTRUM.dl.map((dl) => lwa + dl) };
+}
+
+/** Schako's digitised spectral shape, normalised to its printed A-weighted total at each velocity. */
+function schakoNoiseProfile(row) {
+  if (!String(row.series ?? '').startsWith('schako-mwk-')) return null;
+  const rows = SCHAKO_FLOW_NOISE.rows.filter((r) => r.d === row.d).sort((a, b) => a.s - b.s);
+  const exact = rows.find((r) => Math.abs(r.s - row.s) <= EPS);
+  const lower = exact ?? rows.findLast((r) => r.s < row.s);
+  const upper = exact ?? rows.find((r) => r.s > row.s);
+  if (!lower || !upper) return null;
+  const t = lower === upper ? 0 : (row.s - lower.s) / (upper.s - lower.s);
+  const normalize = (lw, lwa) => lw.map((l) => l + lwa - aWeighted(lw));
+  const lwa = lower.lwa.map((l, i) => l + t * (upper.lwa[i] - l));
+  const lw = lower.lw.map((spectrum, i) => {
+    const lo = normalize(spectrum, lower.lwa[i]);
+    const hi = normalize(upper.lw[i], upper.lwa[i]);
+    return normalize(lo.map((l, j) => l + t * (hi[j] - l)), lwa[i]);
+  });
+  return { source: SCHAKO_FLOW_NOISE.source, v: SCHAKO_FLOW_NOISE.v.slice(), lw, lwa, area: SCHAKO_KF.area.slice(), kf: SCHAKO_KF.kf.slice() };
+}
+
+function normalizeNoiseProfile(profile) {
+  if (!profile || typeof profile !== 'object') return null;
+  const finite = (xs) => Array.isArray(xs) && xs.every(Number.isFinite);
+  const ascending = (xs) => finite(xs) && xs.length >= 2 && xs.every((x, i) => x > 0 && (i === 0 || x > xs[i - 1]));
+  if (!ascending(profile.v) || !ascending(profile.area) || !finite(profile.lwa) || !finite(profile.kf)
+    || profile.lwa.length !== profile.v.length || profile.kf.length !== profile.area.length
+    || !Array.isArray(profile.lw) || profile.lw.length !== profile.v.length
+    || !profile.lw.every((lw) => finite(lw) && lw.length === BANDS)) return null;
+  return { source: String(profile.source ?? ''), v: profile.v.slice(), lw: profile.lw.map((lw) => lw.slice()), lwa: profile.lwa.slice(), area: profile.area.slice(), kf: profile.kf.slice() };
+}
+
+/** Schako source spectra over log velocity and its printed area correction over log face area. */
+export function schakoFlowNoise(v, area, profile) {
+  if (!(v > 0 && area > 0) || !profile) return null;
+  const logVelocity = profile.v.map(LG);
+  const logV = LG(v);
+  const v0 = logVelocity[0];
+  const v1 = logVelocity.at(-1);
+  const extrapolate = (ys) => {
+    if (logV >= v0 && logV <= v1) return interpolate(logVelocity, ys, logV);
+    const a = logV < v0 ? 0 : logVelocity.length - 2;
+    return ys[a] + ((logV - logVelocity[a]) / (logVelocity[a + 1] - logVelocity[a])) * (ys[a + 1] - ys[a]);
+  };
+  const areaInRange = area >= profile.area[0] && area <= profile.area.at(-1);
+  const correction = areaInRange ? interpolate(profile.area.map(LG), profile.kf, LG(area)) : 10 * LG(area);
+  const lwa = extrapolate(profile.lwa) + correction;
+  const spectrum = Array.from({ length: BANDS }, (_, i) => extrapolate(profile.lw.map((lw) => lw[i])) + correction);
+  const total = aWeighted(spectrum);
+  return { lwa, lw: spectrum.map((l) => l + lwa - total), estimated: v < profile.v[0] || v > profile.v.at(-1) || !areaInRange };
 }
 
 // ---- targets ----------------------------------------------------------------------------
@@ -179,14 +231,37 @@ export const seriesOf = (kind, id) => (kind === 'rect' ? SPLITTER_SERIES_BY_ID :
 /** True if the row belongs to the selection (rect: series, d, s, L; round: series, dn, L, insulation, core). */
 export function rowMatches(row, kind, spec) {
   if (!row || !spec || row.series !== spec.series) return false;
-  if (kind === 'rect') return row.d === spec.d && row.s === spec.s && row.L === spec.L;
+  if (kind === 'rect') return row.d === spec.d && Math.abs(row.s - spec.s) <= EPS && row.L === spec.L;
   return row.dn === spec.dn && row.L === spec.L && row.insulation === spec.insulation && (spec.core == null || row.core === spec.core);
 }
 
 /** The data row for a selection, or null. Round: core empty → the first row of the size. */
 export function lookupRow(kind, spec) {
   const rows = kind === 'rect' ? SPLITTER_ROWS : kind === 'round' ? ROUND_ROWS : [];
-  return rows.find((r) => rowMatches(r, kind, spec)) ?? null;
+  const exact = rows.find((r) => rowMatches(r, kind, spec));
+  if (exact || kind !== 'rect') return exact ?? null;
+  const pool = rows.filter((r) => r.series === spec?.series && r.d === spec.d && r.L === spec.L).sort((a, b) => a.s - b.s);
+  const lower = pool.findLast((r) => r.s < spec.s);
+  const upper = pool.find((r) => r.s > spec.s);
+  if (!lower || !upper) return null;
+  const t = (spec.s - lower.s) / (upper.s - lower.s);
+  const mix = (a, b) => a + t * (b - a);
+  const velocities = uniqueSorted([...lower.dp.v, ...upper.dp.v]);
+  const flags = {};
+  for (const key of ['de', 'dp']) {
+    const values = { ...lower.flags?.[key], ...upper.flags?.[key] };
+    if (Object.keys(values).length) flags[key] = values;
+  }
+  return {
+    series: spec.series, d: spec.d, s: spec.s, L: spec.L,
+    de: lower.de.map((v, i) => Math.min(50, mix(v, upper.de[i]))),
+    dp: { v: velocities, pa: velocities.map((v) => mix(interpolate(lower.dp.v, lower.dp.pa, v), interpolate(upper.dp.v, upper.dp.pa, v))) },
+    ...(Object.keys(flags).length ? { flags } : {}),
+    note: [...new Set([lower.note, upper.note].filter(Boolean))].join(' '),
+    estimated: lower.estimated === true || upper.estimated === true,
+    estimateSources: [...new Set([...(lower.estimateSources ?? []), ...(upper.estimateSources ?? [])])],
+    interpolation: { sMin: lower.s, sMax: upper.s },
+  };
 }
 
 // Choices for the selection: only combinations that exist in the data. Each level is filtered by the levels
@@ -195,7 +270,6 @@ export function lookupRow(kind, spec) {
 const uniqueSorted = (xs) => [...new Set(xs)].sort((a, b) => a - b);
 const nearest = (list, v) => (list.includes(v) ? v : list.reduce((best, x) => (best == null || Math.abs(x - v) < Math.abs(best - v) ? x : best), null));
 
-export const RECT_KEYS = ['d', 's', 'L'];
 export const ROUND_KEYS = ['dn', 'insulation', 'core', 'L'];
 
 function choicesOf(rows, keys, spec) {
@@ -219,12 +293,31 @@ function snapOf(rows, keys, spec, seriesIds) {
   return out;
 }
 
-/** Values of d, s, L that exist for the selection (rectangular splitter silencers). */
-export const rectChoices = (spec) => choicesOf(SPLITTER_ROWS, RECT_KEYS, spec);
+/** Table thicknesses, gap reference points and supported lengths, including intermediate gaps. */
+export function rectChoices(spec) {
+  const pool = SPLITTER_ROWS.filter((r) => r.series === spec.series);
+  const sizes = pool.filter((r) => r.d === spec.d);
+  const lengths = uniqueSorted(sizes.map((r) => r.L));
+  return {
+    d: uniqueSorted(pool.map((r) => r.d)),
+    s: uniqueSorted(sizes.map((r) => r.s)),
+    L: lengths.filter((L) => lookupRow('rect', { ...spec, L })),
+  };
+}
 /** Values of dn, insulation, core, L that exist for the selection (round silencers). */
 export const roundChoices = (spec) => choicesOf(ROUND_ROWS, ROUND_KEYS, spec);
-/** The selection moved to the nearest existing row (level by level). Other keys (B, H) stay. */
-export const snapRect = (spec) => snapOf(SPLITTER_ROWS, RECT_KEYS, spec, SPLITTER_SERIES.map((s) => s.id));
+/** Keep intermediate gaps; clamp to the supported range and snap thickness and length. B and H stay. */
+export function snapRect(spec) {
+  const series = SPLITTER_SERIES.some((s) => s.id === spec.series) ? spec.series : SPLITTER_SERIES[0].id;
+  const pool = SPLITTER_ROWS.filter((r) => r.series === series);
+  const d = nearest(uniqueSorted(pool.map((r) => r.d)), spec.d);
+  const sizes = pool.filter((r) => r.d === d);
+  const gaps = uniqueSorted(sizes.map((r) => r.s));
+  const s = Number.isFinite(spec.s) ? Math.min(gaps.at(-1), Math.max(gaps[0], spec.s)) : gaps[0];
+  const out = { ...spec, series, d, s };
+  out.L = nearest(rectChoices(out).L, spec.L);
+  return out;
+}
 export const snapRound = (spec) => snapOf(ROUND_ROWS, ROUND_KEYS, spec, ROUND_SERIES.map((s) => s.id));
 
 const n0 = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
@@ -249,6 +342,11 @@ export function rowCopy(row, kind, dataVersion = row?.dataVersion ?? DATA_VERSIO
       dp: { v: numbers(row.dp?.v), pa: numbers(row.dp?.pa) },
       flags: row.flags && typeof row.flags === 'object' ? clone(row.flags) : null,
       note: str(row.note),
+      estimated: row.estimated === true,
+      estimateSources: Array.isArray(row.estimateSources) ? row.estimateSources.map(str) : [],
+      interpolation: row.interpolation && typeof row.interpolation === 'object'
+        ? { sMin: n0(row.interpolation.sMin), sMax: n0(row.interpolation.sMax) } : null,
+      noiseProfile: row.noiseProfile === undefined ? schakoNoiseProfile(row) : normalizeNoiseProfile(row.noiseProfile),
       dataVersion: str(dataVersion),
     };
   }
@@ -265,11 +363,16 @@ export function rowCopy(row, kind, dataVersion = row?.dataVersion ?? DATA_VERSIO
     insulation: n0(row.insulation),
     core: n0(row.core),
     dOuter: n0(row.dOuter),
+    dOuterMax: n0(row.dOuterMax),
+    bodyLength: n0(row.bodyLength),
+    overallLength: n0(row.overallLength),
     de,
     dpModel,
     dp,
     dpFromDn: n0(row.dpFromDn),
     note: str(row.note),
+    estimated: row.estimated === true,
+    estimateSources: Array.isArray(row.estimateSources) ? row.estimateSources.map(str) : [],
     dataVersion: str(dataVersion),
   };
 }
@@ -277,9 +380,16 @@ export function rowCopy(row, kind, dataVersion = row?.dataVersion ?? DATA_VERSIO
 /** The data row a database silencer uses: its stored copy if it fits the selection, else the current data. */
 export function rowOf(sd) {
   if (sd.kind !== 'rect' && sd.kind !== 'round') return null;
-  const spec = sd[sd.kind];
+  const spec = dataSpec(sd.kind, sd[sd.kind]);
   if (rowMatches(sd.row, sd.kind, spec)) return sd.row;
   return rowCopy(lookupRow(sd.kind, spec), sd.kind, DATA_VERSION);
+}
+
+/** Geometry used by the tables. Rectangular rows use the actual evenly distributed gap. */
+export function dataSpec(kind, spec) {
+  if (kind !== 'rect' || !(spec.B > spec.d && spec.s > 0)) return spec;
+  const n = splitterCount(spec.B, spec.d, spec.s);
+  return { ...spec, s: spec.B / n - spec.d };
 }
 
 /** Database silencers whose stored row differs from the current data (or is no longer in it): [{ pathId, rowId, missing }]. */
@@ -299,9 +409,6 @@ export function staleRows(inputs) {
 
 // ---- silencers ---------------------------------------------------------------------------
 
-/** Gap deviation a variant may have: |s′ − s| ≤ this share of s. */
-export const GAP_TOLERANCE = 0.2;
-
 /**
  * Number of splitters in a housing of width B: n = round(B / (d + s)), at least 1; 0 if B ≤ d.
  * The splitters sit evenly: gap s′ = B / n − d, half a gap at each wall, so n·(d + s′) = B.
@@ -313,15 +420,17 @@ export function splitterCount(B, d, s) {
 
 /**
  * Rectangular splitter silencer in a housing B × H (inner size, given by the user), splitters evenly spaced:
- * n = splitterCount, gap s′ = B / n − d. D_e is the value of the data row (gap s); s′ ≠ s is reported.
+ * n = splitterCount, gap s′ = B / n − d. D_e and pressure use bounded interpolation at s′.
  * A_free = n·s′·H, v = V̇ / A_free, Δp = ζ(v)·ρ/2·v² × installation factor, flow noise from the Trox table
- * with the face area B·H. Without flow: geometry and D_e only.
+ * with the face area B·H, or the Schako source spectra where supported. Without flow: geometry and D_e only.
  */
 export function splitterSilencer({ row, B, H, flow, density, install = 'duct' }) {
   const n = splitterCount(B, row.d, row.s);
   const gap = n > 0 ? B / n - row.d : null;
+  const effectiveRow = gap > 0 && Math.abs(gap - row.s) > EPS ? lookupRow('rect', { ...row, s: gap }) : row;
   const out = {
-    de: row.de.slice(),
+    de: effectiveRow ? effectiveRow.de.slice() : losses(null),
+    supported: effectiveRow != null,
     B,
     H,
     n,
@@ -337,11 +446,16 @@ export function splitterSilencer({ row, B, H, flow, density, install = 'duct' })
   if (!(flow > 0) || !(out.aFree > 0)) return out;
   out.v = flow / 3600 / out.aFree;
   out.installFactor = INSTALL_FACTORS[install] ?? 1;
-  out.zeta = zetaFromVelocityTable(row.dp, out.v);
-  out.dp = out.zeta * (density / 2) * out.v * out.v * out.installFactor;
-  const noise = flowNoise(out.v, out.face);
+  if (effectiveRow) {
+    out.zeta = zetaFromVelocityTable(effectiveRow.dp, out.v);
+    out.dp = out.zeta * (density / 2) * out.v * out.v * out.installFactor;
+  }
+  const noiseRow = effectiveRow ?? row;
+  const noiseProfile = noiseRow.noiseProfile === undefined ? schakoNoiseProfile(noiseRow) : noiseRow.noiseProfile;
+  const noise = schakoFlowNoise(out.v, out.face, noiseProfile) ?? flowNoise(out.v, out.face);
   out.lwFlow = noise.lw;
   out.lwaFlow = noise.lwa;
+  out.flowNoiseEstimated = noiseProfile ? noise.estimated : !row.series.startsWith('trox-');
   return out;
 }
 
@@ -354,16 +468,16 @@ export function roundSilencer({ row, flow, density }) {
   const area = circle(row.dn);
   const d0 = row.dIn ?? row.dn;
   const aFree = circle(d0) - ((row.core ?? 0) * d0) / 1e6;
-  const out = { de: row.de.slice(), area, aFree, v: null, vDuct: null, zeta: null, lambda: null, dp: null, lwFlow: null, lwaFlow: null };
+  const out = { de: row.de.slice(), area, aFree, v: null, vDuct: null, zeta: null, lambda: null, dp: null, lwFlow: null, lwaFlow: null, flowNoiseEstimated: true };
   if (!(flow > 0) || !(aFree > 0)) return out;
   out.vDuct = flow / 3600 / area;
   out.v = flow / 3600 / aFree;
   if (row.dpModel === 'duct') {
-    const r = ductLoss({ v: out.vDuct, dMm: row.dn, lengthMm: row.L, density });
+    const r = ductLoss({ v: out.vDuct, dMm: row.dn, lengthMm: Math.max(row.L, row.overallLength ?? row.L), density });
     out.lambda = r.lambda;
     out.dp = r.dp;
   } else if (row.dpModel === 'flow-points' && row.dp) {
-    out.zeta = zetaFromFlowPoints(row.dp, area);
+    out.zeta = zetaFromFlowPoints(row.dp, area, flow);
     out.dp = out.zeta * (density / 2) * out.vDuct * out.vDuct;
   } else if (row.dpModel === 'velocity-table' && row.dp) {
     out.zeta = zetaFromVelocityTable(row.dp, out.v);
@@ -391,7 +505,14 @@ function silencerResult(sd, flow, density, levelIn, issue) {
   } else {
     const row = rowOf(sd);
     if (!row) {
-      issue('error', 'row-missing');
+      const spec = sd.rect;
+      const gaps = sd.kind === 'rect' ? SPLITTER_ROWS.filter((r) => r.series === spec.series && r.d === spec.d && r.L === spec.L).map((r) => r.s) : [];
+      const actual = gaps.length ? dataSpec('rect', spec).s : null;
+      if (gaps.length && (actual < Math.min(...gaps) - EPS || actual > Math.max(...gaps) + EPS)) {
+        issue('error', 'gap-range', { value: actual, min: Math.min(...gaps), max: Math.max(...gaps) });
+        const fallback = lookupRow('rect', spec);
+        if (fallback) Object.assign(r, splitterSilencer({ row: fallback, B: spec.B, H: spec.H, flow, density, install: sd.install }));
+      } else issue('error', 'row-missing');
       r.de = losses(null);
       return r;
     }
@@ -402,7 +523,7 @@ function silencerResult(sd, flow, density, levelIn, issue) {
       Object.assign(r, splitterSilencer({ row, B, H, flow, density, install: sd.install }));
       if (!(B > 0 && H > 0)) issue('error', 'geometry-missing');
       else if (r.n < 1) issue('error', 'housing-small', { value: B, limit: row.d });
-      else if (Math.abs(r.gap - row.s) > 0.5) issue(Math.abs(r.gap - row.s) > GAP_TOLERANCE * row.s + EPS ? 'warning' : 'info', 'gap-deviation', { value: r.gap, limit: row.s });
+      else if (Math.abs(r.gap - sd.rect.s) > 0.5) issue('info', 'gap-deviation', { value: r.gap, limit: sd.rect.s });
       const series = seriesOf('rect', row.series);
       if (series?.maker === 'Trox') {
         const min = Math.max(LIMITS.troxGapMin.value, 0.25 * row.d);
@@ -410,6 +531,7 @@ function silencerResult(sd, flow, density, levelIn, issue) {
         if (row.s < min - EPS || row.s > max + EPS) issue('warning', 'trox-gap', { value: row.s, min, max });
       }
       if (series?.dpValidHeight && H > 0 && H !== series.dpValidHeight) issue('info', 'height-dp', { value: H, limit: series.dpValidHeight });
+      if (series?.maker === 'Schako' && H > 0 && H < 200) issue('info', 'schako-height', { value: H, min: 200 });
     } else {
       Object.assign(r, roundSilencer({ row, flow, density }));
     }
@@ -573,14 +695,15 @@ export const VARIANT_LIMITS = { vMax: LIMITS.vGapPlan.value, dpMax: LIMITS.dpPer
 /**
  * Variants for one database silencer, in the housing the user gave (rect: B × H) or for its size (round: dn).
  * Every variant is the silencer row put into the path in place of the current one; the rest stays as it is.
- *   rect:  one variant per splitter thickness d and gap s of the series that fits B: n from splitterCount, the
- *          real gap s′ within GAP_TOLERANCE of s
+ *   rect:  one variant per splitter thickness d and count n at an interpolatable actual gap
  *   round: one variant per insulation and core of the series at dn
  * Within a variant the length L is chosen: with a target the shortest L that meets it, else (or if no L meets
  * it) the L with the lowest L_pA. A variant fits when v ≤ v max, Δp ≤ Δp max, the flow noise keeps its margin
  * and the receiver meets its target.
+ * Automatic mode uses the maximum height and searches full-width interpolated cells plus fitted table gaps.
+ * Round lengths are checked against their overall installation length. Manual mode keeps B, H or dn.
  * Ranking: fitting variants first (Δp, then L), then the others (limits kept first, then the lowest L_pA).
- * Returns { kind, missing: null | 'geometry' | 'flow', list }.
+ * Returns { kind, missing: null | 'geometry' | 'length' | 'flow', list }.
  */
 export function silencerVariants(inputs, pathId, rowId) {
   const path = inputs.paths.find((p) => p.id === pathId);
@@ -588,14 +711,19 @@ export function silencerVariants(inputs, pathId, rowId) {
   if (!sd || sd.type !== 'silencer' || (sd.kind !== 'rect' && sd.kind !== 'round')) return null;
   const kind = sd.kind;
   const spec0 = sd[kind];
+  const auto = sd.design?.mode === 'auto';
+  const B = auto ? sd.design.maxB : spec0.B;
+  const H = auto ? sd.design.maxH : spec0.H;
+  const maxL = auto ? sd.design.maxL : Infinity;
   const ctx = { density: inputs.density, catalogs: inputs.catalogs };
   const flowAt = computePath(path, ctx).rows.get(rowId)?.flow;
-  if (kind === 'rect' && !(spec0.B > 0 && spec0.H > 0)) return { kind, missing: 'geometry', list: [] };
+  if ((kind === 'rect' && !(B > 0 && H > 0)) || (kind === 'round' && !(spec0.dn > 0))) return { kind, missing: 'geometry', list: [] };
+  if (auto && !(maxL > 0)) return { kind, missing: 'length', list: [] };
   if (!(flowAt > 0)) return { kind, missing: 'flow', list: [] };
 
-  const evaluate = (dataRow) => {
+  const evaluate = ({ dataRow, B: width = B }) => {
     const spec = kind === 'rect'
-      ? { ...spec0, d: dataRow.d, s: dataRow.s, L: dataRow.L }
+      ? { ...spec0, B: width, H, d: dataRow.d, s: dataRow.s, L: dataRow.L }
       : { ...spec0, dn: dataRow.dn, insulation: dataRow.insulation, core: dataRow.core, L: dataRow.L };
     const row = rowCopy(dataRow, kind, DATA_VERSION);
     const trial = { ...sd, [kind]: spec, row };
@@ -610,28 +738,42 @@ export function silencerVariants(inputs, pathId, rowId) {
       gap: r.gap ?? null,
       v: r.v,
       dp: r.dp,
+      noiseMargin: r.noiseMargin,
       lwaFlow: r.lwaFlow,
       lpa: rc.lpa,
       margin: rc.margin,
       limitsOk,
-      ok: limitsOk && (rc.status == null || rc.status === 'ok'),
+      ok: limitsOk && Number.isFinite(rc.lpa) && !res.issues.some((issue) => issue.severity === 'error')
+        && (rc.status == null || rc.status === 'ok'),
       hasTarget: rc.status != null,
     };
   };
 
   const pool = kind === 'rect'
-    ? fittingSplitterRows(spec0.series, spec0.B)
-    : ROUND_ROWS.filter((r) => r.series === spec0.series && r.dn === spec0.dn);
+    ? fittingSplitterRows(spec0.series, B).map((dataRow) => ({ dataRow, B }))
+    : ROUND_ROWS.filter((r) => r.series === spec0.series && r.dn === spec0.dn).map((dataRow) => ({ dataRow }));
+  if (auto && kind === 'rect') {
+    // Exact table gaps also provide smaller fitted housings below the maximum width.
+    for (const dataRow of SPLITTER_ROWS) {
+      if (dataRow.series !== spec0.series) continue;
+      const n = Math.floor((B + EPS) / (dataRow.d + dataRow.s));
+      if (n >= 1) pool.push({ dataRow, B: n * (dataRow.d + dataRow.s) });
+    }
+  }
   const groups = new Map();
-  for (const r of pool) {
-    const key = kind === 'rect' ? `${r.d}/${r.s}` : `${r.insulation}/${r.core ?? ''}`;
+  for (const candidate of pool) {
+    const r = candidate.dataRow;
+    // Contradictory nominal and printed dimensions cannot establish an automatic space fit.
+    if (auto && kind === 'round' && r.overallLength != null && r.overallLength < r.L - EPS) continue;
+    if ((kind === 'round' ? r.overallLength ?? r.L : r.L) > maxL + EPS) continue;
+    const key = kind === 'rect' ? `${r.d}/${candidate.B}/${splitterCount(candidate.B, r.d, r.s)}` : `${r.insulation}/${r.core ?? ''}`;
     if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(r);
+    if (!groups.get(key).some((c) => c.dataRow.L === r.L)) groups.get(key).push(candidate);
   }
   const lower = (a, b) => (Number.isFinite(a.lpa) ? a.lpa : Infinity) < (Number.isFinite(b.lpa) ? b.lpa : Infinity);
   const list = [];
   for (const rows of groups.values()) {
-    const cands = rows.slice().sort((a, b) => a.L - b.L).map(evaluate);
+    const cands = rows.slice().sort((a, b) => a.dataRow.L - b.dataRow.L).map(evaluate);
     const fit = cands.find((c) => c.ok && c.hasTarget);
     if (fit) {
       list.push(fit);
@@ -651,21 +793,31 @@ export function silencerVariants(inputs, pathId, rowId) {
 }
 
 /**
- * Data rows of a series that fit a housing width B: the real gap s′ within GAP_TOLERANCE of s. Two gaps s of the
- * same d that give the same n (the same silencer) keep only the s closest to s′.
+ * Rows at every splitter count whose actual gap lies within the supported range for d and L.
+ * Interpolation is bounded by the two neighbouring tabulated gaps; no gap or length is extrapolated.
  */
 export function fittingSplitterRows(series, B) {
-  const best = new Map();
+  const groups = new Map();
   for (const r of SPLITTER_ROWS) {
     if (r.series !== series) continue;
-    const n = splitterCount(B, r.d, r.s);
-    const dev = n > 0 ? Math.abs(B / n - r.d - r.s) : Infinity;
-    if (dev > GAP_TOLERANCE * r.s + EPS) continue;
-    const key = `${r.d}/${n}`;
-    const cur = best.get(key);
-    if (!cur || dev < cur.dev - EPS) best.set(key, { s: r.s, dev });
+    const key = `${r.d}/${r.L}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(r);
   }
-  return SPLITTER_ROWS.filter((r) => r.series === series && best.get(`${r.d}/${splitterCount(B, r.d, r.s)}`)?.s === r.s);
+  const out = [];
+  for (const rows of groups.values()) {
+    const first = rows[0];
+    const min = Math.min(...rows.map((r) => r.s));
+    const max = Math.max(...rows.map((r) => r.s));
+    const nMin = Math.max(1, Math.ceil(B / (first.d + max) - EPS));
+    const nMax = Math.floor(B / (first.d + min) + EPS);
+    if (!Number.isSafeInteger(nMin) || !Number.isSafeInteger(nMax)) continue;
+    for (let n = nMin; n <= nMax; n++) {
+      const row = lookupRow('rect', { ...first, s: B / n - first.d });
+      if (row) out.push(row);
+    }
+  }
+  return out;
 }
 
 /** Key results stored in the envelope for regression checks (never used as input). */

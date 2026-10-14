@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Rectangular splitter silencers (Kulissenschalldämpfer): manufacturer tables, transcribed 1:1.
+// Rectangular splitter silencers: verified manufacturer tables and marked open-splitter estimates.
 // Schema, units, conventions and known source quirks: docs/silencer-data.md.
-// Generated 2026-10-12. Do not change a value without a source; add a note instead.
+// Verified against the owner's local manufacturer PDFs on 2026-10-14.
 //
 // Row: { series, d, s, L, de, dp, flags?, note? }
 //   d, s, L  splitter thickness, gap between two splitters, length in air direction [mm]
@@ -12,21 +12,25 @@
 //
 // Edge gap to the duct wall is s/2 in all tables. Insertion loss does not depend on the number of splitters.
 
-export const DATA_VERSION = '2026-10-12';
+export const DATA_VERSION = '2026-10-14';
 
 /** Octave band centre frequencies [Hz], index of every `de` array. */
 export const OCTAVES = [63, 125, 250, 500, 1000, 2000, 4000, 8000];
 
 /** Series meta. `dpVelocity: 'gap'` = Δp tables refer to v_s. */
 export const SPLITTER_SERIES = [
-  { id: 'trox-xk', maker: 'Trox', label: 'Trox XK (Gehäuse XS)', principle: 'Absorption', thicknesses: [100, 200, 230, 300], dpVelocity: 'gap', dpValidHeight: 1000, sources: ['Q02', 'Q01'], note: 'Δp gilt für Höhe H = 1000 mm (Trox). Δp identisch mit MK.' },
   { id: 'trox-mk', maker: 'Trox', label: 'Trox MK (Gehäuse MS)', principle: 'Absorption + Kammerbleche (Resonanz)', thicknesses: [100, 200, 230], dpVelocity: 'gap', dpValidHeight: 1000, sources: ['Q01'], note: 'Δp gilt für Höhe H = 1000 mm (Trox). Δp identisch mit XK.' },
-  { id: 'schako-mwk-ob', maker: 'Schako', label: 'Schako MWK-OB / -LL (Gehäuse MWS)', principle: 'Absorption (OB ohne, LL mit Lochblech)', thicknesses: [100, 200], dpVelocity: 'gap', dpValidHeight: null, sources: ['Q06'], note: 'Kulisse 300 mm nur auf Anfrage.' },
-  { id: 'schako-mwk-mb', maker: 'Schako', label: 'Schako MWK-MB / -LB (Gehäuse MWS)', principle: 'Absorption + Resonanzblech halbseitig', thicknesses: [100, 200], dpVelocity: 'gap', dpValidHeight: null, sources: ['Q06'], note: 'Δp identisch mit MWK-OB / -LL.' },
+  { id: 'trox-xk', maker: 'Trox', label: 'Trox XK (Gehäuse XS)', principle: 'Absorption', thicknesses: [100, 200, 230, 300], dpVelocity: 'gap', dpValidHeight: 1000, sources: ['Q02'], note: 'Δp gilt für Höhe H = 1000 mm (Trox). Δp identisch mit MK.' },
+  { id: 'schako-mwk-ob', maker: 'Schako', label: 'Schako MWK-OB (Gehäuse MWS-OB)', principle: 'Absorption, offene Glasseide', thicknesses: [100, 200], dpVelocity: 'gap', dpValidHeight: null, sources: ['Q06'], note: 'Kulisse 300 mm nur auf Anfrage.' },
+  { id: 'schako-mwk-mb', maker: 'Schako', label: 'Schako MWK-MB (Gehäuse MWS-MB)', principle: 'Absorption + Resonanzblech halbseitig', thicknesses: [100, 200], dpVelocity: 'gap', dpValidHeight: null, sources: ['Q06'], note: 'Gemeinsame Herstellertabelle mit MWK-LB.' },
+  { id: 'schako-mwk-ll', maker: 'Schako', label: 'Schako MWK-LL (Gehäuse MWS-LL)', principle: 'Absorption, ganze Lochblechabdeckung', thicknesses: [100, 200], dpVelocity: 'gap', dpValidHeight: null, sources: ['Q06'], note: 'Gemeinsame Herstellertabelle mit MWK-OB.' },
+  { id: 'schako-mwk-lb', maker: 'Schako', label: 'Schako MWK-LB (Gehäuse MWS-LB)', principle: 'Absorption + Resonanzblech halbseitig, Lochblechabdeckung', thicknesses: [100, 200], dpVelocity: 'gap', dpValidHeight: null, sources: ['Q06'], note: 'Gemeinsame Herstellertabelle mit MWK-MB.' },
+  { id: 'prod-rio', maker: 'Prod. RIO', label: 'Prod. RIO (geschätzt)', principle: 'Offene Absorptionskulisse, geschätzt', thicknesses: [100, 160, 200], dpVelocity: 'gap', dpValidHeight: 1000, sources: ['Q02', 'Q06'], estimated: true, note: 'Schätzung aus offenen Trox XK und Schako MWK-OB. Keine Herstellerprüfung.' },
+  { id: 'prod-schmidlin', maker: 'Prod. Schmidlin', label: 'Prod. Schmidlin (geschätzt)', principle: 'Offene Absorptionskulisse, geschätzt', thicknesses: [100, 150, 200, 250, 300], dpVelocity: 'gap', dpValidHeight: 1000, sources: ['Q02', 'Q06'], estimated: true, note: 'Schätzung aus offenen Trox XK und Schako MWK-OB. Keine Herstellerprüfung.' },
 ];
 
-/** 305 configurations (series, d, s, L). */
-export const SPLITTER_ROWS = [
+/** 305 verified configurations. Additional covered series and estimates follow below. */
+const MANUFACTURER_ROWS = [
   { series: 'trox-xk', d: 100, s: 50, L: 500, de: [4, 8, 6, 18, 35, 40, 27, 22], dp: { v: [6, 10, 14], pa: [10, 29, 56] } },
   { series: 'trox-xk', d: 100, s: 100, L: 500, de: [4, 4, 4, 15, 27, 22, 15, 10], dp: { v: [6, 10, 14], pa: [8, 23, 45] } },
   { series: 'trox-xk', d: 100, s: 50, L: 1000, de: [6, 10, 14, 28, 44, 48, 35, 29], dp: { v: [6, 10, 14], pa: [13, 37, 72] } },
@@ -265,7 +269,7 @@ export const SPLITTER_ROWS = [
   { series: 'schako-mwk-mb', d: 100, s: 70, L: 2000, de: [3, 12, 28, 43, 50, 48, 28, 20], dp: { v: [6, 7, 8, 9, 10, 11, 12, 13], pa: [15, 18, 22, 28, 34, 41, 48, 57] } },
   { series: 'schako-mwk-mb', d: 100, s: 80, L: 2000, de: [3, 11, 26, 40, 50, 42, 24, 17], dp: { v: [6, 7, 8, 9, 10, 11, 12, 13], pa: [13, 16, 20, 25, 30, 36, 42, 50] } },
   { series: 'schako-mwk-mb', d: 100, s: 90, L: 2000, de: [2, 10, 24, 37, 48, 36, 20, 14], dp: { v: [6, 7, 8, 9, 10, 11, 12, 13], pa: [12, 14, 17, 22, 27, 32, 38, 44] } },
-  { series: 'schako-mwk-mb', d: 100, s: 100, L: 2000, de: [2, 9, 22, 35, 44, 31, 17, 12], dp: { v: [6, 7, 8, 9, 10, 11, 12, 13], pa: [10, 10, 16, 20, 24, 29, 34, 40] }, flags: { dp: { 6: '<', 7: '<' } }, note: 'Δp bei 7 m/s laut Quelle \'<10\', kleiner als bei L = 1000/1500.' },
+  { series: 'schako-mwk-mb', d: 100, s: 100, L: 2000, de: [2, 9, 22, 35, 44, 31, 17, 12], dp: { v: [6, 7, 8, 9, 10, 11, 12, 13], pa: [10, 13, 16, 20, 24, 29, 34, 40] }, flags: { dp: { 6: '<' } } },
   { series: 'schako-mwk-mb', d: 100, s: 50, L: 2500, de: [5, 15, 38, 50, 50, 50, 45, 31], dp: { v: [6, 7, 8, 9, 10, 11, 12, 13], pa: [22, 26, 32, 41, 49, 60, 71, 83] } },
   { series: 'schako-mwk-mb', d: 100, s: 60, L: 2500, de: [4, 15, 35, 50, 50, 50, 39, 27], dp: { v: [6, 7, 8, 9, 10, 11, 12, 13], pa: [18, 22, 27, 35, 41, 51, 59, 67] } },
   { series: 'schako-mwk-mb', d: 100, s: 70, L: 2500, de: [4, 14, 32, 47, 50, 50, 34, 24], dp: { v: [6, 7, 8, 9, 10, 11, 12, 13], pa: [16, 19, 24, 30, 36, 43, 51, 60] } },
@@ -332,4 +336,93 @@ export const SPLITTER_ROWS = [
   { series: 'schako-mwk-mb', d: 200, s: 160, L: 3000, de: [5, 25, 41, 38, 47, 32, 20, 18], dp: { v: [6, 7, 8, 9, 10, 11, 12, 13], pa: [11, 14, 18, 23, 28, 34, 40, 46] } },
   { series: 'schako-mwk-mb', d: 200, s: 180, L: 3000, de: [5, 25, 38, 36, 43, 29, 20, 16], dp: { v: [6, 7, 8, 9, 10, 11, 12, 13], pa: [10, 13, 17, 21, 25, 32, 36, 43] }, flags: { dp: { 6: '>' } }, note: 'Δp bei 6 m/s laut Quelle \'>10\', vermutlich Druckfehler für \'<10\'.' },
   { series: 'schako-mwk-mb', d: 200, s: 200, L: 3000, de: [5, 23, 34, 32, 38, 23, 18, 14], dp: { v: [6, 7, 8, 9, 10, 11, 12, 13], pa: [10, 13, 15, 20, 24, 30, 34, 41] }, flags: { dp: { 6: '>' } }, note: 'Δp bei 6 m/s laut Quelle \'>10\', vermutlich Druckfehler für \'<10\'.' },
+];
+
+const cloneRow = (row, series) => ({
+  ...row, series, de: [...row.de], dp: { v: [...row.dp.v], pa: [...row.dp.pa] },
+  ...(row.flags ? { flags: {
+    ...(row.flags.de ? { de: { ...row.flags.de } } : {}),
+    ...(row.flags.dp ? { dp: { ...row.flags.dp } } : {}),
+  } } : {}),
+});
+
+// The source explicitly groups these product finishes in the same tables.
+const COVERED_ROWS = [
+  ...MANUFACTURER_ROWS.filter((row) => row.series === 'schako-mwk-ob').map((row) => cloneRow(row, 'schako-mwk-ll')),
+  ...MANUFACTURER_ROWS.filter((row) => row.series === 'schako-mwk-mb').map((row) => cloneRow(row, 'schako-mwk-lb')),
+];
+
+// Only exposed absorbers qualify as references for the owner's requested estimates.
+// MK, RK, MB, LL and LB must never enter this model.
+const OPEN_REFERENCE_SERIES = ['trox-xk', 'schako-mwk-ob'];
+const OPEN_ROWS = MANUFACTURER_ROWS.filter((row) => OPEN_REFERENCE_SERIES.includes(row.series));
+const PRESSURE_VELOCITIES = [6, 7, 8, 9, 10, 11, 12, 13, 14];
+const blend = (a, b, fraction) => a + fraction * (b - a);
+
+function interpolate(points, values, point) {
+  if (point <= points[0]) return values[0];
+  const last = points.length - 1;
+  if (point >= points[last]) return values[last];
+  const upper = points.findIndex((value) => value >= point);
+  return blend(values[upper - 1], values[upper], (point - points[upper - 1]) / (points[upper] - points[upper - 1]));
+}
+
+function pressureAt(row, velocity) {
+  // Match calc.js: interpolate loss coefficient rather than pressure over velocity.
+  const zeta = row.dp.pa.map((pressure, index) => pressure / (0.6 * row.dp.v[index] ** 2));
+  return interpolate(row.dp.v, zeta, velocity) * 0.6 * velocity ** 2;
+}
+
+function blendReferenceRows(lower, upper, fraction) {
+  return {
+    de: lower.de.map((value, index) => blend(value, upper.de[index], fraction)),
+    dp: { v: [...PRESSURE_VELOCITIES], pa: PRESSURE_VELOCITIES.map((velocity) => blend(pressureAt(lower, velocity), pressureAt(upper, velocity), fraction)) },
+  };
+}
+
+function referenceAt(series, thickness, gap, length) {
+  const rows = OPEN_ROWS.filter((row) => row.series === series && row.L === length);
+  const thicknesses = [...new Set(rows.map((row) => row.d))].sort((a, b) => a - b);
+  if (thickness < thicknesses[0] || thickness > thicknesses.at(-1)) return null;
+  const lowerD = thicknesses.filter((value) => value <= thickness).at(-1);
+  const upperD = thicknesses.find((value) => value >= thickness);
+  const atThickness = (d) => {
+    const byGap = rows.filter((row) => row.d === d).sort((a, b) => a.s - b.s);
+    if (gap < byGap[0].s || gap > byGap.at(-1).s) return null;
+    const lower = byGap.filter((row) => row.s <= gap).at(-1);
+    const upper = byGap.find((row) => row.s >= gap);
+    return blendReferenceRows(lower, upper, lower.s === upper.s ? 0 : (gap - lower.s) / (upper.s - lower.s));
+  };
+  const lower = atThickness(lowerD);
+  const upper = atThickness(upperD);
+  return lower && upper ? blendReferenceRows(lower, upper, lowerD === upperD ? 0 : (thickness - lowerD) / (upperD - lowerD)) : null;
+}
+
+function estimatedRows(series, thicknesses) {
+  const rows = [];
+  const lengths = [...new Set(OPEN_ROWS.map((row) => row.L))].sort((a, b) => a - b);
+  for (const d of thicknesses) for (const L of lengths) {
+    const gaps = [...new Set(OPEN_ROWS.filter((row) => row.L === L).map((row) => row.s))].sort((a, b) => a - b);
+    for (const s of gaps) {
+      const references = OPEN_REFERENCE_SERIES.map((reference) => ({ series: reference, row: referenceAt(reference, d, s, L) })).filter((reference) => reference.row);
+      if (!references.length) continue;
+      rows.push({
+        series, d, s, L,
+        de: OCTAVES.map((_, index) => Math.floor(Math.min(...references.map((reference) => reference.row.de[index])) + 1e-9)),
+        dp: { v: [...PRESSURE_VELOCITIES], pa: PRESSURE_VELOCITIES.map((_, index) => Math.ceil(Math.max(...references.map((reference) => reference.row.dp.pa[index])) * 10 - 1e-9) / 10) },
+        estimated: true,
+        estimateSources: references.map((reference) => reference.series),
+        note: `Schätzung aus offenen ${references.map((reference) => reference.series === 'trox-xk' ? 'Trox XK' : 'Schako MWK-OB').join(' und ')}. Keine Herstellerprüfung.`,
+      });
+    }
+  }
+  return rows;
+}
+
+/** Manufacturer tables, the source's covered finishes and explicit estimates. */
+export const SPLITTER_ROWS = [
+  ...MANUFACTURER_ROWS,
+  ...COVERED_ROWS,
+  ...estimatedRows('prod-rio', [100, 160, 200]),
+  ...estimatedRows('prod-schmidlin', [100, 150, 200, 250, 300]),
 ];

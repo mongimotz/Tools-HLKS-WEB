@@ -1,6 +1,6 @@
 # Schalldämpfer: Rechenweg
 
-Berechnungsversion 2.0.0, Herstellerdaten Stand 2026-10-12. Jede gespeicherte Datei enthält die Berechnungsversion. Öffnest du eine Datei aus einer anderen Version, zeigt das Werkzeug die alte und die neue Version. Dateien der Version 1 (Stränge als Baum) übernimmt die Version 2 nicht (Testphase).
+Berechnungsversion 2.1.0, Herstellerdaten Stand 2026-10-14. Jede gespeicherte Datei enthält die Berechnungsversion. Bei einer anderen Berechnungsversion zeigt das Werkzeug die alte und die neue Version. Die Eingabeversion ist 3. Ältere Eingabeversionen übernimmt das Werkzeug während der Testphase nicht.
 
 ## 1. Pegel und Oktaven
 
@@ -61,7 +61,11 @@ Das Werkzeug beurteilt einen Schalldämpfer deshalb nach dieser Netto-Wirkung, n
 
 ### 4.1 Werte aus der Datenbank
 
-Die Datenbank enthält die Tabellen von Trox, Schako und Lindab (Quellen und Datenstand in [silencer-data.md](silencer-data.md)). Wählbar sind nur Kombinationen, die in den Tabellen stehen. Das Werkzeug interpoliert nicht in der Länge L oder im Spalt s.
+Die Datenbank enthält die Tabellen von Trox, Schako und Lindab. [silencer-data.md](silencer-data.md) nennt die Quellen und den Datenstand. Die Prüfung vom 14.10.2026 verwendet die acht vom Eigentümer bereitgestellten Hersteller-PDFs. Die Datei «Trox CS.pdf» enthält den Typ CK. Der Eigentümer bestätigte CK als richtigen Typ.
+
+Kulissendicke d und Länge L stammen aus den Tabellen. Spalt-Zwischengrössen interpoliert das Werkzeug linear innerhalb des belegten Bereichs, getrennt für jede Dicke und Länge. Es interpoliert weder Längen noch Spalte ausserhalb dieses Bereichs.
+
+RIO und Schmidlin enthalten ausdrücklich geschätzte Werte. Abschnitt 4.7 beschreibt deren Grundlage.
 
 - D_e stammt aus der Herstellertabelle (Messung nach EN ISO 7235). D_e gilt für den ganzen Schalldämpfer und hängt nicht von der Zahl der Kulissen ab.
 - Trox und Lindab geben Werte über 50 dB als 50 dB an, Schako schreibt „>50“. Das Werkzeug rechnet mit 50 dB und nie mit mehr.
@@ -78,7 +82,15 @@ A_frei = n · s′ · H = (B − n · d) · H
 v_s    = V̇ / A_frei               Spaltgeschwindigkeit
 ```
 
-Ist B = n · (d + s), gilt s′ = s. Sonst rechnet das Werkzeug v_s, Δp und das Strömungsgeräusch mit s′, die Einfügungsdämpfung D_e aber mit dem Tabellenwert für s. Ein grösserer Spalt dämpft weniger, ein kleinerer mehr. Weicht s′ von s ab, zeigt das Werkzeug einen Hinweis, ab 20 % eine Warnung.
+Ist B = n · (d + s), gilt s′ = s. Sonst verwendet das Werkzeug den tatsächlichen Spalt s′ auch für D_e und Δp. Für die benachbarten Tabellenwerte s₀ und s₁ gilt:
+
+```
+t       = (s′ − s₀) / (s₁ − s₀)
+D_e,i   = (1 − t) · D_e,i(s₀) + t · D_e,i(s₁)
+ζ(v,s′) = (1 − t) · ζ(v,s₀)   + t · ζ(v,s₁)
+```
+
+Die Rechnung interpoliert D_e in dB. Sie interpoliert den Druckverlustbeiwert bei gleicher Geschwindigkeit. Ein Hinweis nennt den Unterschied zwischen eingegebenem und tatsächlichem Spalt. Liegt s′ ausserhalb des belegten Bereichs, erscheint ein Fehler. Dann setzt das Werkzeug D_e konservativ auf 0 dB und weist keinen Druckverlust aus. Solche Geometrien gelten nicht als passende Varianten.
 
 Der Druckverlust folgt aus der Herstellertabelle Δp(v_s):
 
@@ -88,7 +100,15 @@ Der Druckverlust folgt aus der Herstellertabelle Δp(v_s):
 Δp  = ζ · ρ/2 · v_s² · f_Einbau   f_Einbau = 1.0 Kanal, 1.1 freie Ansaugung, 1.3 freies Ausblasen
 ```
 
-Die Δp-Werte von Trox gelten für H = 1000 mm. Bei kleinerer Höhe ist der Wandanteil grösser und Δp etwas höher. Das Werkzeug korrigiert das nicht und zeigt einen Hinweis.
+Das Werkzeug berechnet Δp aus dem tatsächlichen freien Querschnitt, dem Volumenstrom und der Luftdichte. Die Tabellen liefern die Grundlage für ζ. Ein allgemeines Modell aus Kanalreibung sowie Ein- und Austrittsverlusten wäre möglich. Es bräuchte aber passende Beiwerte für das Kulissenprofil und den Rahmen. Ohne Messdaten wären diese Beiwerte zusätzliche Schätzungen. Deshalb bleibt der Herstelleransatz die Grundlage.
+
+Die Δp-Werte von Trox gelten für H = 1000 mm. Diese Bezugshöhe beschränkt nicht die Einfügungsdämpfung D_e. Andere Höhen ändern den Anteil der Kanalwände am Druckverlust. Die PDFs nennen weder eine Höhenkorrektur noch eine numerische Fehlergrenze. Das Werkzeug übernimmt den Druckansatz unverändert und zeigt bei H ≠ 1000 mm einen Hinweis. Eine bestimmte Genauigkeit kann es dafür nicht angeben.
+
+Physikalisch lässt sich die näherungsweise gleiche Dämpfung bei anderen Höhen mit einem idealisierten offenen Kulissenspalt erklären. Die beiden Absorberflächen haben zusammen die Fläche 2 · H · L. Der freie Querschnitt beträgt s · H. Ihr Verhältnis ist 2 · L / s und hängt nicht von H ab. Bei gleicher Dicke, Spaltbreite, Länge und gleichem Material bedeutet eine halbierte Höhe deshalb keine halbierte Dämpfung in dB. Das Flächenverhältnis erklärt den Zusammenhang, ersetzt aber keine akustische Messung. Schallmoden, Rahmen, Teilungen und der Einbau können reale Werte verändern.
+
+Bei gleichem Volumenstrom erhöht eine kleinere Höhe die Spaltgeschwindigkeit. Dadurch steigen Druckverlust und Strömungsgeräusch. Das Werkzeug berücksichtigt die geänderte Geschwindigkeit. Der resultierende Schallpegel kann deshalb trotz näherungsweise gleicher Einfügungsdämpfung steigen. Die Höhenaussage im [Trox-XK-Datenblatt, Seite 5](https://cdn.trox.de/cdcbc4c11760a49d/1b734f264a69/XK_PD_2026_02_06_DE_de.pdf) betrifft die Druckdifferenzen. Die Erklärung über das Flächenverhältnis ist eine physikalische Näherung.
+
+Schako nennt für diese Tabellen keine Bezugshöhe von 1000 mm. Unter H = 200 mm verwendet Schako einen anderen Kulissenrahmen. Das Werkzeug zeigt dafür einen Hinweis, weil die Druckwerte diesen Rahmen nicht gesondert belegen.
 
 ### 4.3 Rohrschalldämpfer
 
@@ -103,15 +123,19 @@ Der Druckverlust folgt je Serie aus einem von drei Modellen:
 
 | Serie | Modell | Rechnung |
 |---|---|---|
-| Trox CA, Lindab SLU | gerades Rohr | Δp = λ · L/dn · ρ/2 · v_Rohr², λ nach Colebrook-White, k = 0.15 mm, Luft 20 °C |
-| Trox CK | Messpunkte (V̇, Δp) | ζ_i aus jedem Punkt mit v_Rohr, Mittelwert der ζ_i |
+| Trox CA, Lindab SLU | gerades Rohr | Δp = λ · L_gesamt/dn · ρ/2 · v_Rohr², λ nach Colebrook-White, k = 0.15 mm, Luft 20 °C |
+| Trox CK | Messpunkte (V̇, Δp) | ζ_i aus jedem Punkt mit v_Rohr, linear über V̇ interpoliert, ausserhalb der Randwert |
 | Schako RS-N, RS-M | Tabelle Δp(v) | wie Kulissen, v im freien Querschnitt, kein Einbaufaktor |
 
 Trox gibt für CA einen Druckverlust wie für ein gerades Rohr an. Lindab gibt für SLU keinen Druckverlust an. Das Werkzeug nimmt denselben Ansatz an.
 
+Die Nennlänge kann von der Gesamtlänge abweichen. Bei der automatischen Auswahl begrenzt L gesamt max. die dokumentierte Gesamtlänge. Schako RS enthält dabei die Standardstutzen KA0. Bei grossen Lindab SLU sind lose Anschlussstücke nicht in der Herstellerlänge enthalten. Optionale Flansche und weiteres Zubehör brauchen zusätzlichen Platz.
+
+SLU 500 und 630 mit Dämmung 100 und Nennlänge 900 nennen widersprüchlich nur 600 mm Gesamtlänge. Diese Produkte bleiben frei wählbar, fehlen aber in der automatischen Auswahl. Die Druckschätzung verwendet bei solchen Widersprüchen mindestens die Nennlänge.
+
 ### 4.4 Strömungsgeräusch
 
-Herstellerdaten gibt es nur für die Kulissen von Trox. Alle anderen Werte schätzt das Werkzeug mit derselben Tabelle ab.
+Für Trox verwendet das Werkzeug die vorhandene Summenpegel-Tabelle mit einem relativen Oktavspektrum nach Wildeboer:
 
 ```
 L_WA,Str   = L_WA(v) + 10 · lg(A / 1 m²)       Trox-Tabelle, über lg v interpoliert
@@ -123,9 +147,14 @@ Die Trox-Tabelle reicht von 4 bis 20 m/s. Ausserhalb gilt die Ausgleichsgerade L
 | Schalldämpfer | v | A | Grundlage |
 |---|---|---|---|
 | Trox XK, MK | v_s | B · H | Trox-Tabelle |
-| Schako MWK | v_s | B · H | Trox-Tabelle, Schätzung (Schako gibt nur Diagramme) |
+| Schako MWK | v_s | B · H | Schako-Diagramme, soweit die Geometrie belegt ist, sonst Trox als Schätzung |
+| RIO, Schmidlin | v_s | B · H | Trox-Tabelle, Schätzung |
 | Trox CK, Schako RS-M (mit Kern) | v im freien Querschnitt | A_Rohr | Trox-Tabelle, eigene Annahme |
 | Trox CA, Schako RS-N, Lindab SLU (ohne Kern) | – | – | kein Strömungsgeräusch, eigene Annahme: der freie Querschnitt entspricht dem Rohr |
+
+Die Schako-Diagramme enthalten fünf Geometrien bei 10 und 20 m/s. Die Oktavwerte sind auf 1 dB abgelesen und deshalb keine exakten Tabellenwerte. Das Werkzeug normiert jedes Spektrum auf den gedruckten A-bewerteten Summenpegel. Es interpoliert die Spalte linear und die Geschwindigkeit über lg(v). Die Flächenkorrektur K_F stammt aus der Schako-Tabelle und wird über lg(A) interpoliert. Diese Interpolationsregeln sind Modellannahmen.
+
+Ausserhalb von 10–20 m/s verlängert das Werkzeug die Gerade über lg(v). Ausserhalb der belegten Flächen verwendet es 10 · lg(A). Diese Werte und die Ersatzwerte für nicht belegte Schako-Geometrien erscheinen als geschätzt. Bei anderen Fabrikaten bleiben Strömungsgeräusch und relatives Oktavspektrum ebenfalls Näherungen. Für Rohrschalldämpfer ohne Kern ist 0 dB Schallleistung nicht gemeint: Das Modell fügt keinen zusätzlichen Schall hinzu.
 
 ### 4.5 Eingegebene Werte
 
@@ -142,11 +171,25 @@ Die Warnungen blockieren nichts.
 | Strömungsgeräusch | L_WA nach (L − D_e) weniger als 10 dB über L_WA,Str |
 | Spalt bei Trox | s < 0.25 · d, s < 40 mm oder s > 2 · d |
 | Höhe bei Trox | H ≠ 1000 mm (Δp gilt für 1000 mm) |
-| Spalt im Gehäuse | s′ ≠ s: Hinweis, ab 20 % Abweichung Warnung |
+| Spalt im Gehäuse | s′ ≠ s: Hinweis; ausserhalb der Daten: Fehler und keine belegte Auslegung |
+| Höhe bei Schako | H < 200 mm: anderer Kulissenrahmen, Δp nicht gesondert belegt |
 | Gehäuse | B ≤ d (keine Kulisse passt) oder B, H fehlen: Fehler |
 | Abzweig | Volumenstrom fehlt oder ist nach dem Abzweig grösser |
 | Eingegebene Dämpfung | D_e > 50 dB in einer Oktave |
 | Tabellenzeile | die Herstellerangabe ist auffällig, der Hinweis nennt den Grund |
+
+### 4.7 Schätzwerte für RIO und Schmidlin
+
+Die Schätzung verwendet ausschliesslich die offenen Absorptionskulissen Trox XK und Schako MWK-OB. MK, RK, MB, LL und LB gehen nicht ein. Es liegen keine Messungen für RIO oder Schmidlin vor. Deshalb erhalten beide Fabrikate bei gleicher Geometrie dieselben Schätzwerte.
+
+- RIO: d = 100, 160 und 200 mm.
+- Schmidlin: d = 100, 150, 200, 250 und 300 mm.
+- Zwischen 100 und 200 mm interpoliert das Modell die Dicke linear. Für 250 mm verwendet es XK 230 und 300 mm.
+- Es vergleicht gleiche Längen und innerhalb der jeweiligen Tabelle belegte Spalte. Stützt nur eine offene Referenz die Geometrie, verwendet es diese.
+- Stützen beide Referenzen die Geometrie, nimmt es je Oktave die kleinere Dämpfung und bei gleicher Geschwindigkeit den grösseren Druckverlust.
+- Es rundet D_e nach unten auf ganze dB und Δp nach oben auf 0.1 Pa. Es extrapoliert weder Dicke noch Spalt.
+
+Diese Werte dienen einer vorläufigen Planung. Sie bestätigen weder reale Produktleistung noch Lieferbarkeit oder Fertigungsmasse. Die Kennzeichnung «geschätzt» bleibt in App, PDF, CSV und gespeicherten Daten erhalten.
 
 ## 5. Empfänger
 
@@ -208,8 +251,11 @@ Ein eingegebener Wert gilt direkt für L_pA, zum Beispiel eine Vorgabe der Bauhe
 
 Für den gewählten Schalldämpfer zeigt das Werkzeug Varianten derselben Serie. Es setzt jede Variante an die Stelle des Schalldämpfers. Der Rest des Wegs bleibt, wie er ist.
 
-- Kulissen: das Gehäuse B × H bleibt. Eine Variante ist eine Kulissendicke d mit einem Spalt s, deren tatsächlicher Spalt s′ höchstens 20 % von s abweicht. Geben zwei Spalte s dieselbe Zahl n, zeigt das Werkzeug nur den Spalt, der näher bei s′ liegt.
+- Im Modus «Frei» bleibt das Gehäuse B × H unverändert. Das Werkzeug prüft jede ganze Kulissenzahl n mit belegtem tatsächlichem Spalt s′. Es interpoliert Zwischenwerte und führt dieselbe Geometrie nur einmal je Länge.
+- Im Modus «Maximalmasse» gibst du B innen max., H innen max. und L max. vor. Das Werkzeug prüft die volle maximale Breite mit interpolierten Spalten. Zusätzlich prüft es kleinere Breiten, die ganze Kulissen mit Tabellenabständen aufnehmen. Es nutzt die maximale Höhe. Die Gehäuseaussenmasse brauchen Platz für Wand und Anschlüsse zusätzlich zu B × H innen.
 - Rohrschalldämpfer: der Durchmesser bleibt. Eine Variante ist eine Dämmdicke mit einer Kernbreite.
+
+Die automatische Suche startet mit «Berechnen». Erst ein Klick auf eine Variante übernimmt deren tatsächliche Masse. Das Werkzeug prüft die gewählte Serie. Es durchsucht keine anderen Hersteller und optimiert nicht sämtliche stufenlosen Gehäusemasse.
 
 Je Variante wählt das Werkzeug die Länge L: die kürzeste Länge, mit der die Variante alle Bedingungen erfüllt. Gibt es keine, nimmt es die Länge mit dem tiefsten L_pA, die die Grenzen einhält. Eine Variante erfüllt die Bedingungen, wenn:
 
@@ -228,4 +274,4 @@ Mit mehreren Schalldämpfern auf einem Weg legst du einen nach dem anderen aus. 
 - Ventilatorgeräusch aus Formeln (VDI 2081). Gib die Schallleistung aus dem Datenblatt ein.
 - Übersprechen zwischen Wegen und Abstrahlung über Gehäuse und Kanalwände.
 - NR-Kurven und Zielwerte je Oktave.
-- Interpolation in L und s (D_e für den tatsächlichen Spalt s′), Kulissendicken 150, 160 und 250 mm.
+- Interpolation in L. Andere Kulissendicken als die Herstellerwerte gibt es nur als gekennzeichnete RIO- und Schmidlin-Schätzwerte.

@@ -20,7 +20,7 @@ export function buildCsv(doc, result) {
       const r = res.rows.get(l.rowId);
       const first = l.rowId !== last;
       last = l.rowId;
-      const info = first && row.type === 'silencer' ? [productText(row), geometryText(row, r)].filter(Boolean).join(' | ') : '';
+      const info = first && row.type === 'silencer' ? [productText(row), geometryText(row, r), r.flowNoiseEstimated ? 'Strömungsgeräusch geschätzt' : ''].filter(Boolean).join(' | ') : '';
       out.push([
         q(name),
         q(rowLabel(row)),

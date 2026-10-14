@@ -119,10 +119,11 @@ export async function buildReport(doc, result, envelope) {
         ['Pegel', 'Oktaven 63 … 8000 Hz in dB(A); energetische Summe L = 10·lg Σ 10^(Li/10); Zeilen in dB: A-Bewertung −26.2 −16.1 −8.6 −3.2 0 +1.2 +1.0 −1.1 dB'],
         ['Quelle', 'Pegel davor energetisch addiert mit LW der Quelle'],
         ['Dämpfung', 'Pegel davor minus D (Differenz, gleich in dB und dB(A))'],
-        ['Schalldämpfer', 'Pegel minus De, energetisch addiert mit dem Strömungsgeräusch; De aus den Herstellertabellen (EN ISO 7235, über 50 dB als 50 dB), keine Interpolation in L und s'],
-        ['Kulissen', 'Gehäuse B × H vorgegeben; n = round(B / (d + s)), Kulissen gleichmässig verteilt, Spalt s′ = B / n − d; Varianten mit |s′ − s| ≤ 20 % von s'],
+        ['Schalldämpfer', 'Pegel minus De plus Strömungsgeräusch (energetisch); Herstellerwerte bis 50 dB; Spalt linear im belegten Bereich; Länge nicht interpoliert'],
+        ['Schätzwerte', 'RIO/Schmidlin aus offenen Trox XK und Schako MWK-OB: je Oktave kleinere De, grösserer Druckverlust; keine Herstellerprüfung'],
+        ['Kulissen', 'B × H innen; n = round(B / (d + s)), Spalt s′ = B / n − d, an der Wand s′/2. De und Druckverlust für s′ innerhalb des Tabellenbereichs. Maximalmasse begrenzen die Variantensuche.'],
         ['Druckverlust', 'Δp = ζ·ρ/2·v²; ζ aus den Tabellen (ρ = 1.2 kg/m³), linear über v; Kulissen v im Spalt × Einbaufaktor 1.0 / 1.1 / 1.3; Trox CA, Lindab SLU wie gerades Rohr (k = 0.15 mm)'],
-        ['Strömungsgeräusch', 'Trox-Tabelle LWA(v) + 10·lg(A / 1 m²), A = B·H bzw. Rohrquerschnitt; Oktavspektrum nach Wildeboer; Rohrschalldämpfer ohne Kern: keins'],
+        ['Strömungsgeräusch', 'Schako: abgelesene Spektren mit gedrucktem LWA, Zwischenwerte über lg(v), lg(A). Sonst Trox/Wildeboer als Näherung. Rohr ohne Kern: kein Zusatzschall angenommen'],
         ['Abzweig', 'ΔL = 10·lg(V̇ davor / V̇ danach), oder eingegebener Wert'],
         ['Empfänger', 'Lp = LW + 10·lg(Q / (4π r²) + 4 / A), A = 0.163·V / T; ohne A: Freifeld'],
         ['Ziel Raumtyp', 'Raumnutzung und Lärmempfindlichkeit nach SIA 2024:2021, Tabelle 12; LH für Dauergeräusche nach SIA 181:2020 (Mindest- oder erhöhte Anforderung) oder empfohlene Auslegung nach SIA 2024'],
@@ -256,7 +257,7 @@ function silencerBlock(w, row, r, title) {
     ['V̇', r?.flow != null ? `${fmt(r.flow, 0)} m³/h` : '–'],
     ['v', r?.v != null ? `${fmt(r.v, 1)} m/s` : '–'],
     ['Δp', r?.dp != null ? `${fmt(r.dp, 0)} Pa${r.zeta != null ? ` | ζ ${fmt(r.zeta, 3)}` : r.lambda != null ? ` | λ ${fmt(r.lambda, 4)}` : ''}` : '–'],
-    ['LWA Strömung', r?.lwaFlow != null ? `${fmt(r.lwaFlow, 1)} dB(A)` : '–'],
+    ['LWA Strömung', r?.lwaFlow != null ? `${fmt(r.lwaFlow, 1)} dB(A)${r.flowNoiseEstimated ? ' (geschätzt)' : ''}` : '–'],
     ['Daten', row.kind === 'manual' ? 'eingegeben' : row.row?.dataVersion ?? '–'],
   ];
   const x0 = w.left + 170;

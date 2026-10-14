@@ -6,17 +6,16 @@ Browser-basierte Tools für Gebäudetechniker.
 
 ## Werkzeuge
 
-| Fachrichtung | Werkzeug      | Inhalt                                                                                                                     | Stand       |
-| ------------ | ------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| Lüftung      | Druckverlust  | Teilstrecken mit Formstücken und Einbauteilen, kritischer Strang, Drosselbedarf                                            | Testversion |
-| Lüftung      | Kanalrechner  | Rohre und Kanäle auslegen (rund, eckig, flachoval) nach SIA 382/1                                                          | Testversion |
-| Lüftung      | Schalldämpfer | Schallpegelberechnung je Oktave von der Quelle bis zum Empfänger, Schalldämpfer aus Herstellerdaten (Trox, Schako, Lindab) | Testversion |
-| –            | PDF → DXF     | PDF-Pläne als massstäbliche DXF für CAD                                                                                    | Testversion |
+| Fachrichtung | Werkzeug      | Inhalt                                                                                                                     | Stand    |
+| ------------ | ------------- | -------------------------------------------------------------------------------------------------------------------------- | -------- |
+| Lüftung      | Druckverlust  | Teilstrecken mit Formstücken und Einbauteilen, kritischer Strang, Drosselbedarf                                            | Released |
+| Lüftung      | Kanalrechner  | Rohre und Kanäle auslegen (rund, eckig, flachoval) nach SIA 382/1                                                          | BETA     |
+| Lüftung      | Schalldämpfer | Schallpegelberechnung je Oktave von der Quelle bis zum Empfänger, Schalldämpfer aus Herstellerdaten (Trox, Schako, Lindab) | BETA     |
+| –            | PDF → DXF     | PDF-Pläne als massstäbliche DXF für CAD                                                                                    | Released |
 
 ## Dokumentation
 
 Agentenregeln und Werkzeugdetails: [AGENTS.md](AGENTS.md).
-
 
 Rechenwege: [Druckverlust Lüftung](docs/duct-pressure-loss-method.md) | [Kanalrechner](docs/duct-sizing-method.md) | [Schalldämpfer](docs/silencer-method.md) | [PDF → DXF](docs/pdf-to-dxf-method.md).
 

@@ -36,7 +36,11 @@ export const pathLabel = (path, index) => path.name || `Weg ${index + 1}`;
 export const lineLabel = (line, row, first) => (first ? rowLabel(row) : LINE_LABELS[line.kind] ?? '');
 
 /** Series name without the housing in brackets: "Trox XK", "Schako MWK-OB / -LL". */
-export const seriesName = (kind, id) => (seriesOf(kind, id)?.label ?? id).replace(/\s*\(.*\)$/, '');
+export const seriesName = (kind, id) => {
+  const series = seriesOf(kind, id);
+  const name = (series?.label ?? id).replace(/\s*\(.*\)$/, '');
+  return `${name}${series?.estimated ? ' (geschätzt)' : ''}`;
+};
 
 /** Short German message for a calculation issue. `at` is the row (or receiver) label shown to the user. */
 export function issueText(issue, at) {
@@ -52,6 +56,8 @@ export function issueText(issue, at) {
     case 'geometry-missing': return `${p}Gehäuse B × H fehlt`;
     case 'housing-small': return `${p}B ${fmt(issue.value, 0)} mm ≤ Kulisse d ${fmt(issue.limit, 0)} mm`;
     case 'gap-deviation': return `${p}Spalt s′ ${fmt(issue.value, 0)} mm, Daten für s = ${fmt(issue.limit, 0)} mm`;
+    case 'gap-range': return `${p}Spalt s′ ${fmt(issue.value, 1)} mm ausserhalb der Daten ${fmt(issue.min, 0)} … ${fmt(issue.max, 0)} mm`;
+    case 'schako-height': return `${p}H < 200 mm: anderer Kulissenrahmen, Δp nicht belegt`;
     case 'trox-gap': return `${p}Spalt s ${fmt(issue.value, 0)} mm ausserhalb ${fmt(issue.min, 0)} … ${fmt(issue.max, 0)} mm`;
     case 'height-dp': return `${p}Δp gilt für H = ${fmt(issue.limit, 0)} mm`;
     case 'velocity-high': return `${p}v = ${fmt(issue.value, 1)} m/s > ${fmt(issue.limit, 0)} m/s`;
@@ -76,7 +82,7 @@ export function issueText(issue, at) {
 export function productText(row) {
   if (row.type !== 'silencer') return '';
   if (row.kind === 'manual') return KIND_LABELS.manual;
-  if (row.kind === 'rect') return `${seriesName('rect', row.rect.series)} ${row.rect.d}/${row.rect.s}/${row.rect.L}`;
+  if (row.kind === 'rect') return `${seriesName('rect', row.rect.series)} ${row.rect.d}/${fmtLimit(row.rect.s)}/${row.rect.L}`;
   const r = row.round;
   return `${seriesName('round', r.series)} Ø ${r.dn} | L ${r.L} | Dämmung ${r.insulation}${r.core ? ` | Kern ${r.core}` : ''}`;
 }
@@ -87,10 +93,13 @@ export function geometryText(row, r) {
   if (row.kind === 'rect') {
     const { B, H } = row.rect;
     const size = `B ${B != null ? fmt(B, 0) : '–'} × H ${H != null ? fmt(H, 0) : '–'}`;
-    const n = r?.n ? ` | n ${r.n} | s′ ${fmt(r.gap, 0)}` : '';
+    const n = r?.n ? ` | n ${r.n} | s′ ${fmtLimit(r.gap)}` : '';
     return `${size}${n} | ${INSTALL_LABELS[row.install]}`;
   }
-  return r?.row?.dOuter != null ? `Aussen-Ø ${fmt(r.row.dOuter, 0)}` : '';
+  return [
+    r?.row?.dOuterMax != null ? `Aussen-Ø max. ${fmt(r.row.dOuterMax, 0)}` : r?.row?.dOuter != null ? `Aussen-Ø ${fmt(r.row.dOuter, 0)}` : '',
+    r?.row?.overallLength != null ? `L gesamt ${fmt(r.row.overallLength, 0)}` : '',
+  ].filter(Boolean).join(' | ');
 }
 
 /** Place of a receiver: "r 2 m | Q 2 | Freifeld" or "r 2 m | Q 2 | A 20 m²". */

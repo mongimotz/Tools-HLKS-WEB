@@ -12,6 +12,8 @@ import {
   sumLevels,
   aWeighted,
   flowNoise,
+  schakoFlowNoise,
+  SPLITTER_SERIES,
   roomTerm,
   absorptionArea,
   splitterSilencer,
@@ -28,12 +30,12 @@ import {
   silencerVariants,
   fittingSplitterRows,
   VARIANT_LIMITS,
-  GAP_TOLERANCE,
 } from '../tools/silencer/calc.js';
 import { normalizeInputs, exampleInputs, emptyInputs, newRow, newPath, duplicatePath, TOOL_ID, INPUT_VERSION } from '../tools/silencer/defaults.js';
 import { rectFrontView, roundFrontView } from '../tools/silencer/drawing.js';
 import { createEnvelope, parseEnvelope, checkCompatibility } from '../lib/core/envelope.js';
 import { frictionFactor } from '../lib/core/air.js';
+import { ROUND_ROWS } from '../tools/silencer/data/index.js';
 
 const near = (actual, expected, tol, msg = '') =>
   assert.ok(Math.abs(actual - expected) <= tol, `${msg} expected ${expected} ± ${tol}, got ${actual}`);
@@ -121,6 +123,31 @@ test('housing B: splitters evenly spaced, n = round(B / (d + s)), real gap s′ 
   near(r.gap, 87.5, 1e-9);
   near(r.aFree, 0.35, 1e-9); // 4 · 0.0875 · 1.0 = B − n·d
   near(r.face, 1.15, 1e-9);
+});
+
+test('intermediate gaps interpolate every D_e band and pressure at the actual casing gap', () => {
+  const spec = { series: 'trox-xk', d: 200, s: 90, L: 1500 };
+  const row = lookupRow('rect', spec);
+  nearAll(row.de, [5.5, 13, 23, 46.5, 50, 48, 32.5, 21], 1e-9);
+  nearAll(row.dp.pa, [15.5, 44, 86], 1e-9);
+  assert.deepEqual(row.interpolation, { sMin: 80, sMax: 100 });
+  assert.equal(lookupRow('rect', { ...spec, s: 49 }), null, 'no extrapolation below the supported gap');
+  assert.equal(lookupRow('rect', { ...spec, s: 101 }), null, 'no extrapolation above the supported gap');
+  assert.equal(lookupRow('rect', { ...spec, L: 1400 }), null, 'length remains a table choice');
+
+  // Spacing 100 in B 1150 becomes four gaps of 87.5. At v_s = 6, pressure interpolates 17 to 14 Pa.
+  const inputs = pathOf([{ type: 'source', lw: flat(90) }, rect({ ...spec, s: 100, B: 1150, H: 1000 })], { flow: 7560 });
+  const r = rowResult(inputs, 'r2');
+  near(r.gap, 87.5, 1e-9);
+  near(r.de[0], 5.625, 1e-9);
+  near(r.dp, 15.875, 1e-9);
+  assert.equal(inputs.paths[0].rows[1].row.s, 87.5, 'saved data uses the actual gap');
+  assert.deepEqual(normalizeInputs(JSON.parse(JSON.stringify(inputs))), inputs);
+  assert.deepEqual(staleRows(inputs), []);
+  const saved = structuredClone(inputs);
+  saved.paths[0].rows[1].row.de[0] = 1;
+  near(rowResult(normalizeInputs(saved), 'r2').de[0], 1, 1e-9, 'stored interpolated values remain authoritative');
+  assert.deepEqual(staleRows(saved), [{ pathId: 'w1', rowId: 'r2', missing: false }]);
 });
 
 test('2b. the same silencer as a row: installation factor and net effect', () => {
@@ -269,11 +296,36 @@ test('5b. dpModel flow-points: Trox CK 250/1500, insulation 100, splitter 100', 
   const row = rowCopy(lookupRow('round', { series: 'trox-ck', dn: 250, L: 1500, insulation: 100, core: 100 }), 'round');
   const r = roundSilencer({ row, flow: 1000, density: 1.2 });
   // v_i = 700 and 1200 m³/h in π/4 · 0.25² → 3.961, 6.791 m/s; ζ_i = 44 / (0.6 · 3.961²) = 4.674, 127 / (0.6 · 6.791²) = 4.590
-  near(r.zeta, 4.632, 0.001, 'mean ζ');
-  near(r.dp, 89.0, 0.05, 'Δp'); // 4.632 · 0.6 · 5.659²
+  near(r.zeta, 4.6236, 0.0001, 'ζ interpolated at 1000 m³/h');
+  near(r.dp, 88.835, 0.001, 'Δp'); // (0.4 · 44/700² + 0.6 · 127/1200²) · 1000²
   near(r.aFree, 0.024087, 1e-6); // π/4 · 0.25² − 0.1 · 0.25
   near(r.v, 11.532, 0.001);
   near(r.lwaFlow, flowNoise(11.532, 0.049087).lwa, 0.01);
+});
+
+test('every Trox CK measured pressure point is reproduced exactly; endpoint coefficients are held', () => {
+  const rows = ROUND_ROWS.filter((r) => r.series === 'trox-ck');
+  assert.ok(rows.length > 0);
+  for (const source of rows) {
+    const row = rowCopy(source, 'round');
+    source.dp.q.forEach((flow, i) => {
+      near(roundSilencer({ row, flow, density: 1.2 }).dp, source.dp.pa[i], 1e-9, `${source.dn}/${source.core}/${source.L} at ${flow}`);
+    });
+    near(roundSilencer({ row, flow: source.dp.q[0] / 2, density: 1.2 }).dp, source.dp.pa[0] / 4, 1e-9, 'below first flow');
+    near(roundSilencer({ row, flow: source.dp.q.at(-1) * 2, density: 1.2 }).dp, source.dp.pa.at(-1) * 4, 1e-9, 'above last flow');
+  }
+});
+
+test('Lindab estimated duct loss uses installation length and retains the longer nominal length on contradictory dimensions', () => {
+  const row = rowCopy(lookupRow('round', { series: 'lindab-slu', dn: 200, L: 900, insulation: 50 }), 'round');
+  assert.equal(row.overallLength, 1068);
+  const actual = roundSilencer({ row, flow: 1000, density: 1.2 });
+  const nominal = roundSilencer({ row: { ...row, overallLength: null }, flow: 1000, density: 1.2 });
+  near(actual.dp / nominal.dp, 1068 / 900, 1e-9);
+  const uncertain = rowCopy(lookupRow('round', { series: 'lindab-slu', dn: 500, L: 900, insulation: 100 }), 'round');
+  const conservative = roundSilencer({ row: uncertain, flow: 3000, density: 1.2 });
+  const longer = roundSilencer({ row: { ...uncertain, overallLength: 900 }, flow: 3000, density: 1.2 });
+  near(conservative.dp, longer.dp, 1e-9, 'contradictory printed 600 mm must not lower assumed friction');
 });
 
 test('5c. dpModel velocity-table: Schako RS-N (free cross-section ød) and RS-M (minus the baffle)', () => {
@@ -309,6 +361,28 @@ test('flow noise: table inside 4 … 20 m/s, own fit outside, continuous at the 
   assert.equal(flowNoise(0, 1), null);
 });
 
+test('Schako flow-noise spectra reproduce printed totals and area corrections, retaining their stored profile', () => {
+  const row = rowCopy(lookupRow('rect', { series: 'schako-mwk-ob', d: 200, s: 50, L: 1000 }), 'rect');
+  assert.ok(row.noiseProfile, 'the exact source profile is saved with the data row');
+  near(schakoFlowNoise(10, 1, row.noiseProfile).lwa, 46, 1e-9);
+  const fast = schakoFlowNoise(20, 1, row.noiseProfile);
+  near(fast.lwa, 61, 1e-9);
+  near(aWeighted(fast.lw), 61, 1e-9, 'digitized shape sums to the printed total');
+  near(schakoFlowNoise(Math.sqrt(200), 1, row.noiseProfile).lwa, 53.5, 1e-9, 'linear in log velocity');
+  near(schakoFlowNoise(10, 0.4, row.noiseProfile).lwa, 41, 1e-9, 'unusual printed KF=-5 is retained');
+  assert.equal(schakoFlowNoise(5, 1, row.noiseProfile).estimated, true, 'extension outside the source velocities is an estimate');
+  const gap = rowCopy(lookupRow('rect', { series: 'schako-mwk-ob', d: 200, s: 150, L: 1000 }), 'rect');
+  near(schakoFlowNoise(10, 1, gap.noiseProfile).lwa, 40.5, 1e-9, 'intermediate source gaps interpolate linearly');
+
+  const inputs = pathOf([rect({ series: row.series, d: row.d, s: row.s, L: row.L, B: 1000, H: 1000 })], { flow: 7200 });
+  near(rowResult(inputs, 'r1').lwaFlow, 46, 1e-9);
+  const saved = structuredClone(inputs);
+  saved.paths[0].rows[0].row.noiseProfile.lwa = [40, 55];
+  saved.paths[0].rows[0].row.noiseProfile.lw = saved.paths[0].rows[0].row.noiseProfile.lw.map((lw) => lw.map((l) => l - 6));
+  near(rowResult(normalizeInputs(saved), 'r1').lwaFlow, 40, 1e-9, 'saved noise values remain authoritative');
+  assert.deepEqual(normalizeInputs(JSON.parse(JSON.stringify(saved))), normalizeInputs(saved));
+});
+
 // ---- warnings -------------------------------------------------------------------------------------
 
 test('warnings: velocity, Δp, flow noise margin, Trox height, source note, gap deviation', () => {
@@ -322,9 +396,11 @@ test('warnings: velocity, Δp, flow noise margin, Trox height, source note, gap 
   assert.ok(codes(noted).includes('row-note'));
   assert.match(noted.issues.find((i) => i.code === 'row-note').note, /250 Hz/);
 
-  // B 1000 with 200/100: n = 3, s′ = 133 (33 % off): warning; B 1150: s′ = 87.5 (12.5 % off): info
+  // B 1000 gives s′ = 133 beyond this thickness's largest gap 100: no extrapolation.
   const wide = rowResult(pathOf([src, rect({ series: 'trox-xk', d: 200, s: 100, L: 1500, B: 1000, H: 1000 })], { flow: 10000 }), 'r2');
-  assert.deepEqual(wide.issues.map((i) => [i.code, i.severity]), [['gap-deviation', 'warning']]);
+  assert.deepEqual(wide.issues.map((i) => [i.code, i.severity]), [['gap-range', 'error']]);
+  assert.deepEqual(wide.de, flat(0));
+  assert.equal(wide.dp, null);
   const close = rowResult(pathOf([src, rect({ series: 'trox-xk', d: 200, s: 100, L: 1500, B: 1150, H: 1000 })], { flow: 10000 }), 'r2');
   assert.deepEqual(close.issues.map((i) => [i.code, i.severity]), [['gap-deviation', 'info']]);
 
@@ -334,7 +410,7 @@ test('warnings: velocity, Δp, flow noise margin, Trox height, source note, gap 
 
 test('missing data: no row, no housing, too narrow, no flow, empty source, no distance', () => {
   const src = { type: 'source', lw: flat(80), unit: 'dBA' };
-  const noRow = rowResult(pathOf([src, rect({ series: 'trox-xk', d: 200, s: 90, L: 1500, B: 1200, H: 1000 })], { flow: 1000 }), 'r2');
+  const noRow = rowResult(pathOf([src, rect({ series: 'trox-xk', d: 201, s: 90, L: 1500, B: 1200, H: 1000 })], { flow: 1000 }), 'r2');
   assert.deepEqual(codes(noRow), ['row-missing']);
   assert.deepEqual(noRow.levelOut, flat(80), 'no row: no effect');
 
@@ -393,14 +469,14 @@ test('database silencer keeps its stored row; changed data is reported, not used
   assert.deepEqual(staleRows(sel), []);
 });
 
-test('choices offer only existing rows; a changed selection snaps to the nearest one', () => {
+test('choices offer supported lengths at intermediate gaps; thickness and length snap to tables', () => {
   const c = rectChoices({ series: 'schako-mwk-ob', d: 100, s: 70, L: 1000 });
   assert.deepEqual(c.d, [100, 200]);
   assert.deepEqual(c.s, [50, 60, 70, 80, 90, 100]);
   assert.ok(c.L.includes(1000));
-  // Trox XK has no s = 60 for d = 100: nearest gap, the housing stays
-  assert.deepEqual(snapRect({ series: 'trox-xk', d: 100, s: 60, L: 1000, B: 800, H: 800 }), { series: 'trox-xk', d: 100, s: 50, L: 1000, B: 800, H: 800 });
-  assert.equal(snapRect({ series: 'nope', d: 200, s: 100, L: 1000 }).series, 'trox-xk');
+  // Trox XK has no s = 60 row: keep the supported intermediate gap, the housing stays.
+  assert.deepEqual(snapRect({ series: 'trox-xk', d: 100, s: 60, L: 1000, B: 800, H: 800 }), { series: 'trox-xk', d: 100, s: 60, L: 1000, B: 800, H: 800 });
+  assert.equal(snapRect({ series: 'nope', d: 200, s: 100, L: 1000 }).series, SPLITTER_SERIES[0].id);
   // round: CK has two splitter widths per size, CA none
   assert.deepEqual(roundChoices({ series: 'trox-ck', dn: 315, L: 1000, insulation: 50, core: 50 }).core, [50, 100]);
   const ca = snapRound({ series: 'trox-ca', dn: 300, L: 1200, insulation: 50, core: 100 });
@@ -429,7 +505,7 @@ test('6. variants: one per d / s that fits the housing; shortest L that meets th
   const keys = v.list.map((c) => `${c.spec.d}/${c.n}`);
   assert.equal(new Set(keys).size, keys.length, 'one variant per d and n');
   for (const c of v.list) {
-    assert.ok(Math.abs(c.gap - c.spec.s) <= GAP_TOLERANCE * c.spec.s + 1e-9, `${c.spec.d}/${c.spec.s}: s′ ${c.gap}`);
+    near(c.gap, c.spec.s, 1e-9, 'candidate uses the actual interpolated gap');
     near(c.n * (c.spec.d + c.gap), 1500, 1e-9, 'fills B');
   }
   const fitting = v.list.filter((c) => c.ok);
@@ -478,11 +554,92 @@ test('variants: missing housing or flow; round by dn; the stored row of a candid
   assert.equal(silencerVariants(pathOf([{ type: 'silencer', kind: 'manual' }]), 'w1', 'r1'), null, 'manual: none');
 });
 
-test('fittingSplitterRows: per d and n only the gap closest to the real one', () => {
+test('variant compliance requires a known receiver result and a path without calculation errors', () => {
+  const inputs = pathOf([
+    { type: 'source', lw: flat(80) },
+    rect({ series: 'trox-mk', d: 200, s: 100, L: 1500, B: 1500, H: 1000 }),
+  ], { flow: 3000, receiver: { r: 2, q: 2, basis: 'manual', target: 65 } });
+  assert.ok(silencerVariants(inputs, 'w1', 'r2').list.some((c) => c.ok));
+
+  const invalidPath = structuredClone(inputs);
+  invalidPath.paths[0].rows.push(newRow(invalidPath, 'silencer', { rect: { series: 'trox-xk', d: 200, s: 100, L: 1500, B: null, H: 1000 } }));
+  assert.ok(compute(invalidPath).issues.some((issue) => issue.code === 'geometry-missing' && issue.severity === 'error'));
+  const errors = silencerVariants(invalidPath, 'w1', 'r2').list;
+  assert.ok(errors.some((c) => c.limitsOk), 'local planning limits are still reported independently');
+  assert.ok(errors.every((c) => !c.ok), 'an error in another row prevents a compliance check');
+
+  const noReceiver = structuredClone(inputs);
+  noReceiver.paths[0].receiver.r = null;
+  const unknown = silencerVariants(noReceiver, 'w1', 'r2').list;
+  assert.ok(unknown.some((c) => c.limitsOk));
+  assert.ok(unknown.every((c) => c.lpa === null && !c.ok));
+
+  const noTarget = structuredClone(inputs);
+  noTarget.paths[0].receiver.target = null;
+  assert.ok(silencerVariants(noTarget, 'w1', 'r2').list.some((c) => Number.isFinite(c.lpa) && !c.hasTarget && c.ok), 'a valid receiver without a target remains allowed');
+});
+
+test('automatic variants stay within maximum dimensions and preserve sizing settings on round trips', () => {
+  const inputs = variantCase({ series: 'trox-mk', B: null, H: null });
+  const sd = inputs.paths[0].rows[1];
+  sd.design = { mode: 'auto', maxB: 1530, maxH: 1050, maxL: 3000 };
+  const before = structuredClone(inputs);
+  const variants = silencerVariants(inputs, 'w1', 'r2');
+  assert.equal(variants.missing, null);
+  assert.ok(variants.list.length > 3, 'several geometries are proposed');
+  assert.ok(variants.list.some((c) => c.ok), 'at least one geometry meets all criteria');
+  assert.ok(variants.list.some((c) => c.spec.B < sd.design.maxB), 'also offers fitted smaller casing widths');
+  for (const c of variants.list) {
+    assert.ok(c.spec.B <= sd.design.maxB && c.spec.H <= sd.design.maxH && c.spec.L <= sd.design.maxL);
+    near(c.spec.H, 1050, 1e-9);
+    assert.ok(lookupRow('rect', c.spec));
+    if (c.ok) {
+      assert.ok(c.v <= 12 && c.dp <= 100 && c.noiseMargin >= 10 && c.margin >= -0.05);
+    }
+  }
+  assert.deepEqual(inputs, before, 'variant search does not mutate a project');
+  assert.deepEqual(normalizeInputs(JSON.parse(JSON.stringify(inputs))), inputs);
+  sd.design.maxL = null;
+  assert.equal(silencerVariants(inputs, 'w1', 'r2').missing, 'length');
+});
+
+test('automatic circular variants retain diameter and respect maximum installation length', () => {
+  const inputs = variantCase({}, { kind: 'round', flow: 2500, roundSpec: { series: 'schako-rs-n', dn: 400, L: 950, insulation: 100 } });
+  inputs.paths[0].rows[1].design = { mode: 'auto', maxB: null, maxH: null, maxL: 1000 };
+  const variants = silencerVariants(inputs, 'w1', 'r2');
+  assert.ok(variants.list.length > 0);
+  for (const c of variants.list) {
+    assert.equal(c.spec.dn, 400);
+    const data = lookupRow('round', c.spec);
+    assert.ok((data.overallLength ?? data.L) <= 1000);
+  }
+  assert.ok(variants.list.every((c) => c.spec.L !== 950), 'Schako nominal 950 with installation length 1050 does not fit');
+  inputs.paths[0].rows[1].design.maxL = null;
+  assert.equal(silencerVariants(inputs, 'w1', 'r2').missing, 'length');
+});
+
+test('automatic circular sizing excludes contradictory printed lengths without removing manual products', () => {
+  for (const dn of [500, 630]) {
+    const spec = { series: 'lindab-slu', dn, L: 900, insulation: 100 };
+    const row = lookupRow('round', spec);
+    assert.equal(row.overallLength, 600, 'source discrepancy remains as printed');
+    assert.match(row.note, /Druckfehler/);
+    const inputs = variantCase({}, { kind: 'round', flow: 2500, roundSpec: spec });
+    inputs.paths[0].rows[1].design = { mode: 'auto', maxB: null, maxH: null, maxL: 900 };
+    const variants = silencerVariants(inputs, 'w1', 'r2');
+    assert.equal(variants.list.length, 0, 'uncertain 900 nominal/600 overall product is excluded');
+    inputs.paths[0].rows[1].design.maxL = 1200;
+    const longer = silencerVariants(inputs, 'w1', 'r2').list;
+    assert.ok(longer.length > 0 && longer.every((c) => c.spec.L === 1200), 'documented longer products remain available');
+    assert.equal(rowResult(inputs, 'r2').row.L, 900, 'manual selection is retained');
+  }
+});
+
+test('fittingSplitterRows: one supported actual gap per d and count', () => {
   const rows = fittingSplitterRows('trox-xk', 900);
   const d100 = rows.filter((r) => r.d === 100);
   // B 900, d 100: s 50 → n 6 (s′ 50); s 80 → n 5 (s′ 80); s 100 → n 4.5 → 5 (s′ 80): the same silencer as s 80 → dropped
-  assert.deepEqual([...new Set(d100.map((r) => r.s))], [50, 80]);
+  assert.deepEqual([...new Set(d100.map((r) => r.s))].sort((a, b) => a - b), [50, 80]);
 });
 
 // ---- front view ----------------------------------------------------------------------------------------
