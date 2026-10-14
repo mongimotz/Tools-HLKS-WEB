@@ -10,7 +10,7 @@
 import { lookupRow, rowCopy, rowMatches, dataSpec, snapRect, snapRound, RHO_TABLE } from './calc.js';
 
 export const TOOL_ID = 'silencer';
-export const INPUT_VERSION = 3;
+export const INPUT_VERSION = 4;
 
 /** Row types: source (+ L_W), loss (− D), branch (− ΔL from the flows), silencer (− D_e, + flow noise). */
 export const ROW_TYPES = ['source', 'loss', 'branch', 'silencer'];
@@ -212,7 +212,8 @@ export function normalizeRow(e = {}) {
         ...base,
         kind: pick(e.kind, SILENCER_KINDS, 'rect'),
         install: pick(e.install, INSTALLS, 'duct'),
-        design: { mode: pick(design.mode, ['manual', 'auto'], 'manual'), maxB: num(design.maxB), maxH: num(design.maxH), maxL: num(design.maxL) },
+        // variants: a fixed side keeps rect.B / rect.H, a free side is searched up to maxB / maxH (calc.js, variantHousing)
+        design: { fixB: design.fixB !== false, fixH: design.fixH !== false, maxB: num(design.maxB), maxH: num(design.maxH) },
         rect: normalizeRect(e.rect),
         round: normalizeRound(e.round),
         manual: { de: spectrum(m.de), lwFlow: spectrum(m.lwFlow), unit: pick(m.unit, UNITS, 'dB'), dp: num(m.dp) },

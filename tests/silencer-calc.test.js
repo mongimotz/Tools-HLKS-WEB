@@ -28,8 +28,10 @@ import {
   snapRect,
   snapRound,
   silencerVariants,
-  fittingSplitterRows,
+  variantHousing,
   VARIANT_LIMITS,
+  SIZE_STEP,
+  SIZE_MIN,
 } from '../tools/silencer/calc.js';
 import { normalizeInputs, exampleInputs, emptyInputs, newRow, newPath, duplicatePath, TOOL_ID, INPUT_VERSION } from '../tools/silencer/defaults.js';
 import { rectFrontView, roundFrontView } from '../tools/silencer/drawing.js';
@@ -487,43 +489,45 @@ test('choices offer supported lengths at intermediate gaps; thickness and length
 // ---- 6. variants ---------------------------------------------------------------------------------------
 
 /** Fan 85 … 90 dB, 20’000 m³/h, one silencer in a housing, receiver at 3 m with a target of 40 dB(A). */
-function variantCase(rectSpec, { flow = 20000, kind = 'rect', roundSpec = { series: 'trox-ca', dn: 315, L: 1000, insulation: 50 } } = {}) {
+function variantCase(rectSpec, { flow = 20000, kind = 'rect', design = {}, roundSpec = { series: 'trox-ca', dn: 315, L: 1000, insulation: 50 } } = {}) {
   return pathOf(
     [
       { type: 'source', lw: [85, 88, 90, 88, 85, 82, 78, 74] },
-      { type: 'silencer', kind, rect: { series: 'trox-xk', d: 200, s: 100, L: 1500, ...rectSpec }, round: roundSpec },
+      { type: 'silencer', kind, design, rect: { series: 'trox-xk', d: 200, s: 100, L: 1500, ...rectSpec }, round: roundSpec },
     ],
     { flow, receiver: { r: 3, q: 2, basis: 'manual', target: 40 } },
   );
 }
 
-test('6. variants: one per d / s that fits the housing; shortest L that meets the target; ranked by Δp', () => {
-  const inputs = variantCase({ series: 'trox-mk', B: 1500, H: 1000 });
+/** True if the silencer r2 of the case with this rect selection meets every variant condition. */
+function meetsAll(inputs, spec) {
+  const trial = structuredClone(inputs);
+  Object.assign(trial.paths[0].rows[1].rect, spec);
+  const p = resultOf(normalizeInputs(trial));
+  const r = p.rows.get('r2');
+  return r.n >= 1 && r.v <= VARIANT_LIMITS.vMax && r.dp <= VARIANT_LIMITS.dpMax && (r.noiseMargin == null || r.noiseMargin >= 10) && p.receiver.status === 'ok';
+}
+
+test('6. variants: fixed housing, one per d and n at the selected length, best L_pA first', () => {
+  const inputs = variantCase({ series: 'trox-mk', B: 1500, H: 1000, L: 3000 });
   const v = silencerVariants(inputs, 'w1', 'r2');
   assert.equal(v.missing, null);
   assert.ok(v.list.length >= 3);
   const keys = v.list.map((c) => `${c.spec.d}/${c.n}`);
   assert.equal(new Set(keys).size, keys.length, 'one variant per d and n');
   for (const c of v.list) {
-    near(c.gap, c.spec.s, 1e-9, 'candidate uses the actual interpolated gap');
+    assert.equal(c.spec.L, 3000, 'the selected length');
+    assert.deepEqual([c.spec.B, c.spec.H], [1500, 1000], 'the housing stays');
     near(c.n * (c.spec.d + c.gap), 1500, 1e-9, 'fills B');
+    near(c.spec.s, c.gap, 0.05, 'the actual gap, rounded to 0.1 mm');
   }
-  const fitting = v.list.filter((c) => c.ok);
-  assert.ok(fitting.length >= 1);
-  for (const c of fitting) {
-    assert.ok(c.v <= VARIANT_LIMITS.vMax && c.dp <= VARIANT_LIMITS.dpMax, 'limits');
-    assert.ok(c.margin >= -0.05, 'target');
-    // shortest length: one step shorter misses the target
-    const shorter = rectChoices(c.spec).L.filter((L) => L < c.spec.L).pop();
-    if (shorter) {
-      const trial = structuredClone(inputs);
-      Object.assign(trial.paths[0].rows[1].rect, { d: c.spec.d, s: c.spec.s, L: shorter });
-      const rc = compute(normalizeInputs(trial)).paths[0].receiver;
-      assert.equal(rc.status, 'over', `${c.spec.d}/${c.spec.s}/${shorter} should miss`);
-    }
-  }
-  fitting.forEach((c, i) => i && assert.ok(c.dp >= fitting[i - 1].dp, 'ranked by Δp'));
-  assert.ok(v.list.findIndex((c) => !c.ok) === -1 || v.list.findIndex((c) => !c.ok) >= fitting.length, 'fitting first');
+  const kept = v.list.filter((c) => c.limitsOk);
+  assert.ok(kept.length >= 2);
+  assert.ok(v.list.slice(0, kept.length).every((c) => c.limitsOk), 'limits kept first');
+  kept.forEach((c, i) => i && assert.ok(c.lpa >= kept[i - 1].lpa, 'then the lowest L_pA'));
+  const ok = v.list.filter((c) => c.ok);
+  assert.ok(ok.length >= 1);
+  for (const c of ok) assert.ok(c.v <= VARIANT_LIMITS.vMax && c.dp <= VARIANT_LIMITS.dpMax && c.margin >= -0.05);
 });
 
 test('variants: narrow gaps are rejected for their flow noise even when they meet the target', () => {
@@ -538,14 +542,46 @@ test('variants: narrow gaps are rejected for their flow noise even when they mee
   near(r.noiseMargin, 5.44, 0.01);
   assert.deepEqual(codes(r), ['flow-noise']);
   const v = silencerVariants(inputs, 'w1', 'r2');
-  const narrow = v.list.find((c) => c.spec.d === 100 && c.spec.s === 50);
-  assert.notEqual(narrow.spec.L, 3000, 'not offered at L 3000');
+  const narrow = v.list.find((c) => c.spec.d === 100 && c.n === 10);
+  assert.equal(narrow.limitsOk, false);
   assert.equal(narrow.ok, false);
-  assert.ok(v.list[0].ok, 'a wider gap fits');
+  assert.ok(narrow.lpa < v.list[0].lpa, 'it would attenuate best');
+  assert.ok(v.list[0].ok, 'a wider gap fits and comes first');
+});
+
+test('variants: a free side takes the smallest size in 50 mm steps up to its maximum that meets everything', () => {
+  // H free up to 1050: B and the selected length stay, H is a multiple of 50 mm, one step lower misses a condition
+  const high = variantCase({ series: 'trox-mk', B: 1500, H: 1000, L: 3000 }, { design: { fixH: false, maxH: 1050 } });
+  const before = structuredClone(high);
+  const v = silencerVariants(high, 'w1', 'r2');
+  assert.deepEqual(high, before, 'the search does not change the project');
+  assert.ok(v.list.some((c) => c.ok));
+  for (const c of v.list) {
+    assert.equal(c.spec.B, 1500);
+    assert.ok(c.spec.H <= 1050 && c.spec.H % SIZE_STEP === 0, `H ${c.spec.H}`);
+    if (c.ok) assert.equal(meetsAll(high, { ...c.spec, H: c.spec.H - SIZE_STEP }), false, `${c.spec.d}/${c.n} at H ${c.spec.H - SIZE_STEP}`);
+  }
+
+  // B free up to 1530: one variant per d, B a multiple of 50 mm; no smaller width meets everything with any n
+  const wide = variantCase({ series: 'trox-mk', B: 1500, H: 1000, L: 3000 }, { design: { fixB: false, maxB: 1530 } });
+  const w = silencerVariants(wide, 'w1', 'r2');
+  assert.equal(new Set(w.list.map((c) => c.spec.d)).size, w.list.length, 'one variant per d');
+  for (const c of w.list) {
+    assert.equal(c.spec.H, 1000);
+    assert.ok(c.spec.B <= 1530 && c.spec.B % SIZE_STEP === 0, `B ${c.spec.B}`);
+    if (!c.ok) continue;
+    for (let B = SIZE_MIN; B < c.spec.B; B += SIZE_STEP) {
+      for (let n = 1; n * (c.spec.d + 50) <= B; n++) {
+        const s = B / n - c.spec.d;
+        if (lookupRow('rect', { ...c.spec, s })) assert.equal(meetsAll(wide, { ...c.spec, B, s }), false, `${c.spec.d}/${n} in B ${B}`);
+      }
+    }
+  }
 });
 
 test('variants: missing housing or flow; round by dn; the stored row of a candidate is current', () => {
   assert.equal(silencerVariants(variantCase({ B: null, H: 1000 }), 'w1', 'r2').missing, 'geometry');
+  assert.equal(silencerVariants(variantCase({ B: null, H: 1000 }, { design: { fixB: false } }), 'w1', 'r2').missing, 'geometry', 'free side without a size');
   assert.equal(silencerVariants(variantCase({ B: 1200, H: 1000 }, { flow: null }), 'w1', 'r2').missing, 'flow');
   const r = silencerVariants(variantCase({}, { kind: 'round', flow: 6000, roundSpec: { series: 'schako-rs-n', dn: 500, L: 950, insulation: 100 } }), 'w1', 'r2');
   assert.ok(r.list.length >= 1);
@@ -579,67 +615,27 @@ test('variant compliance requires a known receiver result and a path without cal
   assert.ok(silencerVariants(noTarget, 'w1', 'r2').list.some((c) => Number.isFinite(c.lpa) && !c.hasTarget && c.ok), 'a valid receiver without a target remains allowed');
 });
 
-test('automatic variants stay within maximum dimensions and preserve sizing settings on round trips', () => {
-  const inputs = variantCase({ series: 'trox-mk', B: null, H: null });
-  const sd = inputs.paths[0].rows[1];
-  sd.design = { mode: 'auto', maxB: 1530, maxH: 1050, maxL: 3000 };
-  const before = structuredClone(inputs);
-  const variants = silencerVariants(inputs, 'w1', 'r2');
-  assert.equal(variants.missing, null);
-  assert.ok(variants.list.length > 3, 'several geometries are proposed');
-  assert.ok(variants.list.some((c) => c.ok), 'at least one geometry meets all criteria');
-  assert.ok(variants.list.some((c) => c.spec.B < sd.design.maxB), 'also offers fitted smaller casing widths');
-  for (const c of variants.list) {
-    assert.ok(c.spec.B <= sd.design.maxB && c.spec.H <= sd.design.maxH && c.spec.L <= sd.design.maxL);
-    near(c.spec.H, 1050, 1e-9);
-    assert.ok(lookupRow('rect', c.spec));
-    if (c.ok) {
-      assert.ok(c.v <= 12 && c.dp <= 100 && c.noiseMargin >= 10 && c.margin >= -0.05);
-    }
-  }
-  assert.deepEqual(inputs, before, 'variant search does not mutate a project');
-  assert.deepEqual(normalizeInputs(JSON.parse(JSON.stringify(inputs))), inputs);
-  sd.design.maxL = null;
-  assert.equal(silencerVariants(inputs, 'w1', 'r2').missing, 'length');
+test('design settings: both sides fixed by default; a free side searches up to its maximum or its size', () => {
+  const sd = variantCase({ B: 900, H: 1000 }).paths[0].rows[1];
+  assert.deepEqual(sd.design, { fixB: true, fixH: true, maxB: null, maxH: null });
+  assert.deepEqual(variantHousing(sd), { fixB: true, fixH: true, B: 900, H: 1000 });
+  const free = variantCase({ B: 900, H: 1000 }, { design: { fixB: false, maxB: 1200, fixH: false } });
+  assert.deepEqual(variantHousing(free.paths[0].rows[1]), { fixB: false, fixH: false, B: 1200, H: 1000 }, 'H without a maximum: its size');
+  assert.deepEqual(normalizeInputs(JSON.parse(JSON.stringify(free))), free, 'idempotent');
+  const old = normalizeInputs({ paths: [{ rows: [{ type: 'silencer', design: { mode: 'auto', maxB: 'x', maxL: 3000 } }] }] });
+  assert.deepEqual(old.paths[0].rows[0].design, { fixB: true, fixH: true, maxB: null, maxH: null }, 'settings of older files');
 });
 
-test('automatic circular variants retain diameter and respect maximum installation length', () => {
+test('variants: round silencers use the length nearest to the selected one', () => {
   const inputs = variantCase({}, { kind: 'round', flow: 2500, roundSpec: { series: 'schako-rs-n', dn: 400, L: 950, insulation: 100 } });
-  inputs.paths[0].rows[1].design = { mode: 'auto', maxB: null, maxH: null, maxL: 1000 };
-  const variants = silencerVariants(inputs, 'w1', 'r2');
-  assert.ok(variants.list.length > 0);
-  for (const c of variants.list) {
+  const v = silencerVariants(inputs, 'w1', 'r2');
+  assert.ok(v.list.length > 0);
+  for (const c of v.list) {
     assert.equal(c.spec.dn, 400);
-    const data = lookupRow('round', c.spec);
-    assert.ok((data.overallLength ?? data.L) <= 1000);
+    const lengths = ROUND_ROWS.filter((r) => r.series === 'schako-rs-n' && r.dn === 400 && r.insulation === c.spec.insulation && (r.core ?? null) === (c.spec.core ?? null)).map((r) => r.L);
+    const best = Math.min(...lengths.map((L) => Math.abs(L - 950)));
+    assert.equal(Math.abs(c.spec.L - 950), best, `${c.spec.insulation}/${c.spec.core}: nearest length`);
   }
-  assert.ok(variants.list.every((c) => c.spec.L !== 950), 'Schako nominal 950 with installation length 1050 does not fit');
-  inputs.paths[0].rows[1].design.maxL = null;
-  assert.equal(silencerVariants(inputs, 'w1', 'r2').missing, 'length');
-});
-
-test('automatic circular sizing excludes contradictory printed lengths without removing manual products', () => {
-  for (const dn of [500, 630]) {
-    const spec = { series: 'lindab-slu', dn, L: 900, insulation: 100 };
-    const row = lookupRow('round', spec);
-    assert.equal(row.overallLength, 600, 'source discrepancy remains as printed');
-    assert.match(row.note, /Druckfehler/);
-    const inputs = variantCase({}, { kind: 'round', flow: 2500, roundSpec: spec });
-    inputs.paths[0].rows[1].design = { mode: 'auto', maxB: null, maxH: null, maxL: 900 };
-    const variants = silencerVariants(inputs, 'w1', 'r2');
-    assert.equal(variants.list.length, 0, 'uncertain 900 nominal/600 overall product is excluded');
-    inputs.paths[0].rows[1].design.maxL = 1200;
-    const longer = silencerVariants(inputs, 'w1', 'r2').list;
-    assert.ok(longer.length > 0 && longer.every((c) => c.spec.L === 1200), 'documented longer products remain available');
-    assert.equal(rowResult(inputs, 'r2').row.L, 900, 'manual selection is retained');
-  }
-});
-
-test('fittingSplitterRows: one supported actual gap per d and count', () => {
-  const rows = fittingSplitterRows('trox-xk', 900);
-  const d100 = rows.filter((r) => r.d === 100);
-  // B 900, d 100: s 50 → n 6 (s′ 50); s 80 → n 5 (s′ 80); s 100 → n 4.5 → 5 (s′ 80): the same silencer as s 80 → dropped
-  assert.deepEqual([...new Set(d100.map((r) => r.s))].sort((a, b) => a - b), [50, 80]);
 });
 
 // ---- front view ----------------------------------------------------------------------------------------

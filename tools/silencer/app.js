@@ -8,12 +8,12 @@ import {
   staleRows,
   lookupRow,
   rowCopy,
-  rowOf,
   rectChoices,
   roundChoices,
   snapRect,
   snapRound,
   silencerVariants,
+  variantHousing,
   CALC_VERSION,
   SPLITTER_SERIES,
   ROUND_SERIES,
@@ -64,7 +64,6 @@ import { bindRowDrag, moveBefore } from '../../lib/core/drag.js';
 import { createIssuePanel } from '../../lib/core/issues.js';
 import { mountCalculationTabs } from '../../lib/core/calculation-tabs.js';
 import { enableCombos } from '../../lib/core/combo.js';
-import { DESIGN_FEEDBACK } from './settings.js';
 
 const DRAFT_KEY = `hlks-tools:${TOOL_ID}:draft`;
 
@@ -76,7 +75,6 @@ const ui = {
   selectedId: null, // silencer shown in the design panel
   result: null,
   variants: [], // list shown in the design panel (for "take")
-  variantSearch: null, // only explicit auto searches are cached; input changes invalidate their key
   fileNotes: [],
 };
 
@@ -328,9 +326,13 @@ const numAttrs = 'type="text" inputmode="decimal" autocomplete="off"';
 function field(label, control, unit = '', cls = '') {
   return html`<label class="pf ${cls}"><span class="pf-label">${raw(label)}</span>${control}${unit ? html`<span class="unit">${unit}</span>` : ''}</label>`;
 }
-function numField(attr, key, value, { placeholder = '', cls = '' } = {}) {
-  return raw(`<input class="cell-input num ${cls}" ${numAttrs} ${attr}="${key}" value="${toInputValue(value)}" placeholder="${placeholder}" />`);
+function numField(attr, key, value, { placeholder = '', cls = '', label = '' } = {}) {
+  const aria = label ? ` aria-label="${String(html`${label}`)}"` : '';
+  return raw(`<input class="cell-input num ${cls}" ${numAttrs} ${attr}="${key}" value="${toInputValue(value)}" placeholder="${placeholder}"${aria} />`);
 }
+/** One line of the design panel: label column, then the control (all lines share the label width). */
+const designRow = (label, control) => html`<div class="type-group"><span class="tg-label">${raw(label)}</span><div class="tg-ctl">${control}</div></div>`;
+const mm = html`<span class="unit">mm</span>`;
 function selectField(attr, key, options, value, cls = '') {
   return html`<select class="cell-select ${cls}" ${raw(`${attr}="${key}"`)}>${options.map(([v, t]) => html`<option value="${v}" ${String(v) === String(value) ? 'selected' : ''}>${t}</option>`)}</select>`;
 }
@@ -374,7 +376,7 @@ const COLGROUP = raw(`<colgroup><col class="w-grip"><col class="w-name"><col cla
 
 function renderTable() {
   const groups = linesByRow();
-  const head = html`<thead><tr><th></th><th>Element</th><th>Einheit</th><th></th>${OCTAVE_LABELS.map((o) => html`<th class="c-oct">${o}</th>`)}<th class="c-total">Σ dB(A)</th><th></th></tr></thead>`;
+  const head = html`<thead><tr><th></th><th class="c-name">Element</th><th class="c-unit">Einheit</th><th></th>${OCTAVE_LABELS.map((o) => html`<th class="c-oct">${o}</th>`)}<th class="c-total">Σ dB(A)</th><th></th></tr></thead>`;
   const body = path().rows.map((row) => rowHtml(row, groups.get(row.id) ?? []));
   const foot = html`<tfoot>
     <tr class="sum-line"><td></td><td class="c-name">Summe</td><td class="c-unit">dB(A)</td><td></td>${OCTAVE_LABELS.map((_, i) => html`<td class="c-oct" data-sum="${i}"></td>`)}<td class="c-total" data-sum="total"></td><td></td></tr>
@@ -391,7 +393,7 @@ function rowHtml(row, lines) {
 function lineHtml(row, l, j) {
   const first = j === 0;
   const name = first
-    ? html`<input class="cell-input name-input" type="text" autocomplete="off" data-f="name" value="${row.name}" placeholder="${TYPE_LABELS[row.type]}" />${row.type === 'silencer' ? html`<span class="product">${productText(row)}</span>` : ''}`
+    ? html`<div class="name-cell"><input class="cell-input name-input" type="text" autocomplete="off" data-f="name" value="${row.name}" placeholder="${TYPE_LABELS[row.type]}" />${row.type === 'silencer' ? html`<span class="product"></span>` : ''}</div>`
     : html`<span class="sub-label">${lineLabel(l, row, false)}</span>`;
   const unit = l.edit && l.unit
     ? html`<button class="unit-btn ${l.unit === 'dBA' ? 'is-a' : ''}" data-act="unit" data-edit="${l.edit}" title="Einheit wechseln" aria-label="Einheit ${UNIT_LABELS[l.unit]}, wechseln">${UNIT_LABELS[l.unit]}</button>`
@@ -444,7 +446,7 @@ function fillTable() {
     body.classList.toggle('has-error', errors);
     body.classList.toggle('has-warning', !errors && r.issues.some((x) => x.severity === 'warning'));
     const product = $('.product', body);
-    if (product) product.textContent = productText(row);
+    if (product) product.textContent = product.title = productText(row);
   }
   for (let i = 0; i < 8; i++) {
     $(`[data-sum="${i}"]`).textContent = db(res.level[i]);
@@ -470,9 +472,8 @@ function renderReceiver() {
   const rc = path().receiver;
   const area = rc.area == null && rc.volume > 0 && rc.reverb > 0 ? toInputValue(Math.round(((0.163 * rc.volume) / rc.reverb) * 10) / 10) : '';
   $('#receiver').innerHTML = String(html`
-    <div class="rc-head">${icon('receiver', { size: 15 })}<h3>Empfänger</h3></div>
+    <div class="rc-head">${icon('receiver', { size: 15 })}<h3>Empfänger</h3>${raw(`<input class="cell-input w-name" type="text" autocomplete="off" data-rf="name" value="${String(html`${rc.name}`)}" placeholder="Name" aria-label="Name" />`)}</div>
     <div class="rc-fields">
-      ${field('Name', raw(`<input class="cell-input w-name" type="text" autocomplete="off" data-rf="name" value="${String(html`${rc.name}`)}" />`))}
       ${field('r', numField('data-rf', 'r', rc.r, { placeholder: '–' }), 'm')}
       ${field('Q', selectField('data-rf', 'q', DIRECTIVITIES.map((q) => [q, q]), rc.q))}
       ${field('A', numField('data-rf', 'area', rc.area, { placeholder: area || '–' }), 'm²')}
@@ -569,69 +570,67 @@ function renderDesign() {
     }
   }
   const makerOrder = ['Trox', 'Schako', 'Lindab', 'Prod. RIO', 'Prod. Schmidlin'];
-  const products = [...makers].sort(([a], [b]) => makerOrder.indexOf(a) - makerOrder.indexOf(b)).map(([maker, list]) => html`
-    <div class="type-group"><span class="tg-label">${maker}</span><div class="chips">${list.map((s) =>
+  const products = [...makers].sort(([a], [b]) => makerOrder.indexOf(a) - makerOrder.indexOf(b)).map(([maker, list]) => designRow(maker,
+    html`<div class="chips">${list.map((s) =>
       chip(s.estimated ? 'Kulisse (geschätzt)' : seriesName(s.kind, s.id).replace(`${maker} `, ''), sd.kind === s.kind && sd[s.kind].series === s.id,
-        `data-act="series" data-kind="${s.kind}" data-value="${s.id}"`, s.label))}</div></div>`);
+        `data-act="series" data-kind="${s.kind}" data-value="${s.id}"`, s.label))}</div>`));
+  const form = sd.kind === 'rect' ? rectForm(sd) : sd.kind === 'round' ? roundForm(sd) : manualForm(sd);
   el.innerHTML = String(html`
     <div class="design-head">${icon('silencer', { size: 15 })}<h3>${rowLabel(sd)}</h3><span class="muted" data-design="flow"></span></div>
-    <div class="products">${products}</div>
-    <div class="type-group"><span class="tg-label"></span><div class="chips">${chip(KIND_LABELS.manual, sd.kind === 'manual', 'data-act="manual"')}</div></div>
-    ${sd.kind === 'rect' ? rectForm(sd) : sd.kind === 'round' ? roundForm(sd) : manualForm(sd)}`);
+    <div class="design-body">
+      <div class="design-input">
+        <div class="design-form">
+          ${products}
+          ${designRow('', html`<div class="chips">${chip(KIND_LABELS.manual, sd.kind === 'manual', 'data-act="manual"')}</div>`)}
+        </div>
+        <div class="design-form">${form}</div>
+      </div>
+      <div class="design-output">
+        <div class="design-result">
+          <dl class="kv" data-design="values"></dl>
+          ${sd.kind !== 'manual' ? html`<div class="front" data-design="view"></div>` : ''}
+        </div>
+        ${sd.kind !== 'manual' ? html`<div class="variants" data-design="variants" aria-live="polite"></div>` : ''}
+      </div>
+    </div>`);
 }
 
-function designMode(sd) {
-  return html`<div class="seg design-mode" role="group" aria-label="Auslegungsmodus">${[
-    ['manual', 'Frei'], ['auto', 'Maximalmasse'],
-  ].map(([mode, label]) => html`<button class="seg-btn" aria-pressed="${String(sd.design.mode === mode)}" data-act="design-mode" data-value="${mode}">${label}</button>`)}</div>`;
+/** Choice chips of a data key (d, L, insulation, core) as one design line. */
+function pick(sd, key, label, values) {
+  if (!values.length) return '';
+  const spec = sd[sd.kind];
+  return designRow(label, html`<div class="chips">${values.map((v) => chip(fmt(v, 0), spec[key] === v, `data-act="spec" data-key="${key}" data-value="${v}"`))}</div>`);
+}
+
+/** B or H of the housing. Fixed: the size of the silencer, the variants keep it. Free: the maximum for the variants. */
+function sideRow(sd, side) {
+  const fixed = sd.design[`fix${side}`];
+  const key = fixed ? `rect.${side}` : `design.max${side}`;
+  return designRow(fixed ? side : `${side} max.`, html`
+    ${numField('data-sf', key, getPath(sd, key), { placeholder: '–', cls: 'w-mm', label: `${side} innen${fixed ? '' : ' max.'}` })}${mm}
+    ${chip('Fix', fixed, `data-act="fix" data-value="${side}"`)}`);
 }
 
 function rectForm(sd) {
   const c = rectChoices(sd.rect);
-  const pick = (key, label, values) => html`<div class="type-group"><span class="tg-label">${label}</span><div class="chips">${values.map((v) => chip(fmt(v, 0), sd.rect[key] === v, `data-act="spec" data-key="${key}" data-value="${v}"`))}</div></div>`;
   return html`
-    ${designMode(sd)}
-    ${sd.design.mode === 'auto' ? html`<div class="design-fields maximum-fields">
-      ${field('B innen max.', numField('data-sf', 'design.maxB', sd.design.maxB, { placeholder: '–' }), 'mm')}
-      ${field('H innen max.', numField('data-sf', 'design.maxH', sd.design.maxH, { placeholder: '–' }), 'mm')}
-      ${field('L max.', numField('data-sf', 'design.maxL', sd.design.maxL, { placeholder: '–' }), 'mm')}
-    </div>` : ''}
-    <div class="design-fields">
-      ${sd.design.mode === 'manual' ? html`${field('B', numField('data-sf', 'rect.B', sd.rect.B, { placeholder: '–' }), 'mm')}${field('H', numField('data-sf', 'rect.H', sd.rect.H, { placeholder: '–' }), 'mm')}` : ''}
-      ${field('Einbau', selectField('data-sf', 'install', Object.entries(INSTALL_LABELS), sd.install))}
-    </div>
-    ${sd.design.mode === 'auto' ? html`<button class="btn primary design-calculate" data-act="calculate-variants">Berechnen</button>` : ''}
-    <div class="front" data-design="view"></div>
-    ${sd.design.mode === 'manual' ? html`${pick('d', 'Kulisse d', c.d)}
-    <div class="design-fields">${field('Spalt s', raw(`<input class="cell-input num" ${numAttrs} data-sf="rect.s" data-combo="gap" value="${toInputValue(sd.rect.s)}" />`), 'mm')}</div>
-    ${pick('L', 'Länge L', c.L)}` : ''}
-    <dl class="kv" data-design="values"></dl>
-    <div class="variants" data-design="variants" aria-live="polite"></div>`;
+    ${sideRow(sd, 'B')}
+    ${sideRow(sd, 'H')}
+    ${designRow('Einbau', selectField('data-sf', 'install', Object.entries(INSTALL_LABELS), sd.install, 'w-install'))}
+    ${pick(sd, 'd', 'Kulisse d', c.d)}
+    ${designRow('Spalt s', html`${raw(`<input class="cell-input num w-mm" ${numAttrs} data-sf="rect.s" data-combo="gap" value="${toInputValue(sd.rect.s)}" aria-label="Spalt s" />`)}${mm}`)}
+    ${pick(sd, 'L', 'Länge L', c.L)}`;
 }
 
 function roundForm(sd) {
   const c = roundChoices(sd.round);
-  const pick = (key, label, values, f = (v) => fmt(v, 0)) => (values.length
-    ? html`<div class="type-group"><span class="tg-label">${label}</span><div class="chips">${values.map((v) => chip(f(v), sd.round[key] === v, `data-act="spec" data-key="${key}" data-value="${v}"`))}</div></div>`
-    : '');
   return html`
-    ${designMode(sd)}
-    <div class="design-fields">
-      ${field('Ø', selectField('data-sf', 'round.dn', c.dn.map((v) => [v, fmt(v, 0)]), sd.round.dn), 'mm')}
-      ${sd.design.mode === 'auto' ? field('L gesamt max.', numField('data-sf', 'design.maxL', sd.design.maxL, { placeholder: '–' }), 'mm') : ''}
-    </div>
-    ${sd.design.mode === 'auto' ? html`<button class="btn primary design-calculate" data-act="calculate-variants">Berechnen</button>` : ''}
-    <div class="front" data-design="view"></div>
-    ${sd.design.mode === 'manual' ? html`${pick('insulation', 'Dämmung', c.insulation)}
-    ${pick('core', 'Kern', c.core)}
-    ${pick('L', 'Länge L', c.L)}` : ''}
-    <dl class="kv" data-design="values"></dl>
-    <div class="variants" data-design="variants" aria-live="polite"></div>`;
+    ${designRow('Ø', html`${selectField('data-sf', 'round.dn', c.dn.map((v) => [v, fmt(v, 0)]), sd.round.dn, 'w-dn')}${mm}`)}
+    ${pick(sd, 'insulation', 'Dämmung', c.insulation)}${pick(sd, 'core', 'Kern', c.core)}${pick(sd, 'L', 'Länge L', c.L)}`;
 }
 
 function manualForm(sd) {
-  return html`<div class="design-fields">${field('Δp', numField('data-sf', 'manual.dp', sd.manual.dp, { placeholder: '–' }), 'Pa')}</div>
-    <dl class="kv" data-design="values"></dl>`;
+  return designRow('Δp', html`${numField('data-sf', 'manual.dp', sd.manual.dp, { placeholder: '–', cls: 'w-mm', label: 'Δp' })}<span class="unit">Pa</span>`);
 }
 
 function fillDesign() {
@@ -641,11 +640,11 @@ function fillDesign() {
   const r = res.rows.get(sd.id);
   const flow = $('[data-design="flow"]');
   if (flow) flow.textContent = r.flow > 0 ? `V̇ ${fmt(r.flow, 0)} m³/h` : 'V̇ –';
+  // the front view gives the size of the silencer itself (with a free side the input shows the maximum)
   const view = $('[data-design="view"]');
   if (view) view.innerHTML = sd.kind === 'rect' ? rectFrontView({ ...sd.rect }, r) : roundFrontView(r.row);
   const kv = (k, v) => html`<dt>${raw(k)}</dt><dd>${v}</dd>`;
   const values = [];
-  if (sd.kind !== 'manual' && sd.design?.mode === 'auto') values.push(kv(sd.kind === 'rect' ? 'd / s / L' : 'Dämmung / L', sd.kind === 'rect' ? `${fmt(sd.rect.d, 0)} / ${fmt(sd.rect.s, 0)} / ${fmt(sd.rect.L, 0)} mm` : `${fmt(sd.round.insulation, 0)} / ${fmt(sd.round.L, 0)} mm`));
   if (sd.kind === 'rect') values.push(kv('n', r.n ? fmt(r.n, 0) : '–'), kv('s′', r.gap != null ? `${fmtLimit(r.gap)} mm` : '–'), kv('A<sub>frei</sub>', r.aFree ? `${fmt(r.aFree, 3)} m²` : '–'));
   if (sd.kind === 'round') values.push(kv('A<sub>frei</sub>', r.aFree ? `${fmt(r.aFree, 3)} m²` : '–'));
   if (sd.kind === 'round' && r.row?.overallLength) values.push(kv('L gesamt', `${fmt(r.row.overallLength, 0)} mm`));
@@ -655,70 +654,38 @@ function fillDesign() {
   if (r.noiseMargin != null) values.push(kv('Abstand zum Pegel', `${db(r.noiseMargin)} dB`));
   $('[data-design="values"]').innerHTML = String(html`${values}`);
   const box = $('[data-design="variants"]');
-  if (box) box.innerHTML = String(variantsHtml(sd));
-  const calculate = $('[data-act="calculate-variants"]');
-  if (calculate) calculate.disabled = ui.variantSearch?.key === variantSearchKey() && ui.variantSearch.busy;
+  if (box) box.innerHTML = String(variantsHtml(sd, r));
 }
 
-const variantSearchKey = () => JSON.stringify([ui.pathId, ui.selectedId, inputs()]);
-
-/** Keep the cosmetic feedback optional and discard results if the calculation changes while waiting. */
-async function calculateVariants() {
-  const sd = selected();
-  if (!sd || sd.design.mode !== 'auto') return;
-  const request = { key: variantSearchKey(), busy: true, result: null };
-  ui.variantSearch = request;
-  fillDesign();
-  const started = performance.now();
-  await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
-  try {
-    if (request.key !== variantSearchKey()) return;
-    request.result = silencerVariants(inputs(), path().id, sd.id);
-    const remaining = DESIGN_FEEDBACK.enabled ? Math.max(0, DESIGN_FEEDBACK.durationMs - (performance.now() - started)) : 0;
-    if (remaining) await new Promise((resolve) => setTimeout(resolve, remaining));
-  } catch (e) {
-    toast(`Auslegung fehlgeschlagen: ${e.message}`, { kind: 'error' });
-  } finally {
-    request.busy = false;
-    if (ui.variantSearch === request && request.key === variantSearchKey()) fillDesign();
-  }
-}
-
-function variantsHtml(sd) {
-  let v;
-  if (sd.design.mode === 'auto') {
-    const search = ui.variantSearch;
-    if (!search || search.key !== variantSearchKey()) {
-      ui.variants = [];
-      return '';
-    }
-    if (search.busy) {
-      ui.variants = [];
-      return html`<div class="design-progress" role="status"><span>Berechnen …</span><progress aria-label="Varianten berechnen"></progress></div>`;
-    }
-    v = search.result;
-  } else v = silencerVariants(inputs(), path().id, sd.id);
+/** Variants of the selected silencer (calc.js silencerVariants); `r` is its current result. */
+function variantsHtml(sd, r) {
+  const v = silencerVariants(inputs(), path().id, sd.id);
   ui.variants = v?.list ?? [];
   if (!v) return '';
-  const title = sd.kind === 'rect' ? html`Varianten${sd.design.mode === 'manual' ? ` für B ${fmt(sd.rect.B, 0)} × H ${fmt(sd.rect.H, 0)}` : ''}` : html`Varianten für Ø ${fmt(sd.round.dn, 0)}`;
-  if (v.missing) return html`<h4 class="sub">Varianten</h4><p class="muted small">${v.missing === 'geometry' ? sd.kind === 'rect' ? 'B × H oder L max. fehlt' : 'Ø oder L gesamt max. fehlt' : v.missing === 'length' ? 'L max. fehlt' : 'V̇ fehlt'}</p>`;
-  if (!v.list.length) return html`<h4 class="sub">${title}</h4><p class="muted small">–</p>`;
   const rect = sd.kind === 'rect';
+  const h = rect ? variantHousing(sd) : null;
+  const kept = rect
+    ? [h.fixB ? `B ${fmt(h.B, 0)}` : '', h.fixH ? `H ${fmt(h.H, 0)}` : '', `L ${fmt(sd.rect.L, 0)}`]
+    : [`Ø ${fmt(sd.round.dn, 0)}`];
+  const title = html`<h4 class="sub">Varianten <span class="muted">${kept.filter(Boolean).join(' | ')}</span></h4>`;
+  if (v.missing) return html`${title}<p class="muted small">${v.missing === 'geometry' ? (rect ? 'B × H fehlt' : 'Ø fehlt') : 'V̇ fehlt'}</p>`;
+  if (!v.list.length) return html`${title}<p class="muted small">–</p>`;
+  const sized = rect && !(h.fixB && h.fixH);
   const same = (c) => (rect
-    ? c.spec.d === sd.rect.d && c.spec.s === sd.rect.s && c.spec.L === sd.rect.L && c.spec.B === sd.rect.B && c.spec.H === sd.rect.H
+    ? c.spec.d === sd.rect.d && c.n === r.n && c.spec.L === sd.rect.L && c.spec.B === sd.rect.B && c.spec.H === sd.rect.H
     : c.spec.insulation === sd.round.insulation && (c.spec.core ?? null) === (sd.round.core ?? null) && c.spec.L === sd.round.L);
   const head = rect
-    ? html`<th>d/s</th><th class="n">n</th>${sd.design.mode === 'auto' ? html`<th class="n">B × H</th>` : html`<th class="n">s′</th>`}`
-    : html`<th>Dämmung</th><th class="n">Kern</th>`;
+    ? html`<th class="n">d</th><th class="n">n</th><th class="n">s′</th>${sized ? html`<th class="n">B × H</th>` : ''}`
+    : html`<th>Dämmung</th><th class="n">Kern</th><th class="n">L</th>`;
   const rows = v.list.map((c, i) => html`<tr class="${c.ok ? '' : 'is-miss'} ${same(c) ? 'is-current' : ''}" data-act="take" data-i="${i}" tabindex="0">
     ${rect
-      ? html`<td>${fmt(c.spec.d, 0)}/${fmtLimit(c.spec.s)}</td><td class="n">${c.n}</td><td class="n">${sd.design.mode === 'auto' ? `${fmt(c.spec.B, 0)} × ${fmt(c.spec.H, 0)}` : fmtLimit(c.gap)}</td>`
-      : html`<td>${c.spec.insulation}</td><td class="n">${c.spec.core ?? '–'}</td>`}
-    <td class="n">${fmt(c.spec.L, 0)}</td><td class="n">${c.v != null ? db(c.v) : '–'}</td><td class="n">${c.dp != null ? fmt(c.dp, 0) : '–'}</td>
+      ? html`<td class="n">${fmt(c.spec.d, 0)}</td><td class="n">${c.n}</td><td class="n">${fmtLimit(c.gap)}</td>${sized ? html`<td class="n">${fmt(c.spec.B, 0)} × ${fmt(c.spec.H, 0)}</td>` : ''}`
+      : html`<td>${c.spec.insulation}</td><td class="n">${c.spec.core ?? '–'}</td><td class="n">${fmt(c.spec.L, 0)}</td>`}
+    <td class="n">${c.v != null ? db(c.v) : '–'}</td><td class="n">${c.dp != null ? fmt(c.dp, 0) : '–'}</td>
     <td class="n ${c.margin == null ? '' : c.margin >= 0 ? 'is-ok' : 'is-over'}">${icon(c.ok ? 'check' : 'warning', { size: 12, label: c.ok ? 'Bedingungen eingehalten' : 'Bedingungen nicht eingehalten' })}${Number.isFinite(c.lpa) ? db(c.lpa) : '–'}</td>
   </tr>`);
-  return html`<h4 class="sub">${title}</h4>
-    <table class="var-table"><thead><tr>${head}<th class="n">L</th><th class="n">v</th><th class="n">Δp</th><th class="n">L<sub>pA</sub></th></tr></thead><tbody>${rows}</tbody></table>`;
+  return html`${title}
+    <table class="var-table"><thead><tr>${head}<th class="n">v</th><th class="n">Δp</th><th class="n">L<sub>pA</sub></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 // ---- issues -----------------------------------------------------------------------
@@ -969,19 +936,14 @@ function bindWork() {
           commitAndRender();
         }
         break;
-      case 'design-mode':
+      case 'fix':
         if (sd) {
-          sd.design.mode = btn.dataset.value;
-          if (sd.design.mode === 'auto') {
-            sd.design.maxB ??= sd.rect.B;
-            sd.design.maxH ??= sd.rect.H;
-            sd.design.maxL ??= sd.kind === 'round' ? Math.max(sd.round.L ?? 0, rowOf(sd)?.overallLength ?? 0) || null : sd.rect.L;
-          }
+          // a side that is set free starts with its current size as the maximum
+          const side = btn.dataset.value;
+          sd.design[`fix${side}`] = !sd.design[`fix${side}`];
+          if (!sd.design[`fix${side}`]) sd.design[`max${side}`] = sd.rect[side];
           commitAndRender();
         }
-        break;
-      case 'calculate-variants':
-        calculateVariants();
         break;
       case 'spec':
         if (sd) {
@@ -1048,10 +1010,8 @@ function takeVariant(i) {
   const c = ui.variants[i];
   const sd = selected();
   if (!c || !sd) return;
-  const search = ui.variantSearch?.key === variantSearchKey() ? ui.variantSearch : null;
   sd[sd.kind] = { ...sd[sd.kind], ...c.spec };
   refreshSilencer(sd);
-  if (search) search.key = variantSearchKey();
   commitAndRender();
 }
 

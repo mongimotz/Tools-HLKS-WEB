@@ -52,24 +52,23 @@ test('7. PDF round trip keeps project and inputs identical', async () => {
   assert.deepEqual(env.snapshot, snapshotOf(compute(doc.inputs)));
 });
 
-test('PDF round trip preserves automatic sizing, fractional estimated gaps and Schako noise profiles', async () => {
+test('PDF round trip preserves free housing sides, fractional estimated gaps and Schako noise profiles', async () => {
   const inputs = normalizeInputs({ paths: [{
-    id: 'w1', name: 'Maximalmasse', flow: 5000,
+    id: 'w1', name: 'Freie Seiten', flow: 5000,
     rows: [
       { id: 'r1', type: 'source', lw: [84, 88, 89, 87, 84, 81, 77, 72] },
       {
         id: 'r2', type: 'silencer', name: 'RIO', kind: 'rect',
-        design: { mode: 'auto', maxB: 1234, maxH: 1075, maxL: 2000 },
+        design: { fixB: false, fixH: false, maxB: 1234, maxH: 1075 },
         rect: { series: 'prod-rio', d: 160, s: 80.25, L: 1500, B: 1234, H: 1075 },
       },
       {
         id: 'r3', type: 'silencer', name: 'Schako', kind: 'rect',
-        design: { mode: 'auto', maxB: 900, maxH: 1000, maxL: 1500 },
+        design: { fixB: false, fixH: true, maxB: 900, maxH: null },
         rect: { series: 'schako-mwk-ob', d: 200, s: 99.5, L: 1500, B: 898.5, H: 1000 },
       },
       {
         id: 'r4', type: 'silencer', kind: 'round',
-        design: { mode: 'auto', maxB: null, maxH: null, maxL: 1200 },
         round: { series: 'schako-rs-n', dn: 200, insulation: 100, L: 950 },
       },
     ],

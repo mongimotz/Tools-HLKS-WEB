@@ -9,21 +9,23 @@
 .calculation-bar { margin-bottom: var(--sp-3); }
 
 .work-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
-@media (min-width: 1240px) { .work-grid { grid-template-columns: minmax(0, 1fr) 500px; } }
-@media (min-width: 1500px) { .work-grid { grid-template-columns: minmax(0, 1fr) 560px; } }
+/* side by side from the width at which the level table fits next to the design panel without scrolling;
+   width beyond a comfortable table goes to the design panel */
+@media (min-width: 1340px) { .work-grid { grid-template-columns: minmax(0, 980px) minmax(500px, 1fr); } }
 
-.levels-panel { padding: var(--sp-3) 0 var(--sp-4); min-width: 0; }
-.path-head { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); padding: 0 var(--sp-4) var(--sp-3); }
+/* --edge: left edge of the names in the table (grip column + cell padding); head, buttons and receiver align to it */
+.levels-panel { --edge: 31px; padding: var(--sp-3) 0 var(--sp-4); min-width: 0; }
+.path-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); padding: 0 var(--sp-4) var(--sp-3) var(--edge); }
 
 /* ---- fields ------------------------------------------------------------------ */
 
-.pf { display: inline-flex; align-items: center; gap: 4px; }
+.pf { display: inline-flex; align-items: center; gap: 6px; }
 .pf-label { font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; }
-.pf .unit, .branch-fields .unit { font-size: var(--fs-xs); color: var(--text-muted); }
-.pf .cell-input, .pf .cell-select { width: 76px; }
-.pf .cell-input.w-name { width: 180px; }
-.pf .cell-select.w-room { width: 280px; }
-.pf .cell-select.w-limit { width: 170px; }
+.unit { font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; }
+.pf .cell-input, .pf .cell-select { width: 72px; }
+.cell-input.w-name { width: 200px; }
+.cell-select.w-room { width: 300px; max-width: 100%; }
+.cell-select.w-limit { width: 170px; }
 .pf.check { gap: 6px; font-size: var(--fs-sm); }
 .rc-fields > .cell-select { width: auto; max-width: 320px; }
 
@@ -54,33 +56,39 @@
 /* ---- level table ------------------------------------------------------------ */
 
 .table-wrap { overflow-x: auto; }
-table.levels { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 710px; table-layout: fixed; font-size: var(--fs-sm); }
-.levels col.w-grip { width: 30px; }
-.levels col.w-name { min-width: 150px; }
-.levels col.w-oct { width: 44px; }
+/* the name column takes the remaining width; 50 px fit "-26.2" */
+table.levels { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 760px; table-layout: fixed; font-size: var(--fs-sm); }
+.levels col.w-grip { width: 28px; }
+.levels col.w-oct { width: 50px; }
 .levels col.w-unit { width: 58px; }
-.levels col.w-op { width: 22px; }
+.levels col.w-op { width: 20px; }
 .levels col.w-total { width: 64px; }
-.levels col.w-act { width: 34px; }
+.levels col.w-act { width: 30px; }
 .levels th {
   background: var(--surface-sunken);
   font-size: var(--fs-xs); font-weight: 600; color: var(--text);
-  text-align: left; padding: 6px 4px; white-space: nowrap; overflow: hidden;
+  text-align: left; padding: 6px 3px; white-space: nowrap; overflow: hidden;
   border-bottom: 1px solid var(--border-strong);
 }
-.levels th.c-oct, .levels th.c-total { text-align: right; padding-right: 8px; }
-.levels td { padding: 1px 3px; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* text and numbers sit 10 px inside the cell, like the text in the inputs (cell 3 + border 1 + input 6) */
+.levels th.c-name { padding-left: 10px; }
+.levels th.c-oct, .levels th.c-total { text-align: right; padding-right: 10px; }
+.levels th.c-unit, .levels td.c-unit { text-align: center; }
+.levels td { padding: 1px 3px; height: 28px; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.levels tr.line:not(.is-first) td { height: 22px; }
 .levels tbody.row > tr:last-child > td { border-bottom: 1px solid var(--border); }
 .levels td.c-oct, .levels td.c-total { text-align: right; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
-.levels td.c-oct.out, .levels td.c-total { padding-right: 8px; color: var(--text-strong); }
+.levels td.c-oct.out, .levels td.c-total { padding-right: 10px; color: var(--text-strong); }
 .levels td.c-total { border-left: 1px solid var(--border); }
 .levels td.c-op { text-align: center; color: var(--text-muted); font-family: var(--font-num); }
 .levels td.c-act { text-align: right; text-overflow: clip; }
-.levels td.c-grip { padding-left: 6px; text-overflow: clip; }
+.levels td.c-grip { padding: 0 0 0 4px; text-overflow: clip; }
 .levels tbody.row:hover td { background: var(--bg); }
 
-.name-input { font-weight: 500; color: var(--text-strong); }
-.product { display: block; padding: 0 7px 2px; font-size: var(--fs-2xs); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; }
+/* name and, for a silencer, its product on the same line */
+.name-cell { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.name-input { flex: 0 1 200px; min-width: 72px; font-weight: 500; color: var(--text-strong); }
+.product { flex: 1 1 0; min-width: 0; font-size: var(--fs-xs); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sub-label { padding-left: 18px; font-size: var(--fs-xs); color: var(--text-muted); }
 tr.line-aweight td { color: var(--text-muted); }
 tr.line-aweight td.c-oct.out { color: var(--text-muted); font-size: var(--fs-xs); }
@@ -96,7 +104,7 @@ tr.line-aweight td.c-oct.out { color: var(--text-muted); font-size: var(--fs-xs)
 .unit-btn.is-a, .unit-tag.is-a { background: var(--primary-subtle); border-color: var(--primary); color: var(--primary); }
 .unit-tag { border-style: dashed; }
 
-td.c-branch { padding: 2px 8px; overflow: visible; }
+td.c-branch { overflow: visible; }
 .branch-fields { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-sans); }
 .branch-fields .gap { margin-left: var(--sp-4); }
 .branch-fields .cell-input.w-flow { width: 84px; }
@@ -114,7 +122,7 @@ tbody.drop-before > tr:first-child > td { box-shadow: inset 0 2px 0 var(--primar
 tbody.drop-after > tr:last-child > td { box-shadow: inset 0 -2px 0 var(--primary); }
 
 .levels tfoot td { padding-top: 5px; padding-bottom: 5px; }
-.levels tfoot .c-name { padding-left: 8px; }
+.levels tfoot td.c-name { padding-left: 10px; }
 tr.sum-line td { border-top: 1px solid var(--border-strong); font-weight: 600; color: var(--text-strong); }
 tr.rc-line td { font-weight: 600; color: var(--text-strong); border-top: 1px solid var(--border); }
 tr.rc-line td.c-total { font-size: var(--fs-md); }
@@ -122,16 +130,17 @@ td.c-total.is-ok { color: var(--success); }
 td.c-total.is-over { color: var(--danger); }
 .levels tfoot .c-unit { font-size: var(--fs-xs); color: var(--text-muted); font-weight: 400; }
 
-.below-table { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; padding: var(--sp-3) var(--sp-4) 0; }
+.below-table { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; padding: var(--sp-3) var(--sp-4) 0 var(--edge); }
 
 /* ---- receiver ---------------------------------------------------------------- */
 
-.receiver { margin: var(--sp-4) var(--sp-4) 0; padding-top: var(--sp-3); border-top: 1px solid var(--border); display: grid; gap: var(--sp-2); }
-.rc-head, .design-head { display: flex; align-items: center; gap: 6px; color: var(--text-muted); }
+.receiver { margin: var(--sp-4) var(--sp-4) 0 var(--edge); padding-top: var(--sp-3); border-top: 1px solid var(--border); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); }
+.rc-head, .design-head { display: flex; align-items: center; gap: 6px; min-height: 26px; color: var(--text-muted); }
 .rc-head h3, .design-head h3 { font-size: var(--fs-md); color: var(--text-strong); margin: 0; }
+.rc-head .w-name { flex: 0 1 200px; min-width: 0; margin-left: var(--sp-2); color: var(--text-strong); }
 .design-head .muted { margin-left: auto; font-size: var(--fs-xs); }
 .rc-fields { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); }
-.rc-result { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-5); margin-top: var(--sp-1); }
+.rc-result { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-5); }
 .rc-main { display: inline-flex; align-items: baseline; gap: 6px; }
 .rc-label { font-size: var(--fs-sm); color: var(--text); }
 .rc-value { font-size: var(--fs-xl); font-weight: 600; font-family: var(--font-num); color: var(--text-strong); }
@@ -147,48 +156,58 @@ td.c-total.is-over { color: var(--danger); }
 .seg-btn + .seg-btn { border-left: 1px solid var(--border-strong); }
 .seg-btn:hover { background: var(--surface-hover); }
 .seg-btn[aria-checked='true'] { background: var(--primary); color: var(--on-primary); }
-.seg-btn[aria-pressed='true'] { background: var(--primary); color: var(--on-primary); }
 
 /* ---- design panel -------------------------------------------------------------- */
 
 .design { padding: var(--sp-3) var(--sp-4) var(--sp-4); display: grid; grid-auto-rows: max-content; gap: var(--sp-3); min-width: 0; }
-@media (min-width: 1240px) { .design { position: sticky; top: calc(var(--appbar-h) + var(--issue-bar-h) + var(--sp-3)); max-height: calc(100vh - var(--appbar-h) - var(--issue-bar-h) - 2 * var(--sp-3)); overflow-y: auto; } }
-.type-group { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 6px; align-items: start; }
-.tg-label { font-size: var(--fs-xs); color: var(--text-muted); padding-top: 4px; }
+.design > .btn { justify-self: start; }
+@media (min-width: 1340px) { .design { position: sticky; top: calc(var(--appbar-h) + var(--issue-bar-h) + var(--sp-3)); max-height: calc(100vh - var(--appbar-h) - var(--issue-bar-h) - 2 * var(--sp-3)); overflow-y: auto; scrollbar-width: thin; scrollbar-gutter: stable; } }
+.design-body, .design-input, .design-output { display: grid; gap: var(--sp-3); min-width: 0; align-content: start; }
+.design-form { display: grid; gap: 6px; min-width: 0; }
+.design-form + .design-form, .design-output { padding-top: var(--sp-3); border-top: 1px solid var(--border); }
+/* design panel below the table: input left, results and variants right */
+@media (min-width: 900px) and (max-width: 1339px) {
+  .design-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--sp-5); }
+  .design-output { padding-top: 0; border-top: 0; }
+}
+/* every line: label column of the same width, then the control */
+.type-group { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: var(--sp-2); align-items: baseline; }
+.tg-label { font-size: var(--fs-xs); color: var(--text-muted); }
+.tg-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.tg-ctl .cell-input.w-mm { width: 64px; }
+.tg-ctl .cell-select.w-install { width: 150px; }
+.tg-ctl .cell-select.w-dn { width: 80px; }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .chip {
   border: 1px solid var(--border-strong); border-radius: var(--r-input); background: var(--surface);
-  padding: 2px 8px; font-size: var(--fs-xs); font-weight: 500; color: var(--text); cursor: pointer;
+  padding: 2px 6px; font-size: var(--fs-xs); font-weight: 500; color: var(--text); cursor: pointer;
   font-family: var(--font-sans); font-variant-numeric: tabular-nums;
 }
 .chip:hover { background: var(--surface-hover); }
 .chip.is-on { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
-.design-fields { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); }
-.products { display: grid; gap: 5px; }
-.design-mode { justify-self: start; }
-.design-calculate { justify-self: start; }
-.maximum-fields .cell-input { width: 65px; }
-.design-progress { display: grid; gap: var(--sp-2); font-size: var(--fs-xs); color: var(--text-muted); }
-.design-progress progress { width: 100%; height: 4px; accent-color: var(--primary); }
-.var-table td svg { vertical-align: -2px; margin-right: 3px; }
 
-.front { display: flex; justify-content: center; }
-.front-view { width: 100%; height: auto; max-height: 230px; }
+/* key values left, front view right at the natural size of drawing.js */
+.design-result { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3) var(--sp-4); }
+.design-result .kv { flex: 1 1 200px; }
+.front { flex: none; display: flex; justify-content: center; max-width: 100%; }
+.front-view { display: block; max-width: 100%; height: auto; }
 .front-view .fv-housing { fill: var(--surface); }
 .front-view .fv-splitter { fill: var(--accent-subtle); stroke: var(--accent-text); stroke-width: 1; }
 .front-view .fv-outline { fill: none; stroke: var(--text-strong); stroke-width: 1.5; }
 .front-view .fv-empty { fill: none; stroke: var(--border-strong); stroke-dasharray: 4 3; }
 .front-view .fv-dim { fill: var(--text-muted); font-size: 11px; font-family: var(--font-num); }
 
-.kv { display: grid; grid-template-columns: auto auto; gap: 3px var(--sp-4); margin: 0; font-size: var(--fs-sm); }
+.kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--sp-4); margin: 0; font-size: var(--fs-sm); }
 .kv dt { color: var(--text-muted); }
-.kv dd { margin: 0; text-align: right; color: var(--text-strong); font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.kv dd { margin: 0; text-align: right; color: var(--text-strong); font-family: var(--font-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-h4.sub { font-size: var(--fs-sm); margin: var(--sp-1) 0 var(--sp-1); }
+h4.sub { font-size: var(--fs-sm); margin: 0 0 var(--sp-1); }
+h4.sub .muted { margin-left: var(--sp-1); font-weight: 400; font-family: var(--font-num); font-size: var(--fs-xs); }
 .variants { min-width: 0; overflow-x: auto; }
 table.var-table { border-collapse: collapse; width: 100%; font-size: var(--fs-xs); }
 .var-table th { border-bottom: 1px solid var(--border-strong); padding: 3px 6px; font-weight: 500; color: var(--text-muted); text-align: left; white-space: nowrap; }
 .var-table td { padding: 3px 6px; border-bottom: 1px solid var(--border); color: var(--text-strong); white-space: nowrap; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.var-table td .icon { display: inline-block; vertical-align: -2px; margin-right: 3px; }
 .var-table .n { text-align: right; }
 .var-table tbody tr { cursor: pointer; }
 .var-table tbody tr:hover td, .var-table tbody tr:focus-visible td { background: var(--surface-hover); }

@@ -692,18 +692,62 @@ export function compute(inputs) {
 /** Limits a variant must keep (planning values of docs/silencer-data.md). */
 export const VARIANT_LIMITS = { vMax: LIMITS.vGapPlan.value, dpMax: LIMITS.dpPerSilencer.value };
 
+/** A housing side that is not fixed is searched in these steps [mm], from SIZE_MIN up to its maximum. */
+export const SIZE_STEP = 50;
+export const SIZE_MIN = 100;
+
+/** Multiples of SIZE_STEP from SIZE_MIN up to max (none if max < SIZE_MIN). */
+function sizeSteps(max) {
+  const out = [];
+  for (let x = SIZE_MIN; x <= max + EPS; x += SIZE_STEP) out.push(x);
+  return out;
+}
+
 /**
- * Variants for one database silencer, in the housing the user gave (rect: B × H) or for its size (round: dn).
- * Every variant is the silencer row put into the path in place of the current one; the rest stays as it is.
- *   rect:  one variant per splitter thickness d and count n at an interpolatable actual gap
- *   round: one variant per insulation and core of the series at dn
- * Within a variant the length L is chosen: with a target the shortest L that meets it, else (or if no L meets
- * it) the L with the lowest L_pA. A variant fits when v ≤ v max, Δp ≤ Δp max, the flow noise keeps its margin
- * and the receiver meets its target.
- * Automatic mode uses the maximum height and searches full-width interpolated cells plus fitted table gaps.
- * Round lengths are checked against their overall installation length. Manual mode keeps B, H or dn.
- * Ranking: fitting variants first (Δp, then L), then the others (limits kept first, then the lowest L_pA).
- * Returns { kind, missing: null | 'geometry' | 'length' | 'flow', list }.
+ * The housing a rectangular silencer may use for its variants: a fixed side keeps rect.B / rect.H, a free side
+ * is searched up to design.maxB / maxH (or the current size if no maximum is set).
+ */
+export function variantHousing(sd) {
+  const fixB = sd.design?.fixB !== false;
+  const fixH = sd.design?.fixH !== false;
+  return {
+    fixB,
+    fixH,
+    B: fixB ? sd.rect.B : sd.design?.maxB ?? sd.rect.B,
+    H: fixH ? sd.rect.H : sd.design?.maxH ?? sd.rect.H,
+  };
+}
+
+/** L_pA within this tolerance counts as equal when variants are compared [dB] (half the display step). */
+const LPA_TIE = 0.05;
+const lpaOf = (c) => (Number.isFinite(c.lpa) ? c.lpa : Infinity);
+
+/**
+ * Decides between two candidates of the same group (a: new, b: best so far): one that meets every condition
+ * with the smallest housing; else limits kept, then the lowest L_pA, then the smallest housing.
+ */
+function better(a, b) {
+  if (!b) return true;
+  if (a.ok !== b.ok) return a.ok;
+  const area = (c) => (c.spec.B ?? 0) * (c.spec.H ?? 0);
+  if (a.ok) return area(a) < area(b) - EPS || (Math.abs(area(a) - area(b)) <= EPS && lpaOf(a) < lpaOf(b));
+  if (a.limitsOk !== b.limitsOk) return a.limitsOk;
+  if (Math.abs(lpaOf(a) - lpaOf(b)) > LPA_TIE || !Number.isFinite(lpaOf(a) + lpaOf(b))) return lpaOf(a) < lpaOf(b);
+  return area(a) < area(b) - EPS;
+}
+
+/**
+ * Variants for one database silencer: the same series in place of the current silencer, the rest of the path
+ * as it is. The length is the selected one (round: the nearest length of the variant).
+ *   rect:  one variant per splitter thickness d and count n (B fixed), or per d (B free). A fixed side keeps its
+ *          size. A free side takes the smallest size in SIZE_STEP steps up to its maximum with which the variant
+ *          meets every condition; if none does, the size with the lowest L_pA (limits kept first). The actual gap
+ *          s′ = B / n − d must lie within the data range at d and L.
+ *   round: one variant per insulation and core at the same dn.
+ * A variant meets every condition when v ≤ v max, Δp ≤ Δp max, the flow noise keeps its margin, the path has no
+ * errors and the receiver meets its target (if it has one).
+ * Order: limits kept first, then the lowest L_pA (best attenuation), then the lowest Δp.
+ * Returns { kind, missing: null | 'geometry' | 'flow', list } (null for a manual silencer).
  */
 export function silencerVariants(inputs, pathId, rowId) {
   const path = inputs.paths.find((p) => p.id === pathId);
@@ -711,22 +755,17 @@ export function silencerVariants(inputs, pathId, rowId) {
   if (!sd || sd.type !== 'silencer' || (sd.kind !== 'rect' && sd.kind !== 'round')) return null;
   const kind = sd.kind;
   const spec0 = sd[kind];
-  const auto = sd.design?.mode === 'auto';
-  const B = auto ? sd.design.maxB : spec0.B;
-  const H = auto ? sd.design.maxH : spec0.H;
-  const maxL = auto ? sd.design.maxL : Infinity;
+  const housing = kind === 'rect' ? variantHousing(sd) : null;
+  if ((kind === 'rect' && !(housing.B > 0 && housing.H > 0)) || (kind === 'round' && !(spec0.dn > 0))) return { kind, missing: 'geometry', list: [] };
   const ctx = { density: inputs.density, catalogs: inputs.catalogs };
   const flowAt = computePath(path, ctx).rows.get(rowId)?.flow;
-  if ((kind === 'rect' && !(B > 0 && H > 0)) || (kind === 'round' && !(spec0.dn > 0))) return { kind, missing: 'geometry', list: [] };
-  if (auto && !(maxL > 0)) return { kind, missing: 'length', list: [] };
   if (!(flowAt > 0)) return { kind, missing: 'flow', list: [] };
 
-  const evaluate = ({ dataRow, B: width = B }) => {
+  const evaluate = (dataRow, B, H) => {
     const spec = kind === 'rect'
-      ? { ...spec0, B: width, H, d: dataRow.d, s: dataRow.s, L: dataRow.L }
+      ? { ...spec0, B, H, d: dataRow.d, s: Math.round(dataRow.s * 10) / 10, L: dataRow.L }
       : { ...spec0, dn: dataRow.dn, insulation: dataRow.insulation, core: dataRow.core, L: dataRow.L };
-    const row = rowCopy(dataRow, kind, DATA_VERSION);
-    const trial = { ...sd, [kind]: spec, row };
+    const trial = { ...sd, [kind]: spec, row: rowCopy(dataRow, kind, DATA_VERSION) };
     const res = computePath({ ...path, rows: path.rows.map((r) => (r.id === rowId ? trial : r)) }, ctx);
     const r = res.rows.get(rowId);
     const rc = res.receiver;
@@ -749,75 +788,66 @@ export function silencerVariants(inputs, pathId, rowId) {
     };
   };
 
-  const pool = kind === 'rect'
-    ? fittingSplitterRows(spec0.series, B).map((dataRow) => ({ dataRow, B }))
-    : ROUND_ROWS.filter((r) => r.series === spec0.series && r.dn === spec0.dn).map((dataRow) => ({ dataRow }));
-  if (auto && kind === 'rect') {
-    // Exact table gaps also provide smaller fitted housings below the maximum width.
-    for (const dataRow of SPLITTER_ROWS) {
-      if (dataRow.series !== spec0.series) continue;
-      const n = Math.floor((B + EPS) / (dataRow.d + dataRow.s));
-      if (n >= 1) pool.push({ dataRow, B: n * (dataRow.d + dataRow.s) });
-    }
-  }
   const groups = new Map();
-  for (const candidate of pool) {
-    const r = candidate.dataRow;
-    // Contradictory nominal and printed dimensions cannot establish an automatic space fit.
-    if (auto && kind === 'round' && r.overallLength != null && r.overallLength < r.L - EPS) continue;
-    if ((kind === 'round' ? r.overallLength ?? r.L : r.L) > maxL + EPS) continue;
-    const key = kind === 'rect' ? `${r.d}/${candidate.B}/${splitterCount(candidate.B, r.d, r.s)}` : `${r.insulation}/${r.core ?? ''}`;
-    if (!groups.has(key)) groups.set(key, []);
-    if (!groups.get(key).some((c) => c.dataRow.L === r.L)) groups.get(key).push(candidate);
-  }
-  const lower = (a, b) => (Number.isFinite(a.lpa) ? a.lpa : Infinity) < (Number.isFinite(b.lpa) ? b.lpa : Infinity);
-  const list = [];
-  for (const rows of groups.values()) {
-    const cands = rows.slice().sort((a, b) => a.dataRow.L - b.dataRow.L).map(evaluate);
-    const fit = cands.find((c) => c.ok && c.hasTarget);
-    if (fit) {
-      list.push(fit);
-      continue;
+  const offer = (key, c) => {
+    if (better(c, groups.get(key))) groups.set(key, c);
+  };
+
+  if (kind === 'rect') {
+    const { fixB, fixH, B, H } = housing;
+    const widths = fixB ? [B] : sizeSteps(B);
+    const heights = fixH ? [H] : sizeSteps(H);
+    const rows = SPLITTER_ROWS.filter((r) => r.series === spec0.series);
+    for (const d of uniqueSorted(rows.map((r) => r.d))) {
+      const sizes = rows.filter((r) => r.d === d);
+      const L = nearest(uniqueSorted(sizes.map((r) => r.L)), spec0.L);
+      const atL = sizes.filter((r) => r.L === L);
+      const sMin = Math.min(...atL.map((r) => r.s));
+      const sMax = Math.max(...atL.map((r) => r.s));
+      for (const width of widths) {
+        const nMin = Math.max(1, Math.ceil(width / (d + sMax) - EPS));
+        const nMax = Math.floor(width / (d + sMin) + EPS);
+        for (let n = nMin; n <= nMax; n++) {
+          const dataRow = lookupRow('rect', { ...atL[0], s: width / n - d });
+          if (!dataRow) continue;
+          // A lower housing only raises v, Δp and flow noise. Binary search for the lowest height that meets
+          // everything, or else that keeps the limits and the L_pA of the highest one.
+          const at = new Map();
+          const evalAt = (i) => (at.has(i) ? at.get(i) : at.set(i, evaluate(dataRow, width, heights[i])).get(i));
+          let hi = heights.length - 1;
+          const top = evalAt(hi);
+          const good = top.ok ? (c) => c.ok : top.limitsOk ? (c) => c.limitsOk && lpaOf(c) <= lpaOf(top) + LPA_TIE : null;
+          if (good) {
+            let lo = 0;
+            while (lo < hi) {
+              const mid = (lo + hi) >> 1;
+              if (good(evalAt(mid))) hi = mid;
+              else lo = mid + 1;
+            }
+          }
+          offer(fixB ? `${d}/${n}` : `${d}`, evalAt(hi));
+        }
+      }
     }
-    let best = null;
-    for (const c of cands) if (!best || (c.limitsOk && !best.limitsOk) || (c.limitsOk === best.limitsOk && lower(c, best))) best = c;
-    list.push(best);
+  } else {
+    const rows = ROUND_ROWS.filter((r) => r.series === spec0.series && r.dn === spec0.dn);
+    const byType = new Map();
+    for (const r of rows) {
+      const key = `${r.insulation}/${r.core ?? ''}`;
+      if (!byType.has(key)) byType.set(key, []);
+      byType.get(key).push(r);
+    }
+    for (const [key, list] of byType) {
+      const L = nearest(uniqueSorted(list.map((r) => r.L)), spec0.L);
+      offer(key, evaluate(list.find((r) => r.L === L), null, null));
+    }
   }
-  list.sort((a, b) => {
-    if (a.ok !== b.ok) return a.ok ? -1 : 1;
-    if (a.ok) return a.dp - b.dp || a.spec.L - b.spec.L;
+
+  const list = [...groups.values()].sort((a, b) => {
     if (a.limitsOk !== b.limitsOk) return a.limitsOk ? -1 : 1;
-    return (a.lpa ?? Infinity) - (b.lpa ?? Infinity);
+    return lpaOf(a) - lpaOf(b) || (a.dp ?? Infinity) - (b.dp ?? Infinity);
   });
   return { kind, missing: null, list };
-}
-
-/**
- * Rows at every splitter count whose actual gap lies within the supported range for d and L.
- * Interpolation is bounded by the two neighbouring tabulated gaps; no gap or length is extrapolated.
- */
-export function fittingSplitterRows(series, B) {
-  const groups = new Map();
-  for (const r of SPLITTER_ROWS) {
-    if (r.series !== series) continue;
-    const key = `${r.d}/${r.L}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(r);
-  }
-  const out = [];
-  for (const rows of groups.values()) {
-    const first = rows[0];
-    const min = Math.min(...rows.map((r) => r.s));
-    const max = Math.max(...rows.map((r) => r.s));
-    const nMin = Math.max(1, Math.ceil(B / (first.d + max) - EPS));
-    const nMax = Math.floor(B / (first.d + min) + EPS);
-    if (!Number.isSafeInteger(nMin) || !Number.isSafeInteger(nMax)) continue;
-    for (let n = nMin; n <= nMax; n++) {
-      const row = lookupRow('rect', { ...first, s: B / n - first.d });
-      if (row) out.push(row);
-    }
-  }
-  return out;
 }
 
 /** Key results stored in the envelope for regression checks (never used as input). */

@@ -121,7 +121,7 @@ export async function buildReport(doc, result, envelope) {
         ['Dämpfung', 'Pegel davor minus D (Differenz, gleich in dB und dB(A))'],
         ['Schalldämpfer', 'Pegel minus De plus Strömungsgeräusch (energetisch); Herstellerwerte bis 50 dB; Spalt linear im belegten Bereich; Länge nicht interpoliert'],
         ['Schätzwerte', 'RIO/Schmidlin aus offenen Trox XK und Schako MWK-OB: je Oktave kleinere De, grösserer Druckverlust; keine Herstellerprüfung'],
-        ['Kulissen', 'B × H innen; n = round(B / (d + s)), Spalt s′ = B / n − d, an der Wand s′/2. De und Druckverlust für s′ innerhalb des Tabellenbereichs. Maximalmasse begrenzen die Variantensuche.'],
+        ['Kulissen', 'B × H innen; n = round(B / (d + s)), Spalt s′ = B / n − d, an der Wand s′/2. De und Druckverlust für s′ innerhalb des Tabellenbereichs. Varianten: freie Seiten B, H in 50-mm-Schritten bis zum Höchstmass.'],
         ['Druckverlust', 'Δp = ζ·ρ/2·v²; ζ aus den Tabellen (ρ = 1.2 kg/m³), linear über v; Kulissen v im Spalt × Einbaufaktor 1.0 / 1.1 / 1.3; Trox CA, Lindab SLU wie gerades Rohr (k = 0.15 mm)'],
         ['Strömungsgeräusch', 'Schako: abgelesene Spektren mit gedrucktem LWA, Zwischenwerte über lg(v), lg(A). Sonst Trox/Wildeboer als Näherung. Rohr ohne Kern: kein Zusatzschall angenommen'],
         ['Abzweig', 'ΔL = 10·lg(V̇ davor / V̇ danach), oder eingegebener Wert'],

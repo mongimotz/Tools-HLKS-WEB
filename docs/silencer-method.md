@@ -129,9 +129,9 @@ Der Druckverlust folgt je Serie aus einem von drei Modellen:
 
 Trox gibt für CA einen Druckverlust wie für ein gerades Rohr an. Lindab gibt für SLU keinen Druckverlust an. Das Werkzeug nimmt denselben Ansatz an.
 
-Die Nennlänge kann von der Gesamtlänge abweichen. Bei der automatischen Auswahl begrenzt L gesamt max. die dokumentierte Gesamtlänge. Schako RS enthält dabei die Standardstutzen KA0. Bei grossen Lindab SLU sind lose Anschlussstücke nicht in der Herstellerlänge enthalten. Optionale Flansche und weiteres Zubehör brauchen zusätzlichen Platz.
+Die Nennlänge kann von der Gesamtlänge abweichen. Die Gesamtlänge von Schako RS enthält die Standardstutzen KA0. Bei grossen Lindab SLU sind lose Anschlussstücke nicht in der Herstellerlänge enthalten. Optionale Flansche und weiteres Zubehör brauchen zusätzlichen Platz.
 
-SLU 500 und 630 mit Dämmung 100 und Nennlänge 900 nennen widersprüchlich nur 600 mm Gesamtlänge. Diese Produkte bleiben frei wählbar, fehlen aber in der automatischen Auswahl. Die Druckschätzung verwendet bei solchen Widersprüchen mindestens die Nennlänge.
+SLU 500 und 630 mit Dämmung 100 und Nennlänge 900 nennen widersprüchlich nur 600 mm Gesamtlänge. Ein Hinweis nennt den Widerspruch. Die Druckschätzung verwendet bei solchen Widersprüchen mindestens die Nennlänge.
 
 ### 4.4 Strömungsgeräusch
 
@@ -249,22 +249,30 @@ Ein eingegebener Wert gilt direkt für L_pA, zum Beispiel eine Vorgabe der Bauhe
 
 ## 7. Varianten
 
-Für den gewählten Schalldämpfer zeigt das Werkzeug Varianten derselben Serie. Es setzt jede Variante an die Stelle des Schalldämpfers. Der Rest des Wegs bleibt, wie er ist.
+Für den gewählten Schalldämpfer zeigt das Werkzeug Varianten derselben Serie. Es setzt jede Variante an die Stelle des Schalldämpfers. Der Rest des Wegs bleibt, wie er ist. Die Länge L bleibt die gewählte Länge. Bei Rohrschalldämpfern nimmt das Werkzeug je Variante die Länge, die am nächsten bei der gewählten Länge liegt.
 
-- Im Modus «Frei» bleibt das Gehäuse B × H unverändert. Das Werkzeug prüft jede ganze Kulissenzahl n mit belegtem tatsächlichem Spalt s′. Es interpoliert Zwischenwerte und führt dieselbe Geometrie nur einmal je Länge.
-- Im Modus «Maximalmasse» gibst du B innen max., H innen max. und L max. vor. Das Werkzeug prüft die volle maximale Breite mit interpolierten Spalten. Zusätzlich prüft es kleinere Breiten, die ganze Kulissen mit Tabellenabständen aufnehmen. Es nutzt die maximale Höhe. Die Gehäuseaussenmasse brauchen Platz für Wand und Anschlüsse zusätzlich zu B × H innen.
-- Rohrschalldämpfer: der Durchmesser bleibt. Eine Variante ist eine Dämmdicke mit einer Kernbreite.
+Neben B und H steht je eine Taste «Fix»:
 
-Die automatische Suche startet mit «Berechnen». Erst ein Klick auf eine Variante übernimmt deren tatsächliche Masse. Das Werkzeug prüft die gewählte Serie. Es durchsucht keine anderen Hersteller und optimiert nicht sämtliche stufenlosen Gehäusemasse.
+- Fix: Die Varianten behalten diese Seite.
+- Nicht fix: Das Feld heisst «B max.» oder «H max.». Das Werkzeug prüft diese Seite in Schritten von 50 mm, von 100 mm bis zum Höchstmass. Die Frontansicht zeigt das Mass des gewählten Schalldämpfers.
 
-Je Variante wählt das Werkzeug die Länge L: die kürzeste Länge, mit der die Variante alle Bedingungen erfüllt. Gibt es keine, nimmt es die Länge mit dem tiefsten L_pA, die die Grenzen einhält. Eine Variante erfüllt die Bedingungen, wenn:
+Eine Variante ist:
+
+- Kulissen, B fix: eine Kulissendicke d mit einer Kulissenzahl n. Der tatsächliche Spalt s′ = B / n − d muss im belegten Bereich der Tabelle liegen. Das Werkzeug interpoliert Zwischenwerte.
+- Kulissen, B nicht fix: eine Kulissendicke d. Das Werkzeug prüft jede Breite und jede Kulissenzahl mit belegtem Spalt s′.
+- Rohrschalldämpfer: eine Dämmdicke mit einer Kernbreite beim gleichen Durchmesser.
+
+Eine Variante erfüllt die Bedingungen, wenn:
 
 - v ≤ 12 m/s (Planungswert)
 - Δp ≤ 100 Pa
 - L_WA nach (L − D_e) mindestens 10 dB über L_WA,Str liegt
-- der Empfänger sein Ziel einhält
+- der Weg keinen Fehler hat
+- der Empfänger sein Ziel einhält (wenn er ein Ziel hat)
 
-Die Liste zeigt zuerst die Varianten, die alles erfüllen, sortiert nach Δp und dann nach L. Danach folgen die übrigen: zuerst die, die die Grenzen einhalten, dann nach L_pA. Ein Klick übernimmt eine Variante.
+Mit einer nicht fixen Seite nimmt das Werkzeug je Variante das kleinste Gehäuse B × H, das alle Bedingungen erfüllt. Gibt es keines, nimmt es das Gehäuse mit dem tiefsten L_pA, das die Grenzen für v, Δp und Strömungsgeräusch einhält. Liegen zwei L_pA weniger als 0.05 dB auseinander, gilt das kleinere Gehäuse. Eine kleinere Höhe dämpft nie besser, sie erhöht nur v, Δp und das Strömungsgeräusch. Die kleinste Lösung liegt deshalb oft nahe bei v = 12 m/s. Wer mehr Reserve will, fixiert die Seite.
+
+Die Liste zeigt zuerst die Varianten, die die Grenzen einhalten, sortiert nach L_pA (beste Dämpfung zuerst), dann nach Δp. Danach folgen die übrigen. Graue Varianten erfüllen mindestens eine Bedingung nicht. Ein Klick übernimmt eine Variante. Das Werkzeug prüft nur die gewählte Serie. Die Gehäuseaussenmasse brauchen Platz für Wand und Anschlüsse zusätzlich zu B × H innen.
 
 Mit mehreren Schalldämpfern auf einem Weg legst du einen nach dem anderen aus. Die übrigen bleiben, wie sie gewählt sind.
 

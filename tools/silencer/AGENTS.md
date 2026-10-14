@@ -72,25 +72,21 @@ Section 4 of the method document defines the pressure and flow-noise models and 
 
 ## Variants
 
-- `Frei` preserves the selected casing or circular connection diameter. `Maximalmasse` stores independent `design: { mode, maxB, maxH, maxL }` fields on the silencer. Rectangular maxima refer to internal width/height and table length. Circular maximum length refers to overall product length.
-- Automatic candidates use full maximum height and either the full maximum width with bounded gap interpolation or a smaller fitted width at a standard gap. Do not claim a global optimum over arbitrary continuous casing dimensions.
-- `Berechnen` starts automatic search; selecting a suggestion applies its actual geometry while keeping the maxima. In free mode, suggestions update immediately.
-- Optional cosmetic feedback is centrally controlled in `settings.js` by `DESIGN_FEEDBACK.enabled` and `durationMs` (owner decision: enabled, 1000 ms). It never blocks editing. Input changes invalidate pending/cached results, so stale suggestions cannot be applied.
-- Products are grouped by supplier. RIO and Schmidlin remain explicitly marked as estimates in UI and exports. Only open Trox XK and Schako MWK-OB support their estimates; never use MK/RK/MB/LL/LB. The full estimation rule is in the method and rectangular audit.
+Owner decision, 2026-10-14: one form instead of the modes `Frei` and `Maximalmasse`, a `Fix` toggle beside `B` and `H`, no explicit search button and no progress display, variants restricted and ordered by attenuation.
 
-- The list below the design values shows variants for the selected casing or circular diameter.
-- A splitter variant has an integer splitter count and a gap within the supported data range. Interpolate intermediate gaps; no 20 % table-gap tolerance is needed.
-- A circular variant has an insulation thickness and core width.
-- Each variant shows the shortest length that meets the target and limits.
-- If no length meets the target, the variant uses the length with the lowest receiver `L_pA` within its limits.
-- Variants that meet every condition appear first, sorted by pressure loss. Gray variants fail at least one condition.
-- The conditions are `v ≤ 12 m/s`, `Δp ≤ 100 Pa`, flow noise at least 10 dB below the attenuated level, and receiver target compliance.
-- A click on a variant row applies it.
-- Circular suggestions respect documented overall length. Contradictory SLU nominal-900/printed-600 dimensions are excluded from automatic search, but remain manually available with a source note.
+- The variants keep the selected series and length `L`. Circular variants use the length nearest to the selected one. The length stays a choice between the data lengths and is not searched.
+- `B` and `H` each have a `Fix` toggle, stored as `design: { fixB, fixH, maxB, maxH }` (default: both fixed). A fixed side edits `rect.B` or `rect.H`, and the variants keep it. A free side edits `maxB` or `maxH` and is labelled `B max.` or `H max.`. Setting a side free copies its current size as the maximum. The front view shows the size of the silencer itself.
+- A free side is searched in 50 mm steps (`SIZE_STEP`) from 100 mm (`SIZE_MIN`) up to its maximum. Per group, the variant uses the smallest housing B × H that meets every condition. If none does, it uses the housing with the lowest receiver `L_pA` within the limits; `L_pA` within 0.05 dB counts as equal, then the smaller housing wins.
+- Groups: with `B` fixed, one variant per splitter thickness `d` and splitter count `n`; with `B` free, one per `d`. Circular: one per insulation thickness and core width at the same diameter.
+- The actual gap `s′ = B / n − d` must lie within the data range at `d` and `L` (bounded interpolation). Taking a variant stores `s′`, rounded to 0.1 mm, as `rect.s`.
+- The conditions are `v ≤ 12 m/s`, `Δp ≤ 100 Pa`, flow noise at least 10 dB below the attenuated level, no calculation error in the path, and receiver target compliance (if the receiver has a target).
+- Order: variants within the limits first, then the lowest `L_pA` (best attenuation), then the lowest `Δp`. Gray variants fail at least one condition.
+- The list updates with every input (the search takes milliseconds). A click on a variant row applies it.
+- Products are grouped by supplier. RIO and Schmidlin remain explicitly marked as estimates in UI and exports. Only open Trox XK and Schako MWK-OB support their estimates; never use MK/RK/MB/LL/LB. The full estimation rule is in the method and rectangular audit.
 - Trox pressure data refer to H = 1000 mm, not its attenuation. No numerical height correction or error bound is established. Schako H < 200 mm uses another frame and gets a notice.
 - Schako noise source spectra and their printed totals are retained in stored row profiles. Graph shapes, interpolation laws, extensions and fallback estimates remain documented assumptions. Show `geschätzt` for model values outside source coverage.
 
-Section 7 of the method document defines duplicate-gap handling, length selection, full ordering, and selection with multiple silencers.
+Section 7 of the method document defines the search, the selection within a group, the ordering, and selection with multiple silencers.
 
 ## Row editing and notices
 

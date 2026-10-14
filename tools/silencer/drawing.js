@@ -5,8 +5,8 @@
 
 import { fmt } from '../../lib/core/format.js';
 
-const W = 300;
-const H_MAX = 210;
+const W = 200;
+const H_MAX = 150;
 const PAD = { left: 26, top: 22, right: 8, bottom: 8 };
 
 const svg = (w, h, body) =>
@@ -17,7 +17,7 @@ const n1 = (v) => Math.round(v * 10) / 10;
 export function rectFrontView({ B, H, d }, r) {
   if (!(B > 0 && H > 0)) {
     const w = W - PAD.left - PAD.right;
-    const h = 120;
+    const h = 90;
     return svg(W, h + PAD.top + PAD.bottom, `<rect class="fv-empty" x="${PAD.left}" y="${PAD.top}" width="${w}" height="${h}" rx="2"/>
       <text class="fv-dim" x="${PAD.left + w / 2}" y="${PAD.top + h / 2}" text-anchor="middle" dominant-baseline="middle">B × H</text>`);
   }
