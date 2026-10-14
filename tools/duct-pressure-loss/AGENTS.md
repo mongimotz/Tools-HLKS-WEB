@@ -11,13 +11,19 @@ Section 8 defines the Lindab size series and rectangular dimension proposals.
 
 ## Inputs and network editing
 
+- A project stores `{ calculations: [{ id, system, sections }], catalogs, settings }` (input version 4). Each calculation has an independent system and network; section ids may repeat between calculations. Sections have no authoritative `parent` field: connections are derived from `nr` in `network.js`.
+- `calculationInputs(projectInputs, id)` exposes live references for the unchanged single-network `compute()` API. `computeProject()` and `snapshotProjectOf()` cover all calculations.
+- The shared calculation tabs sit below the project header and above the pressure summary. Labels use `system.name`, falling back to `Berechnung N`; the active calculation id stays in UI state only.
+- `+` adds an empty calculation. Copy duplicates the whole network independently and adds `Kopie` to its name. Trash removes the active calculation with undo; the last calculation remains.
 - The system inputs are flow direction, elevation, air temperature, humidity, available fan pressure, and the safety allowance.
-- Users enter sections away from the fan. Each section has a predecessor toward the fan. `Venti` means that the section starts at the fan.
-- The branch icon adds a section whose predecessor is the current row. Its number uses the parent number plus `.1`, `.2`, and so on.
-- For example, a branch from section `2` becomes `2.1`. The number controls indentation: `2.1` has one level, `2.1.1` has two.
+- Users enter sections away from the fan. Positive integer numbers form the main run in ascending order; the first starts at the fan. Gaps are allowed: deleting main section `2` connects `3` to `1`.
+- A dotted number branches from its exact prefix: `2.1` and `2.2` both start at `2`; `2.1.1` starts at `2.1`. Each dotted level adds one indentation level. Do not infer a connection from the previous visible row or treat `2.2` as a continuation of `2.1`.
+- The table sorts by numeric components (`1`, `1.2`, `1.10`, `2`, `10`), after a number edit is committed, without moving the field while typing. Number changes affect connections; existing dotted descendants keep their numbers.
+- Missing, malformed, duplicate numbers and missing or ambiguous prefixes produce errors that jump to the number field. Never silently connect such branches to the fan. Invalid connections and their descendants do not calculate as valid sections.
+- The branch icon adds the first free suffix `.1`, `.2`, and so on below the selected number. The bottom add button adds the next main number. Duplicate chooses a free number at the same level. Each section keeps its own data and id when sorting.
+- Deletion removes only the selected row and offers undo. Dotted descendants remain and report their missing prefix. Main continuations follow the preceding remaining main number.
 - The arrow at the left opens section details: fittings, components, a separate temperature, a remark, dimension proposals, and intermediate values.
-- A different predecessor moves the row below that predecessor and its branches. The user changes the section number separately.
-- The six-dot handle changes row order through dragging. It does not change the predecessor. `Esc` cancels dragging.
+- There is no predecessor selector, drag handle, or manual up/down control: section numbers determine both row order and connections.
 - A circular section shows `Ø` before the diameter. A click opens the Lindab sizes for SR spiral ducts, from 63 to 1600 mm.
 - `↑` and `↓` select the next Lindab size. Direct entry permits other diameters. Rectangular sections accept free dimensions.
 
@@ -37,6 +43,8 @@ The direction controls cross-section transition calculations, as defined in the 
 - A click on a section in the diagram opens its table row.
 - A colored line at the left of the table marks the critical path. Its `Δp kum.` values have a colored background.
 - A red line marks a section with an error.
+- Use the shared `.workspace-head` from the root `AGENTS.md`: project name left, notices right.
+- Notices cover every calculation. Selecting one activates its calculation and focuses the affected section field. Imported version and result changes use the same row and can be dismissed there.
 - The `Spalten` menu above the table selects a result set. The browser stores this selection.
 - Columns have fixed widths. A value that does not fit ends with `…`. A very small diameter can cause this overflow.
 
@@ -49,9 +57,19 @@ The direction controls cross-section transition calculations, as defined in the 
 ## Catalogs
 
 The catalogs contain materials, fittings, component templates, velocity limits, and the maximum aspect ratio.
-Each saved file includes its catalogs. A catalog edit applies only to that calculation.
+Each saved file includes its catalogs.
+The project shares one set of catalogs and settings across all its calculations. The catalog button beside the calculation tabs opens the shared dialog.
+Catalog deletion and reset must check uses in every calculation, including inactive networks.
 Values are guidelines. Manufacturer data takes precedence.
 `↺` restores a catalog's standard values.
+
+## Saving and exports
+
+- Drafts, JSON, and the PDF attachment contain the entire project, including all calculations and shared catalogs/settings. Input version 4 does not migrate earlier file schemas during beta.
+- PDF and CSV always recalculate every calculation from the authoritative inputs, regardless of the active tab or a supplied result object.
+- Each calculation starts on a new PDF page and has its name in the page header. The embedded snapshot covers all calculation ids, critical and required pressures, and critical paths.
+- CSV adds a `Berechnung` column. It includes sections from all calculations and one named row for an empty calculation.
+- PDF and CSV sort numerically like the table. The PDF omits the redundant predecessor column; CSV keeps a derived predecessor number for further processing.
 
 ## Symbols and keyboard controls
 
@@ -65,7 +83,6 @@ The section controls have these meanings:
 | `↓ PDF` | Save PDF |
 | `⋯` | More actions |
 | Half-circle, sun, moon | System, light, dark theme |
-| Six dots | Drag a row |
 | Branch | Add a section attached to this row |
 | Trash | Delete a section. The notification includes an undo icon. |
 | `↺` | Restore a catalog's standard values |

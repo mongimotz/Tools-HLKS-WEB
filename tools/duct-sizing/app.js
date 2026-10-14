@@ -2,7 +2,7 @@
 // Page controller for the duct sizing tool (Kanalrechner): one duct in the input panel, results and drawing
 // next to it, pinned results on the right.
 
-import { compute, snapshotOf, CALC_VERSION, MIN_SIDE } from './calc.js';
+import { computeProject, snapshotProjectOf, limitRow, CALC_VERSION, MIN_SIDE } from './calc.js';
 import {
   TOOL_ID,
   INPUT_VERSION,
@@ -18,8 +18,12 @@ import {
   defaultCatalogs,
   defaultSettings,
   modeFor,
+  calculationInputs,
+  calculationName,
+  newCalculation,
+  nextCalculationId,
 } from './defaults.js';
-import { SHAPE_LABELS, SHAPE_BUTTONS, SEVERITY_LABELS, modeLabel, ratioText, sizeText, issueText } from './labels.js';
+import { SHAPE_LABELS, SHAPE_BUTTONS, modeLabel, ratioText, sizeText, issueText } from './labels.js';
 import { crossSectionLayout, crossSectionSvg, sizeForDrawn, HANDLE_HIT } from './drawing.js';
 import { buildCsv } from './csv.js';
 import { DocumentStore } from '../../lib/core/store.js';
@@ -30,24 +34,39 @@ import { mountProjectInfo, newProject } from '../../lib/core/project-info.js';
 import { findTool, toolUrl } from '../../lib/core/registry.js';
 import { html, raw, icon, toast, bindThemeToggle, mountSourceLink } from '../../lib/core/ui.js';
 import { enableCombos } from '../../lib/core/combo.js';
+import { createIssuePanel } from '../../lib/core/issues.js';
+import { mountCalculationTabs } from '../../lib/core/calculation-tabs.js';
+import { mountCatalogDialog } from '../../lib/core/catalog-dialog.js';
 
 const DRAFT_KEY = `hlks-tools:${TOOL_ID}:draft`;
 
 const $ = (sel, root = document) => root.querySelector(sel);
-const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 const ui = {
   result: null,
   flhOpen: false, // the operating stages are expanded
   keyStep: false, // ↑ / ↓ changed a value; one history step on key release
+  fileNotes: [],
+  activeCalculationId: null,
+  projectResult: null,
 };
 
 let store;
 let projectView;
+let issuePanel;
+let calculationTabs;
+let catalogDialog;
 
 const doc = () => store.doc;
-const inputs = () => store.doc.inputs;
-const current = () => store.doc.inputs.current;
+const projectInputs = () => store.doc.inputs;
+const activeCalculation = () => {
+  const list = projectInputs().calculations;
+  const selected = list.find((c) => c.id === ui.activeCalculationId) ?? list[0];
+  ui.activeCalculationId = selected.id;
+  return selected;
+};
+const inputs = () => calculationInputs(projectInputs(), activeCalculation().id);
+const current = () => inputs().current;
 
 // ============================================================================
 // Document lifecycle
@@ -71,8 +90,8 @@ function currentEnvelope() {
     version: INPUT_VERSION,
     calcVersion: CALC_VERSION,
     project: doc().project,
-    inputs: inputs(),
-    snapshot: snapshotOf(ui.result ?? compute(inputs())),
+    inputs: projectInputs(),
+    snapshot: snapshotProjectOf(computeProject(projectInputs())),
   });
 }
 
@@ -97,17 +116,24 @@ async function openEnvelope(env, sourceName = '') {
   }
   const next = { project: normalizeProject(env.project), inputs: normalizeInputs(env.inputs) };
   store.replace(next);
-  const result = compute(next.inputs);
+  const result = computeProject(next.inputs);
   const saved = env.snapshot ?? {};
   const compare = (label, before, r) => {
     if (!before || !r) return;
     const now = sizeOf(r);
     if (JSON.stringify(now) !== JSON.stringify(before.size)) notes.push(`${label}: gespeichert ${sizeLabel(r.shape, before.size)}, neu ${sizeLabel(r.shape, now)}`);
   };
-  compare('Eingabe', saved.current, result.current);
-  (saved.positions ?? []).forEach((s) => {
-    const i = next.inputs.positions.findIndex((p) => p.id === s.id);
-    compare(`Pin ${i + 1}`, s, result.positions.get(s.id));
+  (saved.calculations ?? []).forEach((s) => {
+    const index = next.inputs.calculations.findIndex((c) => c.id === s.id);
+    const c = next.inputs.calculations[index];
+    const r = result.calculations.get(s.id);
+    if (!c || !r) return;
+    const label = calculationName(c, index);
+    compare(`${label}, Eingabe`, s.current, r.current);
+    (s.positions ?? []).forEach((pin) => {
+      const i = c.positions.findIndex((p) => p.id === pin.id);
+      compare(`${label}, Pin ${i + 1}`, pin, r.positions.get(pin.id));
+    });
   });
   showFileBanner(notes);
   renderAll();
@@ -125,15 +151,8 @@ async function openFile(file) {
 }
 
 function showFileBanner(notes) {
-  const el = $('#file-banner');
-  if (!notes.length) {
-    el.hidden = true;
-    el.innerHTML = '';
-    return;
-  }
-  el.hidden = false;
-  el.innerHTML = String(html`<div class="banner">${icon('warning')}<div>${notes.map((n) => html`<p>${n}</p>`)}</div>
-    <button class="btn ghost small icon-only" data-action="dismiss-banner" title="Schliessen" aria-label="Schliessen">${icon('close', { size: 14 })}</button></div>`);
+  ui.fileNotes = notes;
+  renderNotes();
 }
 
 function fileBaseName() {
@@ -145,7 +164,7 @@ async function exportPdf() {
   try {
     store.commit();
     const { buildReport } = await import('./report.js'); // pdf-lib + fonts load only when needed
-    const bytes = await buildReport(doc(), compute(inputs()), currentEnvelope());
+    const bytes = await buildReport(doc(), computeProject(projectInputs()), currentEnvelope());
     download(bytes, safeFileName(fileBaseName(), 'pdf'), 'application/pdf');
     toast('PDF gespeichert', { kind: 'success' });
   } catch (e) {
@@ -161,7 +180,7 @@ function exportJson() {
 
 function exportCsv() {
   store.commit();
-  download(buildCsv(doc(), compute(inputs())), safeFileName(fileBaseName(), 'csv'), 'text/csv;charset=utf-8');
+  download(buildCsv(doc()), safeFileName(fileBaseName(), 'csv'), 'text/csv;charset=utf-8');
 }
 
 const UNDO_ACTION = { icon: 'undo', label: 'Rückgängig', run: () => undo() };
@@ -200,6 +219,7 @@ function commitAndRender() {
 
 function renderAll() {
   const focus = captureFocus();
+  activeCalculation();
   projectView.refresh();
   renderInputs();
   renderCatalogs();
@@ -208,13 +228,54 @@ function renderAll() {
 }
 
 function recalc() {
-  ui.result = compute(inputs());
+  ui.projectResult = computeProject(projectInputs());
+  ui.result = ui.projectResult.calculations.get(activeCalculation().id);
+  renderCalculationTabs();
   $('#drawing').innerHTML = crossSectionSvg(ui.result.current);
   renderResults();
   renderNotes();
   renderPins();
   updateEstimate();
   updateHistoryButtons();
+}
+
+function renderCalculationTabs() {
+  calculationTabs?.render(projectInputs().calculations.map((c, index) => {
+    const r = ui.projectResult.calculations.get(c.id);
+    const issues = [...r.issues, ...r.current.issues, ...[...r.positions.values()].flatMap((p) => p.issues)];
+    const severity = ['error', 'warning', 'info'].find((level) => issues.some((i) => i.severity === level));
+    return { id: c.id, label: calculationName(c, index), value: r.current.status === 'ok' ? `${fmt(r.current.utilization * 100, 0)} %` : '', severity };
+  }), activeCalculation().id);
+}
+
+function selectCalculation(id) {
+  if (!projectInputs().calculations.some((c) => c.id === id)) return;
+  store.commit();
+  ui.activeCalculationId = id;
+  ui.flhOpen = false;
+  renderAll();
+}
+
+function addCalculation(duplicate = false) {
+  const list = projectInputs().calculations;
+  const id = nextCalculationId(list);
+  const c = duplicate ? { ...structuredClone(activeCalculation()), id } : newCalculation(id);
+  if (duplicate) c.current.note = `${calculationName(activeCalculation(), list.indexOf(activeCalculation()))} Kopie`;
+  list.push(c);
+  ui.activeCalculationId = id;
+  commitAndRender();
+  $('[data-cur="note"]')?.focus();
+}
+
+function deleteCalculation() {
+  const list = projectInputs().calculations;
+  if (list.length <= 1) return;
+  const index = list.findIndex((c) => c.id === activeCalculation().id);
+  const label = calculationName(list[index], index);
+  list.splice(index, 1);
+  ui.activeCalculationId = list[Math.min(index, list.length - 1)].id;
+  commitAndRender();
+  toast(`${label} gelöscht`, { action: UNDO_ACTION });
 }
 
 function updateHistoryButtons() {
@@ -472,13 +533,90 @@ function renderResults() {
 }
 
 function renderNotes() {
-  const list = [...ui.result.issues, ...ui.result.current.issues].filter((i) => i.code !== 'flow-missing');
-  const order = { error: 0, warning: 1, info: 2 };
-  list.sort((a, b) => order[a.severity] - order[b.severity]);
-  $('#notes').innerHTML = String(html`${list.map((i) => {
-    const name = i.severity === 'info' ? 'info' : i.severity === 'error' ? 'error' : 'warning';
-    return html`<li class="issue issue-${i.severity}">${icon(name, { label: SEVERITY_LABELS[i.severity] })}<span>${issueText(i, '')}</span></li>`;
-  })}`);
+  if (!issuePanel) return;
+  const summaries = {
+    'velocity-high': 'Geschwindigkeit zu hoch',
+    'series-exceeded': 'Abmessung über der Normreihe',
+    'ratio-high': 'Seitenverhältnis zu gross',
+    'ratio-outside-table': 'Seitenverhältnis ausserhalb Tab. 50',
+    'hours-missing': 'Volllaststunden fehlen',
+    'hours-high': 'Volllaststunden über Tabellenbereich',
+    'stages-long': 'Betriebsstufen über 8\'760 h/a',
+  };
+  const list = ui.projectResult ? projectInputs().calculations.flatMap((c, index) => {
+    const r = ui.projectResult.calculations.get(c.id);
+    const issues = [...r.issues, ...r.current.issues, ...c.positions.filter((p) => !samePosition(p, c.current)).flatMap((p) => r.positions.get(p.id).issues)];
+    return issues.map((issue) => ({ ...issue, calculationId: c.id, calculationLabel: calculationName(c, index) }));
+  }) : [];
+  issuePanel.update([
+    ...ui.fileNotes.map((text) => ({
+      id: `file:${text}`,
+      severity: 'warning',
+      text,
+      summary: text.startsWith('Berechnungsversion') ? 'Berechnungsversion geändert' : 'Gespeichertes Ergebnis geändert',
+      dismiss: () => showFileBanner(ui.fileNotes.filter((note) => note !== text)),
+    })),
+    ...list.map((i) => {
+      const needed = i.code === 'velocity-high' && i.needed
+        ? ` | nötig ${i.shape === 'round' ? sizeText('round', i.needed) : `B ≥ ${fmt(i.needed.width, 0)}`} mm`
+        : '';
+      return {
+        id: `${i.calculationId}:${i.positionId ?? 'system'}:${i.code}`,
+        severity: i.severity,
+        text: `${i.calculationLabel}: ${issueText(i, i.positionId && i.positionId !== 'current' ? inputsForIssue(i).positions.findIndex((p) => p.id === i.positionId) + 1 : '')}`,
+        summary: summaries[i.code] ? `${i.calculationLabel}: ${summaries[i.code]}${needed}` : undefined,
+        run: () => gotoIssue(i),
+      };
+    }),
+  ]);
+}
+
+const inputsForIssue = (issue) => calculationInputs(projectInputs(), issue.calculationId);
+
+function gotoIssue(issue) {
+  if (issue.calculationId !== activeCalculation().id) selectCalculation(issue.calculationId);
+  const pin = issue.positionId && issue.positionId !== 'current' ? inputs().positions.find((p) => p.id === issue.positionId) : null;
+  const position = pin ?? current();
+  const catalog = { 'limit-missing': 'velocityLimits', 'factor-missing': 'reductionFactors' }[issue.code];
+  setTab(catalog || issue.code === 'series-exceeded' ? 'catalogs' : 'calc');
+  if (pin && !catalog && issue.code !== 'series-exceeded') {
+    const target = $(`[data-pin="${CSS.escape(pin.id)}"]`);
+    target?.scrollIntoView({ block: 'center' });
+    target?.focus({ preventScroll: true });
+    return;
+  }
+  let selector;
+  if (catalog === 'velocityLimits') {
+    const table = inputs().catalogs.velocityLimits;
+    const row = limitRow(position.flow, table);
+    const columns = ui.result.hours <= 4000 ? ['v2000', 'v4000'] : ['v4000', 'v8000'];
+    const key = columns.find((column) => !(row?.[column] > 0)) ?? columns[0];
+    selector = `[data-cat="${catalog}"][data-index="${table.indexOf(row)}"][data-cat-key="${key}"]`;
+    if (!$(selector)) selector = `[data-cat-add="${catalog}"]`;
+  } else if (catalog) {
+    selector = `[data-cat="${catalog}"][data-cat-key="${position.shape}"]`;
+    if (!$(selector)) selector = `[data-cat-add="${catalog}"]`;
+  } else if (issue.code === 'series-exceeded') {
+    selector = '[data-cat-list="diameters"]';
+  } else if (issue.code === 'hours-missing' || issue.code === 'hours-high') {
+    selector = '[data-sys="hours"]';
+  } else if (issue.code === 'stages-long') {
+    ui.flhOpen = true;
+    const stages = $('.flh');
+    if (stages) stages.open = true;
+    selector = '[data-stage="hours"]';
+  } else if (issue.code === 'flow-missing') {
+    selector = '[data-cur="flow"]';
+  } else {
+    const p = current();
+    const field = issue.code === 'ratio-missing' || (p.mode === 'size' && p.shape !== 'round') ? 'ratio'
+      : p.shape === 'round' ? 'diameter'
+      : p.mode === 'height' || (issue.code === 'dims-missing' && p.width > 0) ? 'height' : 'width';
+    selector = `[data-cur="${field}"]`;
+  }
+  const target = $(selector) ?? $('[data-mode][aria-pressed="true"]') ?? $('[data-cur="flow"]');
+  target?.scrollIntoView({ block: 'center' });
+  target?.focus({ preventScroll: true });
 }
 
 // ---- pins ---------------------------------------------------------------------------------
@@ -494,7 +632,7 @@ function renderPins() {
     const ok = r?.status === 'ok';
     const over = ok && r.utilization > 1 + 1e-9;
     const size = ok ? sizeText(r.shape, r.shape === 'round' ? { diameter: r.diameter } : { width: r.width, height: r.height }) : '–';
-    return html`<li data-pin="${p.id}" class="${samePosition(p, cur) ? 'is-current' : ''}">
+    return html`<li data-pin="${p.id}" tabindex="0" class="${samePosition(p, cur) ? 'is-current' : ''}">
       <span class="pin-nr">${i + 1}</span><b>${size} mm</b><br />
       <span class="${over ? 'over' : ''}">${ok ? fmt(r.velocity, 2) : '–'} m/s${over ? ' ↑' : ''}</span> | ${fmt(p.flow, 0)} m³/h
       <span class="pin-note">${p.note || SHAPE_LABELS[p.shape]}</span>
@@ -515,6 +653,11 @@ function pinCurrent() {
 }
 
 function bindPins() {
+  $('#pins').addEventListener('keydown', (e) => {
+    if (!['Enter', ' '].includes(e.key) || !e.target.matches('[data-pin]')) return;
+    e.preventDefault();
+    e.target.click();
+  });
   $('#pins').addEventListener('click', (e) => {
     const li = e.target.closest('[data-pin]');
     const list = inputs().positions;
@@ -865,8 +1008,8 @@ function bindCatalogs() {
 // ============================================================================
 
 function setTab(name) {
-  for (const tab of $$('.tab')) tab.setAttribute('aria-selected', String(tab.dataset.tab === name));
-  for (const panel of $$('.tab-panel')) panel.hidden = panel.dataset.panel !== name;
+  if (name === 'catalogs') catalogDialog.open();
+  else catalogDialog.close();
 }
 
 function bindToolbar() {
@@ -878,6 +1021,7 @@ function bindToolbar() {
   setIcon('[data-action="open"]', 'open');
   setIcon('[data-action="export-pdf"]', 'save', 'PDF');
   setIcon('[data-action="menu"]', 'more');
+  setIcon('[data-action="catalogs"]', 'catalog');
 
   const menu = $('#more-menu');
   const closeMenu = () => {
@@ -885,11 +1029,6 @@ function bindToolbar() {
     $('[data-action="menu"]').setAttribute('aria-expanded', 'false');
   };
   document.addEventListener('click', async (e) => {
-    const tab = e.target.closest('.tab');
-    if (tab) {
-      setTab(tab.dataset.tab);
-      return;
-    }
     const a = e.target.closest('[data-action]');
     if (!a) {
       if (!e.target.closest('#more-menu')) closeMenu();
@@ -911,7 +1050,7 @@ function bindToolbar() {
       case 'new': newDocument(); break;
       case 'example': loadExample(); break;
       case 'pin': pinCurrent(); break;
-      case 'dismiss-banner': showFileBanner([]); break;
+      case 'catalogs': setTab('catalogs'); break;
     }
   });
   document.addEventListener('keydown', (e) => {
@@ -956,6 +1095,15 @@ const COMBO_LISTS = {
 async function start() {
   const handoff = takeHandoff();
   store = new DocumentStore(loadInitialDoc(), { draftKey: DRAFT_KEY });
+  issuePanel = createIssuePanel($('#issue-panel'));
+  catalogDialog = mountCatalogDialog($('#catalog-dialog'));
+  calculationTabs = mountCalculationTabs($('#calculation-tabs'), {
+    panelId: 'calc-layout',
+    onSelect: selectCalculation,
+    onAdd: () => addCalculation(),
+    onDuplicate: () => addCalculation(true),
+    onDelete: deleteCalculation,
+  });
 
   addThemeButton();
   mountSourceLink();

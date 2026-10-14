@@ -2,11 +2,11 @@
 // Default catalogues (SIA 382/1:2025 tables 49 and 50, size series), input schema normalisation and the example.
 // Catalogue values are guide values ("Richtwerte") and are saved with every file.
 //
-// inputs = { system, current, positions, catalogs, settings }
+// inputs = { calculations: [{ id, system, current, positions }], catalogs, settings }
 // `current` is the position in the input panel, `positions` are the pinned ones (in the PDF and the CSV).
 
 export const TOOL_ID = 'duct-sizing';
-export const INPUT_VERSION = 1;
+export const INPUT_VERSION = 2;
 
 export const SHAPES = ['round', 'rect', 'oval'];
 
@@ -115,6 +115,7 @@ export function modeFor(shape, mode) {
 }
 
 export function normalizePosition(p = {}) {
+  p = object(p);
   const shape = SHAPES.includes(p.shape) ? p.shape : 'round';
   return {
     id: str(p.id),
@@ -146,11 +147,20 @@ export function printedPositions(inputs) {
 const numList = (list, fallback) =>
   (Array.isArray(list) ? list : fallback).map(num).filter((v) => v > 0).sort((a, b) => a - b);
 
-/** Bring any (older / partial) input object into the current schema. Idempotent. */
-export function normalizeInputs(raw = {}) {
+const object = (value) => (value && typeof value === 'object' && !Array.isArray(value) ? value : {});
+const rows = (value, fallback) => (Array.isArray(value) ? value : fallback).map(object);
+
+export function nextCalculationId(calculations) {
+  let n = 1;
+  const ids = new Set(calculations.map((c) => c.id));
+  while (ids.has(`c${n}`)) n++;
+  return `c${n}`;
+}
+
+/** Calculation-local inputs. Catalogue and pressure-gradient settings belong to the project. */
+export function normalizeCalculation(raw = {}, id = 'c1') {
+  raw = object(raw);
   const sys = { ...defaultSystem(), ...(raw.system ?? {}) };
-  const cat = raw.catalogs ?? {};
-  const settings = { ...defaultSettings(), ...(raw.settings ?? {}) };
   const positions = (Array.isArray(raw.positions) ? raw.positions : []).map(normalizePosition);
   const seen = new Set(['current']);
   for (const p of positions) {
@@ -158,6 +168,7 @@ export function normalizeInputs(raw = {}) {
     seen.add(p.id);
   }
   return {
+    id,
     system: {
       simple: sys.simple !== false,
       hours: num(sys.hours),
@@ -167,14 +178,60 @@ export function normalizeInputs(raw = {}) {
     },
     current: normalizePosition({ ...defaultCurrent(), ...(raw.current ?? {}), id: 'current' }),
     positions,
+  };
+}
+
+export function newCalculation(id = 'c1') {
+  return normalizeCalculation({}, id);
+}
+
+/** A writable calculation view: all properties refer to the authoritative project inputs. */
+export function calculationInputs(inputs, id = inputs.calculations[0]?.id) {
+  const calculation = inputs.calculations.find((c) => c.id === id) ?? inputs.calculations[0];
+  return {
+    get system() { return calculation.system; },
+    get current() { return calculation.current; },
+    set current(value) { calculation.current = value; },
+    get positions() { return calculation.positions; },
+    set positions(value) { calculation.positions = value; },
+    get catalogs() { return inputs.catalogs; },
+    get settings() { return inputs.settings; },
+    set settings(value) { inputs.settings = value; },
+  };
+}
+
+export function calculationName(calculation, index) {
+  return calculation.current.note.trim() || `Berechnung ${index + 1}`;
+}
+
+/** Current beta schema only. Old or foreign data is safely reset, without migration. Idempotent. */
+export function normalizeInputs(raw = {}) {
+  raw = object(raw);
+  const cat = object(raw.catalogs);
+  const settings = { ...defaultSettings(), ...object(raw.settings) };
+  const source = Array.isArray(raw.calculations) && raw.calculations.length ? raw.calculations : [{}];
+  const ids = new Set();
+  const calculations = source.map((value, index) => {
+    const row = object(value);
+    let id = str(row.id);
+    if (!id || ids.has(id)) {
+      let n = index + 1;
+      while (ids.has(`c${n}`)) n++;
+      id = `c${n}`;
+    }
+    ids.add(id);
+    return normalizeCalculation(row, id);
+  });
+  return {
+    calculations,
     catalogs: {
-      velocityLimits: (cat.velocityLimits ?? defaultVelocityLimits()).map((r) => ({
+      velocityLimits: rows(cat.velocityLimits, defaultVelocityLimits()).map((r) => ({
         below: num(r.below),
         v2000: num(r.v2000),
         v4000: num(r.v4000),
         v8000: num(r.v8000),
       })),
-      reductionFactors: (cat.reductionFactors ?? defaultReductionFactors()).map((r) => ({
+      reductionFactors: rows(cat.reductionFactors, defaultReductionFactors()).map((r) => ({
         ratio: num(r.ratio),
         rect: num(r.rect),
         oval: num(r.oval),
@@ -193,14 +250,17 @@ export function emptyInputs() {
 /** The example of SIA 382/1, 5.11.5.7 and 5.11.5.8 (5'800 m³/h, 2'740 h/a): round in the panel, variants pinned. */
 export function exampleInputs() {
   return normalizeInputs({
-    system: { ...defaultSystem(), simple: false, hours: 2740 },
-    current: { flow: 5800, shape: 'round', mode: 'size', ratio: 5, note: 'Hauptleitung' },
-    positions: [
-      { id: 'p1', note: 'Hauptleitung', flow: 5800, shape: 'round', mode: 'size', ratio: 5 },
-      { id: 'p2', note: 'Hauptleitung eckig', flow: 5800, shape: 'rect', mode: 'size', ratio: 5 },
-      { id: 'p3', note: 'Hauptleitung flachoval', flow: 5800, shape: 'oval', mode: 'size', ratio: 5 },
-      { id: 'p4', note: 'Korridor', flow: 2900, shape: 'rect', mode: 'height', ratio: 3, height: 300 },
-      { id: 'p5', note: 'Sitzungszimmer', flow: 800, shape: 'round', mode: 'check', ratio: 3, diameter: 315 },
-    ],
+    calculations: [{
+      id: 'c1',
+      system: { ...defaultSystem(), simple: false, hours: 2740 },
+      current: { flow: 5800, shape: 'round', mode: 'size', ratio: 5, note: 'Hauptleitung' },
+      positions: [
+        { id: 'p1', note: 'Hauptleitung', flow: 5800, shape: 'round', mode: 'size', ratio: 5 },
+        { id: 'p2', note: 'Hauptleitung eckig', flow: 5800, shape: 'rect', mode: 'size', ratio: 5 },
+        { id: 'p3', note: 'Hauptleitung flachoval', flow: 5800, shape: 'oval', mode: 'size', ratio: 5 },
+        { id: 'p4', note: 'Korridor', flow: 2900, shape: 'rect', mode: 'height', ratio: 3, height: 300 },
+        { id: 'p5', note: 'Sitzungszimmer', flow: 800, shape: 'round', mode: 'check', ratio: 3, diameter: 315 },
+      ],
+    }],
   });
 }

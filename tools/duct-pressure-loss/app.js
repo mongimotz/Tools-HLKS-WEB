@@ -2,9 +2,8 @@
 // Page controller for the duct pressure loss tool.
 
 import {
-  compute,
-  snapshotOf,
-  descendantsOf,
+  computeProject,
+  snapshotProjectOf,
   branchLevel,
   airState,
   suggestDimensions,
@@ -24,8 +23,13 @@ import {
   newSection,
   defaultCatalogs,
   normalizeSection,
+  calculationInputs,
+  calculationLabel,
+  newCalculation,
+  duplicateCalculation,
 } from './defaults.js';
-import { DIRECTION_LABELS, GROUP_LABELS, SEVERITY_LABELS, issueText } from './labels.js';
+import { compareSections, numberParts } from './network.js';
+import { DIRECTION_LABELS, GROUP_LABELS, issueText } from './labels.js';
 import { renderProfile, renderNetwork } from './charts.js';
 import { buildCsv } from './csv.js';
 import { DocumentStore } from '../../lib/core/store.js';
@@ -36,7 +40,9 @@ import { mountProjectInfo, newProject } from '../../lib/core/project-info.js';
 import { findTool, toolUrl } from '../../lib/core/registry.js';
 import { html, raw, icon, toast, bindThemeToggle, mountSourceLink } from '../../lib/core/ui.js';
 import { enableCombos } from '../../lib/core/combo.js';
-import { bindRowDrag, moveBefore } from '../../lib/core/drag.js';
+import { createIssuePanel } from '../../lib/core/issues.js';
+import { mountCalculationTabs } from '../../lib/core/calculation-tabs.js';
+import { mountCatalogDialog } from '../../lib/core/catalog-dialog.js';
 
 const DRAFT_KEY = `hlks-tools:${TOOL_ID}:draft`;
 const UI_KEY = `hlks-tools:${TOOL_ID}:ui`;
@@ -48,13 +54,26 @@ const ui = {
   expanded: new Set(),
   view: 'standard', // columns: 'compact' | 'standard' | 'all'
   result: null,
+  projectResult: null,
+  activeId: null,
+  fileNotes: [],
 };
 
 let store;
 let projectView;
+let issuePanel;
+let calculationTabs;
+let catalogDialog;
 
 const doc = () => store.doc;
-const inputs = () => store.doc.inputs;
+const projectInputs = () => store.doc.inputs;
+const activeCalculation = () => {
+  const calculations = projectInputs().calculations;
+  const active = calculations.find((calculation) => calculation.id === ui.activeId) ?? calculations[0];
+  ui.activeId = active.id;
+  return active;
+};
+const inputs = () => calculationInputs(projectInputs(), activeCalculation().id);
 const sectionById = (id) => inputs().sections.find((s) => s.id === id);
 const nrOf = (id) => {
   const i = inputs().sections.findIndex((s) => s.id === id);
@@ -79,13 +98,14 @@ function loadInitialDoc() {
 }
 
 function currentEnvelope() {
+  finishSectionNumbers();
   return createEnvelope({
     tool: TOOL_ID,
     version: INPUT_VERSION,
     calcVersion: CALC_VERSION,
     project: doc().project,
-    inputs: inputs(),
-    snapshot: snapshotOf(ui.result ?? compute(inputs())),
+    inputs: projectInputs(),
+    snapshot: snapshotProjectOf(computeProject(projectInputs())),
   });
 }
 
@@ -105,11 +125,14 @@ async function openEnvelope(env, sourceName = '') {
   }
   const next = { project: normalizeProject(env.project), inputs: normalizeInputs(env.inputs) };
   store.replace(next);
+  ui.activeId = next.inputs.calculations[0].id;
   ui.expanded.clear();
-  const result = compute(next.inputs);
-  const saved = env.snapshot?.critical;
-  if (typeof saved === 'number' && Math.abs(saved - result.totals.critical) > 0.05) {
-    notes.push(`Kritischer Strang: gespeichert ${fmt(saved, 1)} Pa, neu ${fmt(result.totals.critical, 1)} Pa`);
+  const result = computeProject(next.inputs);
+  for (const saved of env.snapshot?.calculations ?? []) {
+    const current = result.calculations.get(saved.id);
+    if (current && typeof saved.critical === 'number' && Math.abs(saved.critical - current.totals.critical) > 0.05) {
+      notes.push(`${calculationLabel(next.inputs, saved.id)}: gespeichert ${fmt(saved.critical, 1)} Pa, neu ${fmt(current.totals.critical, 1)} Pa`);
+    }
   }
   showFileBanner(notes);
   renderAll();
@@ -127,27 +150,21 @@ async function openFile(file) {
 }
 
 function showFileBanner(notes) {
-  const el = $('#file-banner');
-  if (!notes.length) {
-    el.hidden = true;
-    el.innerHTML = '';
-    return;
-  }
-  el.hidden = false;
-  el.innerHTML = String(html`<div class="banner">${icon('warning')}<div>${notes.map((n) => html`<p>${n}</p>`)}</div>
-    <button class="btn ghost small icon-only" data-action="dismiss-banner" title="Schliessen" aria-label="Schliessen">${icon('close', { size: 14 })}</button></div>`);
+  ui.fileNotes = notes;
+  renderIssues();
 }
 
 function fileBaseName() {
   const p = doc().project;
-  return ['Druckverlust', p.name, inputs().system.name, p.date || todayIso()];
+  return ['Druckverlust', p.name, p.date || todayIso()];
 }
 
 async function exportPdf() {
   try {
+    finishSectionNumbers();
     store.commit();
     const { buildReport } = await import('./report.js'); // pdf-lib + fonts load only when needed
-    const bytes = await buildReport(doc(), compute(inputs()), currentEnvelope());
+    const bytes = await buildReport(doc(), computeProject(projectInputs()), currentEnvelope());
     download(bytes, safeFileName(fileBaseName(), 'pdf'), 'application/pdf');
     toast('PDF gespeichert', { kind: 'success' });
   } catch (e) {
@@ -157,19 +174,22 @@ async function exportPdf() {
 }
 
 function exportJson() {
+  finishSectionNumbers();
   store.commit();
   download(JSON.stringify(currentEnvelope(), null, 2), safeFileName(fileBaseName(), 'json'), 'application/json');
 }
 
 function exportCsv() {
+  finishSectionNumbers();
   store.commit();
-  download(buildCsv(doc(), compute(inputs())), safeFileName(fileBaseName(), 'csv'), 'text/csv;charset=utf-8');
+  download(buildCsv(doc()), safeFileName(fileBaseName(), 'csv'), 'text/csv;charset=utf-8');
 }
 
 const UNDO_ACTION = { icon: 'undo', label: 'Rückgängig', run: () => undo() };
 
 function newDocument() {
   store.replace({ project: newProject(), inputs: emptyInputs() });
+  ui.activeId = projectInputs().calculations[0].id;
   ui.expanded.clear();
   showFileBanner([]);
   renderAll();
@@ -179,6 +199,7 @@ function newDocument() {
 
 function loadExample() {
   store.replace({ project: { ...newProject(), name: 'Beispiel' }, inputs: exampleInputs() });
+  ui.activeId = projectInputs().calculations[0].id;
   ui.expanded.clear();
   showFileBanner([]);
   renderAll();
@@ -194,8 +215,16 @@ function redo() {
 
 /** Record a history step and refresh everything (after structural edits). */
 function commitAndRender() {
+  finishSectionNumbers();
   store.commit();
   renderAll();
+}
+
+function finishSectionNumbers() {
+  for (const calculation of projectInputs().calculations) {
+    for (const section of calculation.sections) section.nr = section.nr.trim();
+    calculation.sections.sort(compareSections);
+  }
 }
 
 // ============================================================================
@@ -213,13 +242,66 @@ function renderAll() {
 }
 
 function recalc() {
-  ui.result = compute(inputs());
+  activeCalculation();
+  for (const calculation of projectInputs().calculations) calculation.sections.sort(compareSections);
+  ui.projectResult = computeProject(projectInputs());
+  ui.result = ui.projectResult.calculations.get(ui.activeId);
+  renderCalculationTabs();
   updateResults();
   renderSummary();
   renderIssues();
   renderCharts();
   updateAirReadout();
   updateHistoryButtons();
+}
+
+function renderCalculationTabs() {
+  calculationTabs.render(projectInputs().calculations.map((calculation) => {
+    const result = ui.projectResult.calculations.get(calculation.id);
+    const severity = ['error', 'warning', 'info'].find((level) => result.issues.some((issue) => issue.severity === level));
+    return { id: calculation.id, label: calculationLabel(projectInputs(), calculation.id), value: `${fmt(result.totals.required, 0)} Pa`, severity };
+  }), ui.activeId);
+}
+
+function selectCalculation(id) {
+  if (!projectInputs().calculations.some((calculation) => calculation.id === id)) return;
+  store.commit();
+  ui.activeId = id;
+  ui.expanded.clear();
+  catalogDialog.close();
+  renderAll();
+}
+
+function addCalculation() {
+  const calculation = newCalculation(projectInputs().calculations);
+  projectInputs().calculations.push(calculation);
+  ui.activeId = calculation.id;
+  ui.expanded.clear();
+  commitAndRender();
+  $('[data-sys="name"]')?.focus();
+}
+
+function copyCalculation() {
+  const source = activeCalculation();
+  const calculation = duplicateCalculation(projectInputs().calculations, source.id);
+  calculation.system.name = `${calculationLabel(projectInputs(), source.id)} Kopie`;
+  const index = projectInputs().calculations.indexOf(source);
+  projectInputs().calculations.splice(index + 1, 0, calculation);
+  ui.activeId = calculation.id;
+  ui.expanded.clear();
+  commitAndRender();
+}
+
+function deleteCalculation() {
+  const calculations = projectInputs().calculations;
+  if (calculations.length <= 1) return;
+  const label = calculationLabel(projectInputs(), ui.activeId);
+  const index = calculations.findIndex((calculation) => calculation.id === ui.activeId);
+  calculations.splice(index, 1);
+  ui.activeId = calculations[Math.min(index, calculations.length - 1)].id;
+  ui.expanded.clear();
+  commitAndRender();
+  toast(`${label} gelöscht`, { action: UNDO_ACTION });
 }
 
 function updateHistoryButtons() {
@@ -306,7 +388,6 @@ function updateAirReadout() {
 const COLS = [
   { key: 'exp', cls: 'c-exp', w: 30 },
   { key: 'nr', label: 'Nr.', cls: 'c-nr', w: 84 },
-  { key: 'parent', label: 'Vorgänger', cls: 'c-parent', w: 84 },
   { key: 'shape', label: 'Form', cls: 'c-shape', w: 80 },
   { key: 'material', label: 'Material', cls: 'c-mat', w: 150 },
   { key: 'flow', label: 'V̇', unit: 'm³/h', cls: 'c-num', w: 76 },
@@ -326,7 +407,7 @@ const COLS = [
   { key: 'dp', label: 'Δp TS', unit: 'Pa', cls: 'c-out', out: true, w: 70 },
   { key: 'cum', label: 'Δp kum.', unit: 'Pa', cls: 'c-out c-cum', out: true, w: 80 },
   { key: 'throttle', label: 'Drossel', unit: 'Pa', cls: 'c-out', out: true, w: 70 },
-  { key: 'act', cls: 'c-act', w: 96 },
+  { key: 'act', cls: 'c-act', w: 66 },
 ];
 
 function renderTable() {
@@ -339,17 +420,6 @@ function renderTable() {
   const body = secs.map((s, i) => rowHtml(s, i));
   table.innerHTML = String(html`${head}<tbody>${body}</tbody>`);
   $('[data-action="add-section"]').innerHTML = String(html`${icon('plus')}<span>Teilstrecke</span>`);
-}
-
-function parentOptions(s) {
-  const blocked = descendantsOf(inputs().sections, s.id);
-  blocked.add(s.id);
-  const opts = [html`<option value="" ${!s.parent ? 'selected' : ''}>Venti</option>`];
-  inputs().sections.forEach((o, i) => {
-    if (blocked.has(o.id)) return;
-    opts.push(html`<option value="${o.id}" ${o.id === s.parent ? 'selected' : ''}>${o.nr || `Zeile ${i + 1}`}</option>`);
-  });
-  return opts;
 }
 
 function materialOptions(selected) {
@@ -376,7 +446,6 @@ function rowHtml(s, index) {
   const main = html`<tr class="sec-row" data-id="${s.id}">
     <td class="c-exp"><button class="exp-btn" data-act="toggle" aria-expanded="${open}" aria-label="Details zu Teilstrecke ${s.nr || index + 1}" title="Details">${icon('chevron', { size: 14 })}</button></td>
     <td class="c-nr ${level ? 'is-branch' : ''}" style="--level:${level}"><input class="cell-input" type="text" data-field="nr" value="${s.nr}" placeholder="${index + 1}" aria-label="Nummer" autocomplete="off" /></td>
-    <td class="c-parent"><select class="cell-select" data-field="parent" aria-label="Vorgänger">${parentOptions(s)}</select></td>
     <td class="c-shape"><select class="cell-select" data-field="shape" aria-label="Form">
       <option value="rect" ${s.shape === 'rect' ? 'selected' : ''}>eckig</option>
       <option value="round" ${s.shape === 'round' ? 'selected' : ''}>rund</option>
@@ -391,7 +460,6 @@ function rowHtml(s, index) {
     <td class="c-sum last-in"><button class="sum-btn" data-act="toggle" aria-label="Einbauteile">${s.components.length ? fmt(compSum, 0) : '–'}</button>${s.components.length ? html`<span class="count">${s.components.length}</span>` : ''}</td>
     ${COLS.filter((c) => c.out).map((c) => html`<td class="${c.cls}" data-out="${c.key}"></td>`)}
     <td class="c-act">
-      <span class="icon-btn drag-handle" title="Ziehen" aria-hidden="true">${icon('grip', { size: 15 })}</span>
       <button class="icon-btn" data-act="branch" title="Abzweig" aria-label="Abzweig hinzufügen">${icon('branch', { size: 15 })}</button>
       <button class="icon-btn" data-act="delete" title="Löschen" aria-label="Löschen">${icon('trash', { size: 15 })}</button>
     </td>
@@ -474,8 +542,6 @@ function detailRowHtml(s) {
       <div class="detail-actions">
         <button class="btn small icon-only" data-act="duplicate" title="Duplizieren" aria-label="Duplizieren">${icon('copy', { size: 14 })}</button>
         <button class="btn small icon-only" data-act="branch" title="Abzweig" aria-label="Abzweig hinzufügen">${icon('branch', { size: 14 })}</button>
-        <button class="btn small icon-only" data-act="up" title="Nach oben" aria-label="Nach oben">${icon('up', { size: 14 })}</button>
-        <button class="btn small icon-only" data-act="down" title="Nach unten" aria-label="Nach unten">${icon('down', { size: 14 })}</button>
       </div>
     </section>
 
@@ -518,6 +584,7 @@ function updateResults() {
       row.classList.toggle('is-critical', r.critical);
       row.classList.toggle('is-incomplete', r.status !== 'ok');
       row.classList.toggle('has-error', r.issues.some((i) => i.severity === 'error'));
+      row.querySelector('[data-field="nr"]')?.setAttribute('aria-invalid', String(r.issues.some((i) => i.code.startsWith('number-'))));
     }
     for (const cell of row.querySelectorAll('[data-out]')) {
       const key = cell.dataset.out;
@@ -646,18 +713,69 @@ function renderSummary() {
 // ---- issues ------------------------------------------------------------------------------
 
 function renderIssues() {
-  const order = { error: 0, warning: 1, info: 2 };
-  const list = ui.result.issues
-    .filter((i) => i.code !== 'flow-missing')
-    .sort((a, b) => order[a.severity] - order[b.severity]);
-  $('#issues-block').hidden = !list.length;
-  const severityIcon = (i) => icon(i.severity === 'info' ? 'info' : i.severity === 'error' ? 'error' : 'warning', { label: SEVERITY_LABELS[i.severity] });
-  $('#issues').innerHTML = String(html`${list.map((i) => {
-    const text = issueText(i, i.sectionId ? nrOf(i.sectionId) : '');
-    return html`<li class="issue issue-${i.severity}">${i.sectionId
-      ? html`<button class="issue-jump" data-goto="${i.sectionId}">${severityIcon(i)}<span>${text}</span>${icon('jump')}</button>`
-      : html`${severityIcon(i)}<span>${text}</span>`}</li>`;
-  })}`);
+  if (!issuePanel) return;
+  const summaries = {
+    'velocity-high': 'Geschwindigkeit zu hoch',
+    'aspect-high': 'Seitenverhältnis zu gross',
+    laminar: 'Laminare Strömung',
+    'transition-regime': 'Strömung im Übergangsbereich',
+    'flow-continuity': 'Volumenstrom der Abzweige zu hoch',
+    'fan-insufficient': 'Verfügbarer Druck zu klein',
+  };
+  issuePanel.update([
+    ...ui.fileNotes.map((text) => ({
+      id: `file:${text}`,
+      severity: 'warning',
+      text,
+      summary: text.startsWith('Berechnungsversion') ? 'Berechnungsversion geändert' : 'Gespeichertes Ergebnis geändert',
+      dismiss: () => showFileBanner(ui.fileNotes.filter((note) => note !== text)),
+    })),
+    ...(ui.projectResult?.issues ?? []).map((i) => ({
+      id: `${i.calcId}:${i.sectionId ?? 'system'}:${i.code}`,
+      severity: i.severity,
+      text: `${projectInputs().calculations.length > 1 ? `${calculationLabel(projectInputs(), i.calcId)}: ` : ''}${issueText(i, issueSectionNumber(i))}`,
+      summary: summaries[i.code] ? `${projectInputs().calculations.length > 1 ? `${calculationLabel(projectInputs(), i.calcId)}: ` : ''}${i.sectionId ? `TS ${issueSectionNumber(i)}: ` : ''}${summaries[i.code]}` : undefined,
+      run: () => gotoIssue(i),
+    })),
+  ]);
+}
+
+function issueSectionNumber(issue) {
+  const sections = projectInputs().calculations.find((calculation) => calculation.id === issue.calcId)?.sections ?? [];
+  const index = sections.findIndex((section) => section.id === issue.sectionId);
+  return index < 0 ? '' : sections[index].nr || `Zeile ${index + 1}`;
+}
+
+function gotoIssue(issue) {
+  if (issue.calcId !== ui.activeId) selectCalculation(issue.calcId);
+  if (!issue.sectionId) {
+    setTab('calc');
+    const field = $('[data-sys="availablePressure"]');
+    field?.scrollIntoView({ block: 'center' });
+    field?.focus({ preventScroll: true });
+    return;
+  }
+  const section = sectionById(issue.sectionId);
+  if (!section) return;
+  const dimension = section.shape === 'round' ? 'diameter' : !(section.width > 0) ? 'width' : 'height';
+  const fields = {
+    'geometry-missing': dimension,
+    'material-missing': 'material',
+    'number-missing': 'nr',
+    'number-invalid': 'nr',
+    'number-duplicate': 'nr',
+    'number-parent-missing': 'nr',
+    'number-parent-ambiguous': 'nr',
+    'transition-no-parent': 'nr',
+    'velocity-high': section.shape === 'round' ? 'diameter' : 'width',
+    'aspect-high': 'width',
+  };
+  let selector = `[data-field="${fields[issue.code] ?? 'flow'}"]`;
+  if (issue.code === 'fitting-missing') {
+    const index = section.fittings.findIndex((f) => !inputs().catalogs.fittings.some((item) => item.id === f.ref));
+    selector = `.detail-row [data-fit="ref"][data-index="${index}"]`;
+  }
+  gotoSection(issue.sectionId, selector);
 }
 
 // ---- charts --------------------------------------------------------------------------------
@@ -674,7 +792,7 @@ function renderCharts() {
   });
 }
 
-function gotoSection(id) {
+function gotoSection(id, selector = '[data-field="flow"]') {
   setTab('calc');
   if (!ui.expanded.has(id)) {
     ui.expanded.add(id);
@@ -686,7 +804,11 @@ function gotoSection(id) {
   row.scrollIntoView({ block: 'center' });
   row.classList.add('flash');
   setTimeout(() => row.classList.remove('flash'), 900);
-  row.querySelector('[data-field="flow"]')?.focus({ preventScroll: true });
+  const target = selector.startsWith('.detail-row ')
+    ? $(`#sections-table tr.detail-row[data-id="${CSS.escape(id)}"] ${selector.slice('.detail-row '.length)}`)
+    : row.querySelector(selector);
+  if (target?.closest('.detail-row')) target.scrollIntoView({ block: 'center' });
+  target?.focus({ preventScroll: true });
 }
 
 // ============================================================================
@@ -694,7 +816,7 @@ function gotoSection(id) {
 // ============================================================================
 
 const NUM_FIELDS = new Set(['flow', 'width', 'height', 'diameter', 'length', 'zetaExtra', 'temperature']);
-const STRUCTURAL_FIELDS = new Set(['parent', 'shape', 'material', 'nr']);
+const STRUCTURAL_FIELDS = new Set(['shape', 'material', 'nr']);
 
 function setFromInput(target, obj, key, isNum) {
   if (!isNum) {
@@ -711,12 +833,16 @@ function setFromInput(target, obj, key, isNum) {
 
 function nextIntegerNr() {
   let max = 0;
-  for (const s of inputs().sections) if (/^\d+$/.test(s.nr)) max = Math.max(max, Number(s.nr));
+  for (const s of inputs().sections) {
+    const parts = numberParts(s.nr);
+    if (parts?.length === 1) max = Math.max(max, parts[0]);
+  }
   return String(max + 1);
 }
 
-/** Next free number after a section: 4 → 5, 2.1 → 2.2. */
+/** Next free number at the same level: 4 → 5, 2.1 → 2.2. */
 function nextNrAfter(s) {
+  if (!numberParts(s?.nr)) return nextIntegerNr();
   const m = /^(.*?)(\d+)$/.exec(s?.nr.trim() ?? '');
   if (!m) return nextIntegerNr();
   const used = new Set(inputs().sections.map((x) => x.nr.trim()));
@@ -725,51 +851,34 @@ function nextNrAfter(s) {
   return `${m[1]}${n}`;
 }
 
-function addSection({ parent, after, nr } = {}) {
+function addSection({ base, nr } = {}) {
   const secs = inputs().sections;
-  const last = secs[secs.length - 1];
-  const base = parent ? sectionById(parent) : last;
+  base ??= [...secs].reverse().find((section) => numberParts(section.nr)?.length === 1);
   const s = newSection(secs, {
-    nr: nr ?? nextNrAfter(last),
-    parent: parent !== undefined ? parent : last?.id ?? null,
+    nr: nr ?? nextIntegerNr(),
     shape: base?.shape ?? 'rect',
     material: base?.material ?? 'galvanized',
   });
-  const idx = after ? secs.findIndex((x) => x.id === after) + 1 : secs.length;
-  secs.splice(idx, 0, s);
+  secs.push(s);
+  secs.sort(compareSections);
   commitAndRender();
   const row = $(`#sections-table tr.sec-row[data-id="${CSS.escape(s.id)}"]`);
   row?.querySelector('[data-field="flow"]')?.focus();
   row?.scrollIntoView({ block: 'nearest' });
 }
 
-/** Index of the last row of a section's block: the section and the rows of its branches below it (deeper level). */
-function blockEnd(id) {
-  const secs = inputs().sections;
-  const level = levelOf(sectionById(id));
-  const desc = descendantsOf(secs, id);
-  let end = secs.findIndex((s) => s.id === id);
-  for (let i = end + 1; i < secs.length && desc.has(secs[i].id) && levelOf(secs[i]) > level; i++) end = i;
-  return end;
-}
-
 function addBranch(id) {
   const p = sectionById(id);
   const secs = inputs().sections;
   const nr = p.nr.trim();
+  if (!numberParts(nr) || secs.filter((s) => s.nr.trim() === nr).length !== 1) {
+    gotoSection(id, '[data-field="nr"]');
+    return;
+  }
   const used = new Set(secs.map((s) => s.nr.trim()));
   let k = 1;
   while (used.has(`${nr}.${k}`)) k++;
-  addSection({ parent: id, after: secs[blockEnd(id)].id, nr: nr ? `${nr}.${k}` : '' });
-}
-
-/** A new predecessor moves the row below it (and below the predecessor's branches), not to where it was. */
-function setParent(s, parent) {
-  s.parent = parent;
-  if (!parent) return;
-  const secs = inputs().sections;
-  secs.splice(secs.indexOf(s), 1);
-  secs.splice(blockEnd(parent) + 1, 0, s);
+  addSection({ base: p, nr: `${nr}.${k}` });
 }
 
 function deleteSection(id) {
@@ -777,7 +886,6 @@ function deleteSection(id) {
   const idx = secs.findIndex((s) => s.id === id);
   if (idx < 0) return;
   const s = secs[idx];
-  for (const c of secs) if (c.parent === id) c.parent = s.parent;
   secs.splice(idx, 1);
   ui.expanded.delete(id);
   commitAndRender();
@@ -789,28 +897,12 @@ function duplicateSection(id) {
   const idx = secs.findIndex((s) => s.id === id);
   const copy = normalizeSection({ ...structuredClone(secs[idx]), id: newSection(secs).id, nr: nextNrAfter(secs[idx]) });
   secs.splice(idx + 1, 0, copy);
-  commitAndRender();
-}
-
-function moveSection(id, delta) {
-  const secs = inputs().sections;
-  const idx = secs.findIndex((s) => s.id === id);
-  const to = idx + delta;
-  if (idx < 0 || to < 0 || to >= secs.length) return;
-  [secs[idx], secs[to]] = [secs[to], secs[idx]];
+  secs.sort(compareSections);
   commitAndRender();
 }
 
 function bindTable() {
   const table = $('#sections-table');
-
-  bindRowDrag(table, {
-    rows: 'tr.sec-row',
-    handle: '.drag-handle',
-    onDrop: (id, beforeId) => {
-      if (moveBefore(inputs().sections, id, beforeId)) commitAndRender();
-    },
-  });
 
   table.addEventListener('input', (e) => {
     const t = e.target;
@@ -844,9 +936,7 @@ function bindTable() {
     if (!host) return;
     const s = sectionById(host.dataset.id);
     if (!s) return;
-    if (t.dataset.field === 'parent') {
-      setParent(s, t.value || null);
-    } else if (t.dataset.field === 'shape') {
+    if (t.dataset.field === 'shape') {
       s.shape = t.value;
     } else if (t.dataset.field === 'material') {
       s.material = t.value;
@@ -863,8 +953,16 @@ function bindTable() {
       if (!t.value) return;
       const preset = inputs().catalogs.components.find((c) => c.id === t.value);
       s.components.push(preset ? { name: preset.name, dp: preset.dp } : { name: '', dp: null });
-    } else if (t.dataset.field === 'nr' || t.dataset.comp === 'name') {
-      // labels appear in other rows (parent lists) – re-render
+    } else if (t.dataset.field === 'nr') {
+      s.nr = t.value.trim();
+      inputs().sections.sort(compareSections);
+      store.commit();
+      recalc();
+      // Wait until focus reaches its next control before replacing table rows.
+      requestAnimationFrame(() => renderTableKeepFocus());
+      return;
+    } else if (t.dataset.comp === 'name') {
+      // Refresh labels after editing.
     } else {
       // number edits: values already applied on input
       store.commit();
@@ -891,8 +989,6 @@ function bindTable() {
       case 'branch': addBranch(id); break;
       case 'delete': deleteSection(id); break;
       case 'duplicate': duplicateSection(id); break;
-      case 'up': moveSection(id, -1); break;
-      case 'down': moveSection(id, 1); break;
       case 'fit-del':
         s.fittings.splice(Number(btn.dataset.index), 1);
         commitAndRender();
@@ -915,6 +1011,19 @@ function bindTable() {
     const row = e.target.closest('tr.sec-row');
     if (!field || !row) return;
     e.preventDefault();
+    if (field === 'nr') {
+      const s = sectionById(row.dataset.id);
+      s.nr = e.target.value.trim();
+      finishSectionNumbers();
+      const sections = inputs().sections;
+      const index = sections.indexOf(s) + (e.shiftKey ? -1 : 1);
+      const nextId = sections[index]?.id ?? s.id;
+      commitAndRender();
+      const target = $(`#sections-table tr.sec-row[data-id="${CSS.escape(nextId)}"] [data-field="nr"]`);
+      target?.focus();
+      target?.select();
+      return;
+    }
     const rows = $$('#sections-table tr.sec-row');
     const i = rows.indexOf(row) + (e.shiftKey ? -1 : 1);
     const twin = { width: 'diameter', diameter: 'width' }[field];
@@ -951,7 +1060,7 @@ const CATALOGS = {
       { key: 'roughness', label: 'k', unit: 'mm', type: 'num' },
     ],
     blank: () => ({ name: 'Neues Material', roughness: 0.15 }),
-    usedBy: (item) => inputs().sections.filter((s) => s.material === item.id),
+    usedBy: (item) => projectInputs().calculations.flatMap((calculation) => calculation.sections.filter((s) => s.material === item.id)),
   },
   fittings: {
     title: 'Formstücke',
@@ -961,7 +1070,7 @@ const CATALOGS = {
       { key: 'zeta', label: 'ζ / Faktor', type: 'num' },
     ],
     blank: () => ({ name: 'Neues Formstück', group: 'any', kind: 'zeta', zeta: 0.5 }),
-    usedBy: (item) => inputs().sections.filter((s) => s.fittings.some((f) => f.ref === item.id)),
+    usedBy: (item) => projectInputs().calculations.flatMap((calculation) => calculation.sections.filter((s) => s.fittings.some((f) => f.ref === item.id))),
   },
   components: {
     title: 'Einbauteile',
@@ -1088,9 +1197,8 @@ function bindCatalogs() {
 // ============================================================================
 
 function setTab(name) {
-  for (const tab of $$('.tab')) tab.setAttribute('aria-selected', String(tab.dataset.tab === name));
-  for (const p of $$('.tab-panel')) p.hidden = p.dataset.panel !== name;
-  if (name === 'calc') renderCharts();
+  if (name === 'catalogs') catalogDialog.open();
+  else catalogDialog.close();
 }
 
 function bindToolbar() {
@@ -1109,16 +1217,6 @@ function bindToolbar() {
     $('[data-action="menu"]').setAttribute('aria-expanded', 'false');
   };
   document.addEventListener('click', async (e) => {
-    const goto = e.target.closest('[data-goto]');
-    if (goto) {
-      gotoSection(goto.dataset.goto);
-      return;
-    }
-    const tab = e.target.closest('.tab');
-    if (tab) {
-      setTab(tab.dataset.tab);
-      return;
-    }
     const a = e.target.closest('[data-action]');
     if (!a) {
       if (!e.target.closest('#more-menu')) closeMenu();
@@ -1140,7 +1238,7 @@ function bindToolbar() {
       case 'new': newDocument(); break;
       case 'example': loadExample(); break;
       case 'add-section': addSection(); break;
-      case 'dismiss-banner': showFileBanner([]); break;
+      case 'catalogs': setTab('catalogs'); break;
     }
   });
   document.addEventListener('keydown', (e) => {
@@ -1247,6 +1345,15 @@ function addThemeButton() {
 async function start() {
   const handoff = takeHandoff();
   store = new DocumentStore(loadInitialDoc(), { draftKey: DRAFT_KEY });
+  issuePanel = createIssuePanel($('#issue-panel'));
+  catalogDialog = mountCatalogDialog($('#catalog-dialog'));
+  calculationTabs = mountCalculationTabs($('#calculation-tabs'), {
+    panelId: 'calculation-panel',
+    onSelect: selectCalculation,
+    onAdd: addCalculation,
+    onDuplicate: copyCalculation,
+    onDelete: deleteCalculation,
+  });
 
   addThemeButton();
   mountSourceLink();
@@ -1259,6 +1366,7 @@ async function start() {
     },
   });
   bindToolbar();
+  $('[data-action="catalogs"]').innerHTML = String(icon('catalog'));
   bindSystem();
   bindTable();
   bindCatalogs();

@@ -23,8 +23,11 @@ export function issueText(issue, nr) {
     case 'geometry-missing': return `${at}Abmessungen fehlen`;
     case 'material-missing': return `${at}Material fehlt`;
     case 'fitting-missing': return `${at}Formstück nicht im Katalog`;
-    case 'parent-missing': return `${at}Vorgänger fehlt, am Ventilator angehängt`;
-    case 'cycle': return `${at}Vorgänger bilden einen Kreis`;
+    case 'number-missing': return `${at}Nummer fehlt`;
+    case 'number-invalid': return `${at}Nummer ungültig`;
+    case 'number-duplicate': return `${at}Nummer doppelt`;
+    case 'number-parent-missing': return `${at}Ausgangsstrecke ${issue.parentNumber} fehlt`;
+    case 'number-parent-ambiguous': return `${at}Ausgangsstrecke ${issue.parentNumber} ist doppelt`;
     case 'transition-no-parent': return `${at}Querschnittsänderung ohne berechneten Vorgänger`;
     case 'velocity-high': return `${at}v = ${fmt(issue.value, 2)} m/s > ${fmt(issue.limit, 1)} m/s`;
     case 'aspect-high': return `${at}Seitenverhältnis ${fmt(issue.value, 1)} : 1 > ${fmt(issue.limit, 1)} : 1`;

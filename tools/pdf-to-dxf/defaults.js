@@ -41,6 +41,8 @@ export const PRESETS = {
   compat: { ...NOVA, version: 'R12', trueColor: false, arcs: false, text: 'outline' },
 };
 
+export const PRESET_FIELDS = Object.freeze(Object.keys(NOVA));
+
 export function defaultSettings() {
   return {
     preset: 'nova',

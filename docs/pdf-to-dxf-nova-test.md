@@ -5,7 +5,7 @@ Checkliste für den Import der DXF in Trimble Nova. Die Test-PDFs liegen in `tes
 ## Vorbereitung
 
 1. Seite öffnen: https://mongimotz.github.io/Tools-HLKS-WEB/tools/pdf-to-dxf/ (oder lokal `npm run serve`).
-2. Für jede Zeile die PDF öffnen, die Einstellung wählen und mit „↓ DXF“ speichern. Ohne andere Angabe gilt: Vorgabe „Nova-Unterlage“, Massstab 1:100, Einheit mm, DXF R2000.
+2. Für jede Zeile die PDF öffnen, die Einstellung wählen und mit „↓ DXF“ speichern. Ohne andere Angabe gilt: Vorgabe „NOVA“, Massstab 1:100, Einheit mm, DXF R2000.
 3. In Nova: DXF als Unterlage importieren, Einheit mm.
 
 Datum: ____________ Nova-Version: ____________
@@ -86,7 +86,7 @@ Datum: ____________ Nova-Version: ____________
 
 | Nr. | PDF | Einstellung | Prüfen | Ergebnis |
 |---|---|---|---|---|
-| 33 | eigener Architektenplan | Nova-Unterlage, Massstab des Plans | Import, Massstab an einer bekannten Masskette, Layer, Text, Schraffur, Geschwindigkeit | |
+| 33 | eigener Architektenplan | NOVA, Massstab des Plans | Import, Massstab an einer bekannten Masskette, Layer, Text, Schraffur, Geschwindigkeit | |
 | 34 | eigener gescannter Plan | Scan an, kalibriert | Brauchbarkeit als Unterlage | |
 
 ## Notizen

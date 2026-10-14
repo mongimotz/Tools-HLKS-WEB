@@ -40,7 +40,6 @@ import {
   REQUIREMENT_LABELS,
   LSV_LIMIT_LABELS,
   ES_LABELS,
-  SEVERITY_LABELS,
   OCTAVE_LABELS,
   fmtLimit,
   rowLabel,
@@ -61,6 +60,8 @@ import { findTool, toolUrl } from '../../lib/core/registry.js';
 import { mountProjectInfo, newProject } from '../../lib/core/project-info.js';
 import { html, raw, icon, toast, bindThemeToggle, mountSourceLink } from '../../lib/core/ui.js';
 import { bindRowDrag, moveBefore } from '../../lib/core/drag.js';
+import { createIssuePanel } from '../../lib/core/issues.js';
+import { mountCalculationTabs } from '../../lib/core/calculation-tabs.js';
 
 const DRAFT_KEY = `hlks-tools:${TOOL_ID}:draft`;
 
@@ -72,10 +73,13 @@ const ui = {
   selectedId: null, // silencer shown in the design panel
   result: null,
   variants: [], // list shown in the design panel (for "take")
+  fileNotes: [],
 };
 
 let store;
 let projectView;
+let issuePanel;
+let calculationTabs;
 
 const doc = () => store.doc;
 const inputs = () => store.doc.inputs;
@@ -118,7 +122,7 @@ function replaceDocument(next, message) {
   store.replace(next);
   ui.pathId = next.inputs.paths[0]?.id ?? null;
   ui.selectedId = null;
-  showFileBanner([]);
+  showFileNotes([]);
   renderAll();
   toast(message, { action: UNDO_ACTION });
 }
@@ -153,9 +157,9 @@ async function openEnvelope(env, sourceName = '') {
   ui.pathId = next.inputs.paths[0]?.id ?? null;
   ui.selectedId = null;
   const stale = staleRows(next.inputs);
-  const banner = notes.map((text) => ({ text }));
-  if (stale.length) banner.push({ text: `Herstellerdaten geändert: ${stale.map((x) => labelOf(x.pathId, x.rowId)).join(', ')}`, action: 'update-rows' });
-  showFileBanner(banner);
+  const fileNotes = notes.map((text) => ({ text }));
+  if (stale.length) fileNotes.push({ text: `Herstellerdaten geändert: ${stale.map((x) => labelOf(x.pathId, x.rowId)).join(', ')}`, action: 'update-rows' });
+  showFileNotes(fileNotes);
   renderAll();
   toast(sourceName || 'Geöffnet', { kind: 'success' });
 }
@@ -170,21 +174,10 @@ async function openFile(file) {
   }
 }
 
-/** Notes after opening a file: [{ text, action? }]. An action adds an icon button to the note. */
-function showFileBanner(notes) {
-  const el = $('#file-banner');
-  if (!notes.length) {
-    el.hidden = true;
-    el.innerHTML = '';
-    return;
-  }
-  el.hidden = false;
-  el.innerHTML = String(html`<div class="banner">${icon('warning')}<div>${notes.map(
-    (n) => html`<p>${n.text}${n.action === 'update-rows'
-      ? html` <button class="btn ghost small icon-only" data-action="update-rows" title="Aktuelle Herstellerdaten übernehmen" aria-label="Aktuelle Herstellerdaten übernehmen">${icon('reset', { size: 14 })}</button>`
-      : ''}</p>`,
-  )}</div>
-    <button class="btn ghost small icon-only" data-action="dismiss-banner" title="Schliessen" aria-label="Schliessen">${icon('close', { size: 14 })}</button></div>`);
+/** Keep file notes in the same status panel as calculation issues. */
+function showFileNotes(notes) {
+  ui.fileNotes = notes.map((note, i) => ({ ...note, id: `file-${i}` }));
+  if (ui.result) renderIssues();
 }
 
 /** Replace the stored data rows that differ from the current data (undoable). */
@@ -196,7 +189,7 @@ function updateRows() {
     row.row = rowCopy(lookupRow(row.kind, row.row), row.kind);
     n++;
   }
-  showFileBanner([]);
+  showFileNotes([]);
   commitAndRender();
   toast(`${n} Schalldämpfer aktualisiert`, { action: UNDO_ACTION });
 }
@@ -339,23 +332,19 @@ const chip = (label, on, attrs, title = '') => html`<button class="chip ${on ? '
 // ---- path tabs and head ------------------------------------------------------------
 
 function renderTabs() {
-  const paths = inputs().paths;
-  $('#path-tabs').innerHTML = String(html`${paths.map((p, i) => html`<button class="tab" role="tab" data-path-tab="${p.id}" aria-selected="${p.id === path().id}">
-    <span class="tab-name">${pathLabel(p, i)}</span><span class="tab-val" data-tab-val="${p.id}"></span></button>`)}`);
-  $('#path-actions').innerHTML = String(html`
-    <button class="btn ghost small icon-only" data-action="add-path" title="Neuer Weg" aria-label="Neuer Weg">${icon('plus', { size: 15 })}</button>
-    <button class="btn ghost small icon-only" data-action="duplicate-path" title="Weg duplizieren" aria-label="Weg duplizieren">${icon('copy', { size: 15 })}</button>
-    ${paths.length > 1 ? html`<button class="btn ghost small icon-only" data-action="delete-path" title="Weg löschen" aria-label="Weg löschen">${icon('trash', { size: 15 })}</button>` : ''}`);
+  calculationTabs.render(inputs().paths.map((p, i) => {
+    const rc = ui.result.paths.find((result) => result.id === p.id)?.receiver;
+    return {
+      id: p.id,
+      label: pathLabel(p, i),
+      value: Number.isFinite(rc?.lpa) ? db(rc.lpa) : '–',
+      severity: rc?.status === 'over' ? 'error' : undefined,
+    };
+  }), ui.pathId);
 }
 
 function fillTabs() {
-  for (const p of ui.result.paths) {
-    const el = $(`[data-tab-val="${CSS.escape(p.id)}"]`);
-    if (!el) continue;
-    const rc = p.receiver;
-    el.textContent = Number.isFinite(rc.lpa) ? db(rc.lpa) : '–';
-    el.className = `tab-val ${rc.status === 'over' ? 'is-over' : rc.status === 'ok' ? 'is-ok' : ''}`;
-  }
+  renderTabs();
 }
 
 function renderPathHead() {
@@ -523,15 +512,15 @@ function checkBasisText(rc, period) {
     const t = cat.roomTypes.find((x) => x.id === rc.room.type);
     const s = t && cat.sensitivities.find((x) => x.id === t.sensitivity);
     if (!t) return '–';
-    if (!s) return html`L<sub>H</sub> keine Anforderung`;
-    if (rc.room.requirement === 'design' && t.design != null) return html`L<sub>H</sub> Auslegung SIA 2024`;
-    return html`L<sub>H</sub> ${s.name}, ${REQUIREMENT_LABELS[rc.room.requirement]}`;
+    if (!s) return 'LH keine Anforderung';
+    if (rc.room.requirement === 'design' && t.design != null) return 'LH Auslegung SIA 2024';
+    return `LH ${s.name}, ${REQUIREMENT_LABELS[rc.room.requirement]}`;
   }
   if (rc.basis === 'lsv') {
     const hours = rc.lsv[period === 'day' ? 'hoursDay' : 'hoursNight'] ?? 12;
     const t = hours < 12 ? ` | t ${fmt(hours, 1)} h` : '';
     const bonus = rc.lsv.business && rc.lsv.es <= 3 ? ' + 5' : '';
-    return html`L<sub>r</sub> = L<sub>pA</sub> + K1 ${LSV_K1[period]} + K2 ${rc.lsv.k2} + K3 ${rc.lsv.k3}${t} | ${ES_LABELS[rc.lsv.es]}, ${LSV_LIMIT_LABELS[rc.lsv.limit]}${bonus}`;
+    return `Lr = LpA + K1 ${LSV_K1[period]} + K2 ${rc.lsv.k2} + K3 ${rc.lsv.k3}${t} | ${ES_LABELS[rc.lsv.es]}, ${LSV_LIMIT_LABELS[rc.lsv.limit]}${bonus}`;
   }
   return '';
 }
@@ -543,14 +532,16 @@ function fillReceiver() {
   const main = html`<div class="rc-main"><span class="rc-label">L<sub>pA</sub></span><span class="rc-value">${Number.isFinite(r.lpa) ? db(r.lpa) : '–'}</span><span class="unit">dB(A)</span></div>`;
   const checks = r.checks.map((c) => {
     const ok = c.status === 'ok';
-    return html`<div class="rc-check ${ok ? 'is-ok' : 'is-over'}">
+    return html`<div class="rc-check ${ok ? 'is-ok' : 'is-over'}" title="${checkBasisText(rc, c.period)}">
       ${icon(ok ? 'check' : 'error', { size: 15, label: ok ? 'eingehalten' : 'überschritten' })}
-      <span class="num">${checkLevelLabel(c.period)} ${db(c.level)} ${ok ? '≤' : '>'} ${fmtLimit(c.limit)}</span>
+      <span class="num">${checkLevelLabel(c.period)} ${db(c.level)} ${ok ? '≤' : '>'} ${fmtLimit(c.limit)} dB(A)</span>
       <span class="num strong">${c.margin >= 0 ? '−' : '+'}${db(Math.abs(c.margin))} dB</span>
-      <span class="muted small">${checkBasisText(rc, c.period)}</span>
     </div>`;
   });
-  el.innerHTML = String(html`${main}<div class="rc-checks">${checks}</div>`);
+  const basis = rc.basis === 'lsv'
+    ? `${ES_LABELS[rc.lsv.es]} | ${LSV_LIMIT_LABELS[rc.lsv.limit]}`
+    : checkBasisText(rc);
+  el.innerHTML = String(html`${main}<div class="rc-checks">${checks}${checks.length && basis ? html`<span class="muted small">${basis}</span>` : ''}</div>`);
 }
 
 // ---- design panel ----------------------------------------------------------------
@@ -660,13 +651,49 @@ function variantsHtml(sd) {
 // ---- issues -----------------------------------------------------------------------
 
 function renderIssues() {
-  const order = { error: 0, warning: 1, info: 2 };
-  const items = ui.result.issues.slice().sort((a, b) => order[a.severity] - order[b.severity]);
-  $('#issues-block').hidden = !items.length;
-  $('#issues').innerHTML = String(html`${items.map((it) => html`<li class="issue issue-${it.severity}">
-    ${icon(it.severity === 'error' ? 'error' : it.severity === 'warning' ? 'warning' : 'info', { label: SEVERITY_LABELS[it.severity] })}
-    <button class="issue-jump" data-goto-path="${it.pathId}" data-goto="${it.rowId ?? ''}"><span>${issueText(it, labelOf(it.pathId, it.rowId))}</span>${icon('jump', { size: 14 })}</button>
-  </li>`)}`);
+  if (!issuePanel) return;
+  const calculationNotes = ui.result.issues.map((issue) => {
+    const at = labelOf(issue.pathId, issue.rowId);
+    return {
+      id: `${issue.pathId}:${issue.rowId ?? 'receiver'}:${issue.code}:${issue.period ?? ''}`,
+      severity: issue.severity,
+      text: issueText(issue, at),
+      summary: issueSummary(issue, at),
+      run: () => gotoRow(issue.pathId, issue.rowId),
+    };
+  });
+  const fileNotes = ui.fileNotes.map((note) => ({
+    ...note,
+    severity: 'warning',
+    summary: note.action === 'update-rows' ? 'Herstellerdaten geändert' : note.text,
+    action: note.action === 'update-rows'
+      ? { icon: 'reset', label: 'Aktuelle Herstellerdaten übernehmen', run: updateRows }
+      : undefined,
+    run: note.action === 'update-rows' ? () => {
+      const first = staleRows(inputs())[0];
+      if (first) gotoRow(first.pathId, first.rowId);
+    } : undefined,
+    dismiss: () => {
+      ui.fileNotes = ui.fileNotes.filter((item) => item.id !== note.id);
+      renderIssues();
+    },
+  }));
+  issuePanel.update([...fileNotes, ...calculationNotes]);
+}
+
+/** Overview stays short; exact values remain in the list and at the receiver. */
+function issueSummary(issue, at) {
+  const p = at ? `${at}: ` : '';
+  switch (issue.code) {
+    case 'branch-flow': return `${p}V̇ nach Abzweig zu hoch`;
+    case 'gap-deviation': return `${p}Spalt weicht von Herstellerdaten ab`;
+    case 'height-dp': return `${p}Δp für andere Bauhöhe`;
+    case 'velocity-high': return `${p}Geschwindigkeit zu hoch`;
+    case 'dp-high': return `${p}Druckverlust zu hoch`;
+    case 'flow-noise': return `${p}Strömungsgeräusch zu hoch`;
+    case 'target-exceeded': return `${p}Zielwert${issue.period ? ` ${issue.period === 'day' ? 'Tag' : 'Nacht'}` : ''} überschritten`;
+    default: return issueText(issue, at);
+  }
 }
 
 function gotoRow(pathId, rowId) {
@@ -753,8 +780,6 @@ function bindWork() {
       if (t.dataset.pf === 'name') {
         p.name = t.value;
         changed = true;
-        const tab = $(`[data-path-tab="${CSS.escape(p.id)}"] .tab-name`);
-        if (tab) tab.textContent = pathLabel(p, inputs().paths.indexOf(p));
       } else {
         const v = readNumber(t);
         if (v !== undefined) {
@@ -828,13 +853,6 @@ function bindWork() {
   });
 
   work.addEventListener('click', (e) => {
-    const tab = e.target.closest('[data-path-tab]');
-    if (tab) {
-      ui.pathId = tab.dataset.pathTab;
-      ui.selectedId = null;
-      renderAll();
-      return;
-    }
     const add = e.target.closest('[data-add]');
     if (add) {
       addRow(add.dataset.add);
@@ -1014,11 +1032,6 @@ function bindToolbar() {
     $('[data-action="menu"]').setAttribute('aria-expanded', 'false');
   };
   document.addEventListener('click', async (e) => {
-    const goto = e.target.closest('[data-goto-path]');
-    if (goto) {
-      gotoRow(goto.dataset.gotoPath, goto.dataset.goto || null);
-      return;
-    }
     const a = e.target.closest('[data-action]');
     if (!a) {
       if (!e.target.closest('#more-menu')) closeMenu();
@@ -1037,11 +1050,6 @@ function bindToolbar() {
       case 'export-json': exportJson(); break;
       case 'export-pdf': exportPdf(); break;
       case 'export-csv': exportCsv(); break;
-      case 'dismiss-banner': showFileBanner([]); break;
-      case 'update-rows': updateRows(); break;
-      case 'add-path': addPath(); break;
-      case 'duplicate-path': duplicateCurrentPath(); break;
-      case 'delete-path': deleteCurrentPath(); break;
       case 'new': replaceDocument({ project: newProject(), inputs: emptyInputs() }, 'Neue Berechnung'); break;
       case 'example': replaceDocument(exampleDoc(), 'Beispiel geladen'); break;
     }
@@ -1086,6 +1094,21 @@ async function start() {
 
   addThemeButton();
   mountSourceLink();
+  issuePanel = createIssuePanel($('#issue-status'));
+  calculationTabs = mountCalculationTabs($('#calculation-tabs'), {
+    label: 'Wege',
+    panelId: 'path-panel',
+    onSelect: (id) => {
+      if (id === ui.pathId) return;
+      store.commit();
+      ui.pathId = id;
+      ui.selectedId = null;
+      renderAll();
+    },
+    onAdd: addPath,
+    onDuplicate: duplicateCurrentPath,
+    onDelete: deleteCurrentPath,
+  });
   projectView = mountProjectInfo($('#project'), {
     getProject: () => doc().project,
     onInput: () => store.touch(),

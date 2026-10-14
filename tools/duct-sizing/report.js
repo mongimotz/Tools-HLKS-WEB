@@ -3,29 +3,33 @@
 
 import { buildPdf, INK } from '../../lib/core/pdf.js';
 import { fmt, fmtSig, fmtDate } from '../../lib/core/format.js';
-import { CALC_VERSION, HOUR_COLUMNS, RECOMMENDED_MAX_RATIO } from './calc.js';
+import { computeProject, snapshotProjectOf, CALC_VERSION, HOUR_COLUMNS, RECOMMENDED_MAX_RATIO } from './calc.js';
 import { TOOL_NAME, SHAPE_LABELS, modeLabel, ratioText, sizeText, issueText } from './labels.js';
 import { crossSectionLayout } from './drawing.js';
-import { printedPositions } from './defaults.js';
+import { printedPositions, calculationInputs, calculationName } from './defaults.js';
 
 const dimsOf = (r) => (r.shape === 'round' ? { diameter: r.diameter } : { width: r.width, height: r.height });
 
-/** Build the PDF (Uint8Array). doc = { project, inputs }, result = compute(inputs). */
-export async function buildReport(doc, result, envelope) {
-  const { project, inputs } = doc;
-  const { system, catalogs, settings } = inputs;
-  // pinned positions, plus the input panel if it is not pinned; numbered as on the page
-  const positions = printedPositions(inputs);
-  const nr = new Map(positions.map((p, i) => [p.id, String(i + 1)]));
-  const resultOf = (p) => (p.id === 'current' ? result.current : result.positions.get(p.id));
+/** Build all calculations, recomputing their results from the authoritative inputs. */
+export async function buildReport(doc, _result, envelope) {
+  const { project } = doc;
+  const results = computeProject(doc.inputs);
   const title = project.name ? `${TOOL_NAME} – ${project.name}` : TOOL_NAME;
-  const sia = !result.simple;
+  const pageLabels = [];
 
-  const render = (w) => {
+  const renderCalculation = (w, calculation, index) => {
+    const inputs = calculationInputs(doc.inputs, calculation.id);
+    const { system, catalogs, settings } = inputs;
+    const result = results.calculations.get(calculation.id);
+    const sia = !result.simple;
+    const positions = printedPositions(inputs);
+    const nr = new Map(positions.map((p, i) => [p.id, String(i + 1)]));
+    const resultOf = (p) => (p.id === 'current' ? result.current : result.positions.get(p.id));
     // ---- title & project ------------------------------------------------------
     w.y += 8;
     w.text('Kanaldimensionierung Lüftung', w.left, w.y + 14, { size: 17, bold: true, color: INK.strong });
     w.y += 30;
+    w.heading(calculationName(calculation, index));
     w.keyValues(
       [
         ['Projekt', project.name],
@@ -145,10 +149,19 @@ export async function buildReport(doc, result, envelope) {
     drawTables(w, catalogs);
   };
 
+  const render = (w) => {
+    doc.inputs.calculations.forEach((calculation, index) => {
+      if (index) w.newPage();
+      const firstPage = w.pages.length - 1;
+      renderCalculation(w, calculation, index);
+      for (let page = firstPage; page < w.pages.length; page++) pageLabels[page] = calculationName(calculation, index);
+    });
+  };
+
   const decorate = (w, i, total) => {
     const top = 30;
     w.text('HLKS-Tools', w.left, top, { size: 8, bold: true, color: INK.primary });
-    w.text(TOOL_NAME, w.left + w.measure('HLKS-Tools', 8, true) + 8, top, { size: 8, color: INK.text });
+    w.text(`${TOOL_NAME} | ${pageLabels[i]}`, w.left + w.measure('HLKS-Tools', 8, true) + 8, top, { size: 8, color: INK.text, maxWidth: w.contentWidth / 2 - 60 });
     const right = [project.name, project.number].filter(Boolean).join(' | ');
     w.text(right, w.right, top, { size: 8, color: INK.text, align: 'right', maxWidth: w.contentWidth / 2 });
     w.line(w.left, top + 7, w.right, top + 7, { color: INK.border, width: 0.6 });
@@ -159,7 +172,7 @@ export async function buildReport(doc, result, envelope) {
   };
 
   return buildPdf({
-    envelope,
+    envelope: { ...envelope, project, inputs: doc.inputs, snapshot: snapshotProjectOf(results) },
     title,
     subject: `HLKS-Tools: ${TOOL_NAME}`,
     author: project.author,

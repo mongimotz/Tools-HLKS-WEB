@@ -138,8 +138,8 @@ export function renderProfile(el, result, inputs, nrOf) {
 // ---- network schematic ----------------------------------------------------------------
 
 /**
- * Orthogonal duct schematic. The child with the parent's branch level (3 after 2, 2.2 after 2.1)
- * continues straight, branches (2.1 after 2) go below. Line width follows the volume flow.
+ * Orthogonal duct schematic. Main sections continue straight (3 after 2), dotted branches
+ * go below their numbered prefix (2.1 and 2.2 after 2). Line width follows the volume flow.
  */
 export function renderNetwork(el, result, inputs, nrOf, onSelect) {
   const ids = result.order;

@@ -87,11 +87,22 @@ Only IBM Plex Sans and IBM Plex Mono (SIL OFL). Sources: `assets/fonts/source/` 
 - 4 px spacing grid (`--sp-1` … `--sp-8`). Radius: inputs 4, buttons 6, panels 10.
 - App bar on every tool page: brand (back to start), tool name, icon actions; the primary action is "PDF" ("DXF" in PDF → DXF, which saves nothing else).
 - Footer on every page: one muted code icon (`</>`) linking to the source code (`mountSourceLink()`, AGPL). Nothing else in the footer.
-- Shared project header (`lib/core/project-info.js`): Projekt, Projekt-Nr., Bearbeiter, Datum.
-- Result strip directly under the project header: the one number that matters, big. No sub-lines under it.
+- Calculation tools use the shared `.workspace-head`: project name on the left, notices on the right. The row stays below the app bar.
+- Keep this row 32 px high through `--issue-bar-h`, including the empty notice state. Do not add separate project or notice blocks.
+- The project name stays visible and editable inline. An icon button opens the remaining fields in a dropdown overlay: Projekt-Nr., Bearbeiter, Datum.
+- Result strip directly below `.workspace-head`: the one number that matters, big. No sub-lines below it.
 - Tables with results use fixed column widths (`table-layout: fixed`); a value that does not fit is clipped with `…` instead of moving the layout.
 - Number fields with standard sizes (e.g. Lindab diameters) use the combobox in `lib/core/combo.js`: free entry, list on click, ↑ / ↓ step through the sizes, the list is never filtered.
-- Warnings are listed under "Hinweise"; a row with a section jumps to it (→).
+- Reuse `mountProjectInfo()` and `createIssuePanel()` from `lib/core/project-info.js` and `lib/core/issues.js`. The root `AGENTS.md` defines their shared behavior.
+- Notices show the most serious short summary with its severity icon. Selecting the summary jumps to the affected input (→).
+- The count opens all notices in an overlay. Project details use an overlay too. Neither overlay changes the workspace layout.
+- Put technical details in the expanded list or beside the affected result. Keep repeated indicators short.
+- Keep severity colors and icons together. The empty state keeps a check icon on the left and `0 Hinweise` on the right, without repeating `Keine Hinweise` visibly. Keep its accessible label and the row height. Neutral PDF status messages remain visible. The check does not certify the calculation.
+- Overlays support keyboard controls, Escape, and outside dismissal. Preserve focus when their contents change.
+- PDF → DXF has no project fields. Its shared notice row stays above the preview.
+- Calculation tabs below the shared header use `lib/core/calculation-tabs.js`. Keep the tab strip compact, with one key result and shared add, duplicate, and delete icons.
+- Catalogue editors use a small book icon beside the tabs. Their modal window uses `lib/core/catalog-dialog.js` and keeps the workspace in place.
+- PDF → DXF places independent settings above the preset selector and all preset-controlled options below it. While a named preset applies, dim its labels, values and borders together, using the existing tokens without extra selection outlines. Keep the controls editable and restore full visibility on keyboard focus. A changed value switches the preset to `Benutzerdefiniert`.
 - Phone width works (16 px gutter, wide tables scroll inside their panel, never the page).
 
 Patterns of the PDF → DXF tool (reuse them for drawing previews):
@@ -99,7 +110,7 @@ Patterns of the PDF → DXF tool (reuse them for drawing previews):
 - **Preview canvas:** paper in `--surface` on `--surface-sunken`, content in its own colours, black and white content in `--text-strong` (like colour 7 in CAD). Wheel or two fingers zoom about the pointer, dragging pans, "four corners" fits the page. Interaction graphics (snap marker, measured line, selection rectangle) in `--primary` on a separate overlay canvas. A raster of the source can lie underneath at 45 % opacity (image icon toggles it).
 - **Modes** are toggle buttons in the preview toolbar (`aria-pressed`, pressed = `--primary-subtle` fill): ruler = calibrate, crop corners = select an area. Esc leaves a mode. Calibration asks for the length in a strip under the toolbar (`--primary-subtle`), prefilled with the current value; Enter applies.
 - **Layer list:** checkbox, colour swatch (12 px, inline `--sw`), name (ellipsis), count in the number font. Off = struck through and muted. Filters for colours and line weights are toggle chips; off = struck through and faded, never colour alone.
-- **Status line** under the preview: counts before → after, time, warnings with icon. Long work shows a thin progress bar with × to cancel after 300 ms. A warning that has an action (e.g. "Massstab kalibrieren") is a link-style button in `--primary`.
+- **Status line** under the preview: counts before → after and time, in one fixed-height row. Long work shows a thin progress bar with × to cancel after 300 ms. Warnings use the shared notice bar. A click on `Massstab kalibrieren` starts calibration.
 
 ## Motion
 

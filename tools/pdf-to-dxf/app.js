@@ -16,12 +16,13 @@ import {
   CURVE_MODES,
   DASH_MODES,
   PRESET_NAMES,
+  PRESET_FIELDS,
   SCAN_MODES,
   normalizeInputs,
   applyPreset,
   resetDocumentFields,
 } from './defaults.js';
-import { ACTIONS, SECTIONS, FIELDS, OPTIONS, ERRORS, STEPS, TITLE, warningText, saved } from './labels.js';
+import { ACTIONS, SECTIONS, FIELDS, OPTIONS, ERRORS, STEPS, STATUS, TITLE, warningText, saved } from './labels.js';
 import { Preview } from './preview.js';
 import { calibrate, scaleLabel, PT_MM } from './pipeline.js';
 import { DocumentStore } from '../../lib/core/store.js';
@@ -29,6 +30,7 @@ import { fmt, parseNum, toInputValue } from '../../lib/core/format.js';
 import { pickFile, download, enableFileDrop, takeFileHandoff } from '../../lib/core/files.js';
 import { html, raw, icon, toast, bindThemeToggle, mountSourceLink } from '../../lib/core/ui.js';
 import { enableCombos } from '../../lib/core/combo.js';
+import { createIssuePanel } from '../../lib/core/issues.js';
 
 const DRAFT_KEY = `hlks-tools:${TOOL_ID}:draft`;
 const SCAN_DPIS = [200, 300, 400, 600];
@@ -98,6 +100,10 @@ const app = {
   result: null, // last process result
   job: null, // running job
   busy: null, // { label, value, timer, visible }
+  issues: null,
+  failure: null, // persistent conversion error with an optional retry action
+  pending: false,
+  cancelled: false,
   underlays: new Map(), // page → ImageBitmap
   underlayOn: new Map(), // page → boolean (shown)
   thumbs: new Map(), // page → canvas
@@ -205,14 +211,33 @@ function renderSettings() {
       <legend>${SECTIONS.output}</legend>
       ${field(FIELDS.unit, seg('unit', UNITS))}
       ${field(FIELDS.origin, seg('origin', ORIGINS, OPTIONS.origin))}
-      ${field(FIELDS.version, seg('version', VERSIONS))}
-      ${toggle('trueColor', FIELDS.trueColor, s.version === 'R12')}
     </fieldset>
     <fieldset>
       <legend>${SECTIONS.content}</legend>
-      ${field(FIELDS.preset, select('preset', PRESET_NAMES, OPTIONS.preset))}
       ${field(FIELDS.layerMode, select('layerMode', LAYER_MODES, OPTIONS.layerMode))}
       ${toggle('hiddenLayers', FIELDS.hiddenLayers)}
+      ${number('minLengthMm', FIELDS.minLengthMm, 'mm')}
+    </fieldset>
+    <details class="more" ${raw(app.tolOpen ? 'open' : '')}>
+      <summary>${icon('chevron', { size: 14 })}${SECTIONS.tol}</summary>
+      <div class="two">
+        ${number('tol.join', FIELDS.tolJoin, 'mm')}
+        ${number('tol.arc', FIELDS.tolArc, 'mm')}
+        ${number('tol.flatten', FIELDS.tolFlatten, 'mm')}
+      </div>
+    </details>
+    ${s.scanOn
+      ? html`<fieldset>
+          <legend>${SECTIONS.scan}</legend>
+          ${field(FIELDS.scanMode, seg('scan.mode', SCAN_MODES, OPTIONS.scanMode))}
+          ${field(html`${FIELDS.scanDpi} <span class="unit">dpi</span>`, seg('scan.dpi', SCAN_DPIS))}
+          ${number('scan.snapDeg', FIELDS.scanSnap, '°')}
+        </fieldset>`
+      : ''}
+    <fieldset class="preset-settings" aria-label="${FIELDS.preset}">
+      ${field(FIELDS.preset, select('preset', PRESET_NAMES, OPTIONS.preset))}
+      ${field(FIELDS.version, seg('version', VERSIONS))}
+      ${toggle('trueColor', FIELDS.trueColor, s.version === 'R12')}
       ${field(FIELDS.text, seg('text', TEXT_MODES, OPTIONS.text))}
       ${field(FIELDS.fills, seg('fills', FILL_MODES, OPTIONS.fills))}
       ${field(FIELDS.hatch, seg('hatch', HATCH_MODES, OPTIONS.hatch))}
@@ -222,27 +247,15 @@ function renderSettings() {
       ${toggle('clip', FIELDS.clip)}
       ${toggle('dedupe', FIELDS.dedupe)}
       ${toggle('join', FIELDS.join)}
-      ${number('minLengthMm', FIELDS.minLengthMm, 'mm')}
-    </fieldset>
-    ${s.scanOn
-      ? html`<fieldset>
-          <legend>${SECTIONS.scan}</legend>
-          ${field(FIELDS.scanMode, seg('scan.mode', SCAN_MODES, OPTIONS.scanMode))}
-          ${field(html`${FIELDS.scanDpi} <span class="unit">dpi</span>`, seg('scan.dpi', SCAN_DPIS))}
-          ${number('scan.snapDeg', FIELDS.scanSnap, '°')}
-        </fieldset>`
-      : ''}
-    <details class="more" ${raw(app.tolOpen ? 'open' : '')}>
-      <summary>${icon('chevron', { size: 14 })}${SECTIONS.tol}</summary>
-      <div class="two">
-        ${number('tol.join', FIELDS.tolJoin, 'mm')}
-        ${number('tol.arc', FIELDS.tolArc, 'mm')}
-        ${number('tol.flatten', FIELDS.tolFlatten, 'mm')}
-      </div>
-    </details>`);
+    </fieldset>`);
   // clip is a boolean in the UI, a mode in the settings
   const clipBox = host.querySelector('[data-key="clip"]');
   if (clipBox) clipBox.checked = s.clip === 'apply';
+  if (s.preset !== 'custom') {
+    for (const control of host.querySelectorAll('[data-key]')) {
+      if (PRESET_FIELDS.includes(control.dataset.key)) control.closest('.field, .toggle-row')?.classList.add('preset-option');
+    }
+  }
   for (const [i, c] of app.thumbs) host.querySelector(`[data-thumb="${i}"]`)?.append(c);
 }
 
@@ -420,15 +433,62 @@ function renderStatus() {
     const ms = (r.stats.ms ?? 0) + (r.stats.extractMs ?? 0);
     parts.push(html`<span class="num">${fmt(r.stats.before)} → ${fmt(visibleCount())}</span>`);
     parts.push(html`<span class="num muted">${ms < 1000 ? `${fmt(ms)} ms` : `${fmt(ms / 1000, 1)} s`}</span>`);
-    for (const w of r.warnings) {
-      if (w.code === 'calibrate') {
-        // scans have no reliable scale: offer the calibration right here
-        parts.push(html`<button type="button" class="warn warn-btn" data-action="calibrate">${icon('ruler', { size: 14 })}${warningText(w)}</button>`);
-      } else if (w.code === 'skew') parts.push(html`<span class="muted">${warningText(w)}</span>`);
-      else parts.push(html`<span class="warn">${icon('warning', { size: 14 })}${warningText(w)}</span>`);
-    }
   }
   host.innerHTML = parts.map(String).join('');
+  renderIssues();
+}
+
+function jumpToPreview(action) {
+  const target = action ? $(`#stage-bar [data-action="${action}"]`) : $('#viewport');
+  target?.scrollIntoView({ block: 'nearest' });
+  target?.focus({ preventScroll: true });
+}
+
+function renderIssues() {
+  if (!app.issues) return;
+  if (app.busy || app.pending) {
+    app.issues.update([], { emptyText: STATUS.pending, emptyIcon: 'info' });
+    return;
+  }
+  if (app.failure) {
+    app.issues.update([{
+      id: 'conversion',
+      severity: 'error',
+      text: app.failure.text,
+      run: () => jumpToPreview(),
+      ...(app.failure.retry ? { action: { icon: 'redo', label: ACTIONS.retry, run: app.failure.retry } } : {}),
+    }]);
+    return;
+  }
+  if (app.cancelled || !app.result) {
+    app.issues.update([], {
+      emptyText: app.cancelled ? ERRORS.cancelled : app.info ? STATUS.pending : STATUS.empty,
+      emptyIcon: 'info',
+    });
+    return;
+  }
+  const warnings = app.result.warnings.filter((w) => w.code !== 'calibrate');
+  // Scale changes do not reprocess the preview, so use the current calibration state.
+  if (app.result.scan && !S().calibrated) warnings.push({ code: 'calibrate' });
+  app.issues.update(warnings.map((w) => ({
+    id: w.code,
+    severity: w.code === 'damaged' ? 'error' : w.code === 'skew' ? 'info' : 'warning',
+    text: warningText(w),
+    run: w.code === 'calibrate'
+      ? () => {
+          if (app.preview.mode !== 'calibrate') setMode('calibrate');
+          jumpToPreview('calibrate');
+        }
+      : w.code === 'scan'
+        ? () => jumpToPreview('scan')
+        : w.code === 'unmapped'
+          ? () => {
+              const target = $('#settings button[data-key="text"]');
+              target?.scrollIntoView({ block: 'nearest' });
+              target?.focus({ preventScroll: true });
+            }
+          : () => jumpToPreview(),
+  })), { emptyText: STATUS.clear, emptyIcon: 'check' });
 }
 
 // ============================================================================
@@ -438,6 +498,7 @@ function renderStatus() {
 function startBusy(job, label) {
   stopBusy();
   app.busy = { job, label, value: 0, visible: false };
+  renderIssues();
   app.busy.timer = setTimeout(() => {
     if (app.busy?.job === job) {
       app.busy.visible = true;
@@ -459,8 +520,18 @@ function stopBusy() {
   renderStatus();
 }
 
+function clearScheduledProcess() {
+  clearTimeout(app.procTimer);
+  app.procTimer = null;
+  app.pending = false;
+}
+
 async function cancelWork() {
+  // An export leaves the current preview valid unless a settings change is queued or running.
+  const keepWarnings = app.busy?.job?.type === 'export' && app.result && !app.job && !app.pending;
+  clearScheduledProcess();
   app.job = null;
+  app.cancelled = !keepWarnings;
   stopBusy();
   app.engine.restart();
   if (app.file) {
@@ -491,6 +562,7 @@ async function openFile(file) {
     toast(ERRORS.notPdf, { kind: 'error' });
     return;
   }
+  clearScheduledProcess();
   if (app.job) await cancelQuietly();
   const copy = bytes.slice();
   const job = app.engine.call('open', { bytes: copy }, { transfer: [copy.buffer], onProgress: (v, l) => progress(job, v, l) });
@@ -507,6 +579,8 @@ async function openFile(file) {
   app.file = { name: file.name || 'plan.pdf', bytes };
   app.info = info;
   app.result = null;
+  app.failure = null;
+  app.cancelled = false;
   app.underlays.clear();
   app.underlayOn.clear();
   app.thumbs.clear();
@@ -527,18 +601,27 @@ async function openFile(file) {
 }
 
 async function cancelQuietly() {
+  clearScheduledProcess();
   app.job = null;
   stopBusy();
   app.engine.restart();
 }
 
 function scheduleProcess() {
-  clearTimeout(app.procTimer);
+  clearScheduledProcess();
+  app.pending = true;
+  renderIssues();
   app.procTimer = setTimeout(runProcess, 120);
 }
 
 async function runProcess() {
-  if (!app.info) return;
+  clearScheduledProcess();
+  if (!app.info) {
+    renderIssues();
+    return;
+  }
+  app.failure = null;
+  app.cancelled = false;
   if (app.job?.type === 'process') app.engine.cancel(app.job.id);
   const job = app.engine.call('process', { settings: S() }, { onProgress: (v, l) => progress(job, v, l) });
   app.job = job;
@@ -556,7 +639,7 @@ async function runProcess() {
     applyOff();
     renderToolbar();
   } catch (e) {
-    if (app.job === job && e.code !== 'cancelled') toast(errorText(e), { kind: 'error', timeout: 7000 });
+    if (app.job === job && e.code !== 'cancelled') app.failure = { text: errorText(e), retry: runProcess };
   } finally {
     if (app.job === job) {
       app.job = null;
@@ -671,6 +754,8 @@ function endCalibration() {
 
 async function exportDxf() {
   if (!app.info || !app.file) return;
+  app.failure = null;
+  app.cancelled = false;
   const job = app.engine.call('export', { settings: S(), name: app.file.name }, { onProgress: (v, l) => progress(job, v, l) });
   startBusy(job, 'page');
   try {
@@ -678,7 +763,7 @@ async function exportDxf() {
     files.forEach((f, i) => setTimeout(() => download(f.bytes, f.name, 'application/dxf'), i * 400));
     toast(saved(files.map((f) => f.name).join(', ')), { kind: 'success' });
   } catch (e) {
-    if (e.code !== 'cancelled') toast(errorText(e), { kind: 'error', timeout: 7000 });
+    if (e.code !== 'cancelled') app.failure = { text: errorText(e), retry: exportDxf };
   } finally {
     stopBusy();
   }
@@ -828,12 +913,14 @@ function addThemeButton() {
 
 async function start() {
   app.store = new DocumentStore(loadInitialDoc(), { draftKey: DRAFT_KEY });
+  app.issues = createIssuePanel($('#issues'), { emptyText: STATUS.empty, emptyIcon: 'info' });
   addThemeButton();
   mountSourceLink();
   try {
     app.engine = new Engine();
   } catch {
-    toast(ERRORS.worker, { kind: 'error', timeout: 10000 });
+    app.failure = { text: ERRORS.worker };
+    renderIssues();
     return;
   }
   app.preview = new Preview($('#viewport'), {

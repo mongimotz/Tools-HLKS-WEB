@@ -4,10 +4,12 @@
 // Units inside this module: lengths of ducts in mm (inputs) and m (calculation), flow in m³/h,
 // pressure in Pa, temperature in °C, roughness in mm.
 
-export const CALC_VERSION = '1.1.0';
+export const CALC_VERSION = '1.2.0';
 
 // Air properties and λ live in lib/core/air.js (shared with the duct sizing tool); re-exported for this tool's users.
 import { airState, frictionFactor, LAMINAR_LIMIT, TURBULENT_LIMIT } from '../../lib/core/air.js';
+import { calculationInputs } from './defaults.js';
+import { resolveNumberedTree } from './network.js';
 export {
   atmosphericPressure,
   saturationVapourPressure,
@@ -63,58 +65,14 @@ export function transitionLoss({ vUp, vDown, areaUp, areaDown, density, factor =
 
 // ---- network ------------------------------------------------------------------
 
-/**
- * Resolve the tree: parent of each section (null = starts at the fan), children, DFS order, depth.
- * Unknown parents and cycles are cut and reported.
- */
-export function resolveTree(sections) {
-  const byId = new Map(sections.map((s) => [s.id, s]));
-  const parent = new Map();
-  const issues = [];
-  for (const s of sections) {
-    let p = s.parent ?? null;
-    if (p !== null && (!byId.has(p) || p === s.id)) {
-      issues.push({ sectionId: s.id, severity: 'error', code: 'parent-missing' });
-      p = null;
-    }
-    parent.set(s.id, p);
-  }
-  // Cut cycles: walk up from every section; if we come back to a visited node on the same walk, cut.
-  for (const s of sections) {
-    const seen = new Set([s.id]);
-    let cur = parent.get(s.id);
-    while (cur !== null) {
-      if (seen.has(cur)) {
-        issues.push({ sectionId: s.id, severity: 'error', code: 'cycle' });
-        parent.set(s.id, null);
-        break;
-      }
-      seen.add(cur);
-      cur = parent.get(cur);
-    }
-  }
-  const children = new Map(sections.map((s) => [s.id, []]));
-  for (const s of sections) {
-    const p = parent.get(s.id);
-    if (p !== null) children.get(p).push(s.id);
-  }
-  const order = [];
-  const depth = new Map();
-  const visit = (id, d) => {
-    order.push(id);
-    depth.set(id, d);
-    for (const c of children.get(id)) visit(c, d + 1);
-  };
-  for (const s of sections) if (parent.get(s.id) === null) visit(s.id, 0);
-  return { parent, children, order, depth, issues };
-}
+export const resolveTree = resolveNumberedTree;
 
 /** Branch level from the section number: 1, 2 → 0; 2.1 → 1; 2.1.1 → 2. */
 export function branchLevel(nr) {
   return (String(nr ?? '').trim().match(/\./g) ?? []).length;
 }
 
-/** Ids of all descendants of a section (to prevent cycles when choosing a parent). */
+/** Ids of all descendants in the numbered network. */
 export function descendantsOf(sections, id) {
   const { children } = resolveTree(sections);
   const out = new Set();
@@ -162,10 +120,10 @@ export function compute(inputs) {
       parent: parentId,
       children: tree.children.get(id),
       depth: tree.depth.get(id),
-      status: 'ok',
+      status: tree.invalid.has(id) ? 'incomplete' : 'ok',
       flow: s.flow,
       length: s.length ?? 0,
-      issues: [],
+      issues: tree.issues.filter((item) => item.sectionId === id),
       fittingDetails: [],
       dpFriction: 0,
       dpFittings: 0,
@@ -257,15 +215,15 @@ export function compute(inputs) {
       else if (r.reynolds < TURBULENT_LIMIT) issue('info', 'transition-regime', { value: r.reynolds });
     }
 
-    r.dp = r.dpFriction + r.dpFittings + r.dpComponents;
-    r.cum = (parentRes?.cum ?? 0) + r.dp;
+    r.dp = tree.invalid.has(id) ? 0 : r.dpFriction + r.dpFittings + r.dpComponents;
+    r.cum = tree.invalid.has(id) ? 0 : (parentRes?.cum ?? 0) + r.dp;
     results.set(id, r);
   }
 
   // Flow continuity: branches must not carry more air than the section feeding them.
   for (const r of results.values()) {
-    if (!r.children.length || !(r.flow > 0)) continue;
-    const sum = r.children.reduce((acc, c) => acc + (byId.get(c).flow || 0), 0);
+    if (tree.invalid.has(r.id) || !r.children.length || !(r.flow > 0)) continue;
+    const sum = r.children.filter((id) => !tree.invalid.has(id)).reduce((acc, c) => acc + (byId.get(c).flow || 0), 0);
     if (sum > r.flow * 1.005) {
       const it = { sectionId: r.id, severity: 'warning', code: 'flow-continuity', value: sum, limit: r.flow };
       r.issues.push(it);
@@ -274,7 +232,7 @@ export function compute(inputs) {
   }
 
   // Critical path = terminal section with the highest cumulative pressure loss.
-  const terminals = [...results.values()].filter((r) => r.children.length === 0);
+  const terminals = [...results.values()].filter((r) => !tree.invalid.has(r.id) && !r.children.some((id) => !tree.invalid.has(id)));
   let critical = null;
   for (const t of terminals) if (!critical || t.cum > critical.cum) critical = t;
 
@@ -300,7 +258,7 @@ export function compute(inputs) {
 
   for (const r of results.values()) {
     r.critical = onPath.has(r.id);
-    r.terminal = r.children.length === 0;
+    r.terminal = terminals.includes(r);
     if (r.terminal) r.throttle = criticalDp - r.cum;
   }
 
@@ -323,6 +281,22 @@ export function snapshotOf(result) {
     required: round(result.totals.required),
     path: result.path,
   };
+}
+
+/** Recalculate every independent network with the project's shared catalogues. */
+export function computeProject(inputs) {
+  const calculations = new Map();
+  const issues = [];
+  for (const calculation of inputs.calculations) {
+    const result = compute(calculationInputs(inputs, calculation.id));
+    calculations.set(calculation.id, result);
+    issues.push(...result.issues.map((issue) => ({ ...issue, calcId: calculation.id })));
+  }
+  return { calculations, issues };
+}
+
+export function snapshotProjectOf(result) {
+  return { calculations: [...result.calculations].map(([id, calculation]) => ({ id, ...snapshotOf(calculation) })) };
 }
 
 // ---- dimensioning help -----------------------------------------------------------
@@ -357,7 +331,7 @@ export function suggestDimensions({ flow, vmax, height = null, diameters, rectSt
 
 /** Velocity and pressure gradient of a bare cross-section (no fittings), for comparing suggestions. */
 export function evaluateCrossSection(inputs, section) {
-  const probe = { ...section, id: '__probe', parent: null, fittings: [], components: [], zetaExtra: null };
+  const probe = { ...section, id: '__probe', nr: '1', fittings: [], components: [], zetaExtra: null };
   const r = compute({ ...inputs, sections: [probe] }).sections.get('__probe');
   return r.status === 'ok' ? { velocity: r.velocity, gradient: r.gradient } : null;
 }

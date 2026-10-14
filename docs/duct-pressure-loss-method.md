@@ -1,6 +1,10 @@
 # Druckverlust Lüftung: Rechenweg
 
-Berechnungsversion 1.1.0. Jede gespeicherte Datei enthält die Berechnungsversion. Öffnest du eine Datei aus einer anderen Version, zeigt das Werkzeug die alte und die neue Version. Weicht der Druckverlust im kritischen Strang ab, zeigt es auch den alten und den neuen Wert.
+Berechnungsversion 1.2.0. Jede gespeicherte Datei enthält die Berechnungsversion. Öffnest du eine Datei aus einer anderen Version, zeigt das Werkzeug die alte und die neue Version. Weicht der Druckverlust im kritischen Strang ab, zeigt es auch den alten und den neuen Wert.
+
+Ein Projekt kann mehrere Berechnungen enthalten. Jede Berechnung hat eine eigene Anlage mit eigenen Teilstrecken. Kataloge und Grenzwerte gelten für alle Berechnungen im Projekt. Die Rechenformeln bleiben gleich.
+
+JSON und PDF enthalten alle Berechnungen. Im PDF beginnt jede Berechnung auf einer neuen Seite. Die CSV-Datei ordnet jede Teilstrecke mit der Spalte «Berechnung» zu. Alle Ergebnisse stammen aus den aktuellen Eingaben.
 
 ## 1. Luftzustand
 
@@ -82,7 +86,13 @@ Filter, Schalldämpfer, Klappen, Regler und Luftdurchlässe gehen mit einem fest
 
 ## 6. Netz, kritischer Strang und Drosselbedarf
 
-Jede Teilstrecke hat einen Vorgänger in Richtung Ventilator. So entsteht ein Baum. Der kumulierte Druckverlust einer Teilstrecke ist ihr eigener Druckverlust plus der kumulierte Druckverlust des Vorgängers.
+Die Teilstreckennummer bestimmt die Verbindung in Richtung Ventilator. Ganze Nummern bilden die Hauptleitung in aufsteigender Reihenfolge. Die erste beginnt am Ventilator. Nummernlücken sind erlaubt: Auf `1` kann `3` folgen.
+
+Ein Abzweig beginnt bei der Nummer vor dem letzten Punkt: `2.1` und `2.2` zweigen beide bei `2` ab, `2.1.1` bei `2.1`. Die Tabelle ordnet die Nummern numerisch: `1`, `1.2`, `1.10`, `2`, `10`. Nach einer Nummernänderung bleiben die Nummern anderer Teilstrecken bestehen.
+
+Leere, ungültige oder doppelte Nummern sowie fehlende oder doppelte Ausgangsstrecken erscheinen als Fehler. Betroffene Teilstrecken und ihre nachfolgenden Abzweige gehen bis zur Korrektur nicht in den kritischen Strang ein.
+
+So entsteht ein Baum. Der kumulierte Druckverlust einer Teilstrecke ist ihr eigener Druckverlust plus der kumulierte Druckverlust des Vorgängers.
 
 - **Kritischer Strang:** der Weg vom Ventilator zum Strangende mit dem grössten kumulierten Druckverlust. Er bestimmt den nötigen Druck des Ventilators.
 - **Drosselbedarf:** die Differenz zwischen dem kritischen Strang und einem anderen Strangende. Um diesen Betrag muss eine Klappe oder ein Regler dort zusätzlich drosseln, damit sich die geplanten Volumenströme einstellen.

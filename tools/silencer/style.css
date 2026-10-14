@@ -1,18 +1,12 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 /* Silencer tool. Builds on tokens.css + base.css. Colours and fonts only via the tokens. */
 
-.page { max-width: 1680px; margin: 0 auto; padding: var(--sp-5) var(--gutter) var(--sp-8); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-5); }
+.page { max-width: 1680px; margin: 0 auto; padding: var(--sp-3) var(--gutter) var(--sp-8); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-5); }
 .block { min-width: 0; }
 
 /* ---- paths ------------------------------------------------------------------ */
 
-.path-bar { display: flex; align-items: flex-end; gap: var(--sp-3); margin-bottom: var(--sp-3); }
-.path-tabs { flex: 1; min-width: 0; overflow-x: auto; }
-.path-tabs .tab { display: inline-flex; align-items: baseline; gap: 8px; }
-.tab-val { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: var(--fs-xs); color: var(--text-muted); }
-.tab-val.is-ok { color: var(--success); }
-.tab-val.is-over { color: var(--danger); font-weight: 600; }
-.head-actions { display: flex; gap: var(--sp-1); }
+.calculation-bar { margin-bottom: var(--sp-3); }
 
 .work-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
 @media (min-width: 1240px) { .work-grid { grid-template-columns: minmax(0, 1fr) 380px; } }
@@ -155,7 +149,7 @@ td.c-total.is-over { color: var(--danger); }
 /* ---- design panel -------------------------------------------------------------- */
 
 .design { padding: var(--sp-3) var(--sp-4) var(--sp-4); display: grid; gap: var(--sp-3); min-width: 0; }
-@media (min-width: 1240px) { .design { position: sticky; top: calc(var(--appbar-h) + var(--sp-3)); max-height: calc(100vh - var(--appbar-h) - 2 * var(--sp-3)); overflow-y: auto; } }
+@media (min-width: 1240px) { .design { position: sticky; top: calc(var(--appbar-h) + var(--issue-bar-h) + var(--sp-3)); max-height: calc(100vh - var(--appbar-h) - var(--issue-bar-h) - 2 * var(--sp-3)); overflow-y: auto; } }
 .type-group { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 6px; align-items: start; }
 .tg-label { font-size: var(--fs-xs); color: var(--text-muted); padding-top: 4px; }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }

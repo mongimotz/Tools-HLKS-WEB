@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 /* Duct pressure loss tool. Builds on tokens.css + base.css. */
 
-.page { max-width: 1680px; margin: 0 auto; padding: var(--sp-5) var(--gutter) var(--sp-8); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-5); }
+.page { max-width: 1680px; margin: 0 auto; padding: var(--sp-3) var(--gutter) var(--sp-8); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-5); }
 .tab-panel { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-5); }
 .tab-panel[hidden] { display: none; }
 .block { min-width: 0; }

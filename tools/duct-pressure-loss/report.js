@@ -3,7 +3,9 @@
 
 import { buildPdf, INK } from '../../lib/core/pdf.js';
 import { fmt, fmtSig, fmtDate } from '../../lib/core/format.js';
-import { CALC_VERSION, airState } from './calc.js';
+import { CALC_VERSION, airState, computeProject, snapshotProjectOf } from './calc.js';
+import { calculationInputs, calculationLabel, normalizeInputs } from './defaults.js';
+import { sortedSections } from './network.js';
 import { TOOL_NAME, DIRECTION_LABELS, issueText } from './labels.js';
 
 function nrMap(sections) {
@@ -17,22 +19,27 @@ function dimText(s) {
   return s.width && s.height ? `${fmt(s.width, 0)} × ${fmt(s.height, 0)}` : '–';
 }
 
-/** Build the PDF (Uint8Array). doc = { project, inputs }, result = compute(inputs). */
-export async function buildReport(doc, result, envelope) {
-  const { project, inputs } = doc;
-  const { system, sections, catalogs } = inputs;
-  const nr = nrMap(sections);
-  const materials = new Map(catalogs.materials.map((m) => [m.id, m]));
-  const fittings = new Map(catalogs.fittings.map((f) => [f.id, f]));
-  const t = result.totals;
-  const title = system.name ? `${TOOL_NAME} – ${system.name}` : TOOL_NAME;
-
-  const render = (w) => {
+/** Build every calculation from authoritative inputs, starting each network on a new page. */
+export async function buildReport(doc, _result, envelope) {
+  const { project } = doc;
+  const projectInputs = normalizeInputs(doc.inputs);
+  const results = computeProject(projectInputs);
+  const title = project.name ? `${TOOL_NAME} – ${project.name}` : TOOL_NAME;
+  const pageLabels = [];
+  const renderCalculation = (w, calculation) => {
+    const inputs = calculationInputs(projectInputs, calculation.id);
+    const result = results.calculations.get(calculation.id);
+    const { system, catalogs } = inputs;
+    const sections = sortedSections(inputs.sections);
+    const nr = nrMap(sections);
+    const materials = new Map(catalogs.materials.map((m) => [m.id, m]));
+    const fittings = new Map(catalogs.fittings.map((f) => [f.id, f]));
+    const t = result.totals;
     // ---- title & project ------------------------------------------------------
     w.y += 8;
     w.text('Druckverlustberechnung Lüftung', w.left, w.y + 14, { size: 17, bold: true, color: INK.strong });
     w.y += 24;
-    if (system.name) w.text(system.name, w.left, w.y + 12, { size: 11, color: INK.text });
+    w.text(calculationLabel(projectInputs, calculation.id), w.left, w.y + 12, { size: 11, color: INK.text });
     w.y += 20;
     const air = airState(system);
     w.keyValues(
@@ -82,7 +89,6 @@ export async function buildReport(doc, result, envelope) {
       const over = ok && r.vmax != null && r.velocity > r.vmax + 1e-9;
       return [
         nr.get(s.id),
-        s.parent ? nr.get(s.parent) : 'Vent.',
         s.shape === 'round' ? 'rund' : 'eckig',
         materials.get(s.material)?.name ?? '–',
         fmt(s.flow, 0),
@@ -105,7 +111,6 @@ export async function buildReport(doc, result, envelope) {
     w.table({
       columns: [
         { label: 'Nr.', width: 32 },
-        { label: 'Vorg.', width: 32 },
         { label: 'Form', width: 30 },
         { label: 'Material', width: 88 },
         { label: 'V̇', unit: 'm³/h', width: 40, align: 'right' },
@@ -221,10 +226,19 @@ export async function buildReport(doc, result, envelope) {
     });
   };
 
+  const render = (w) => {
+    projectInputs.calculations.forEach((calculation, index) => {
+      if (index) w.newPage();
+      const firstPage = w.pages.length - 1;
+      renderCalculation(w, calculation);
+      for (let page = firstPage; page < w.pages.length; page++) pageLabels[page] = calculationLabel(projectInputs, calculation.id);
+    });
+  };
+
   const decorate = (w, i, total) => {
     const top = 30;
     w.text('HLKS-Tools', w.left, top, { size: 8, bold: true, color: INK.primary });
-    w.text(TOOL_NAME, w.left + w.measure('HLKS-Tools', 8, true) + 8, top, { size: 8, color: INK.text });
+    w.text(`${TOOL_NAME} | ${pageLabels[i]}`, w.left + w.measure('HLKS-Tools', 8, true) + 8, top, { size: 8, color: INK.text, maxWidth: w.contentWidth / 2 - 60 });
     const right = [project.name, project.number].filter(Boolean).join(' | ');
     w.text(right, w.right, top, { size: 8, color: INK.text, align: 'right', maxWidth: w.contentWidth / 2 });
     w.line(w.left, top + 7, w.right, top + 7, { color: INK.border, width: 0.6 });
@@ -240,7 +254,7 @@ export async function buildReport(doc, result, envelope) {
   };
 
   return buildPdf({
-    envelope,
+    envelope: { ...envelope, project, inputs: projectInputs, snapshot: snapshotProjectOf(results) },
     title,
     subject: `HLKS-Tools: ${TOOL_NAME}`,
     author: project.author,

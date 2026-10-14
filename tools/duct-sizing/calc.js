@@ -6,6 +6,7 @@
 // full load hours in h/a.
 
 import { airState, frictionFactor } from '../../lib/core/air.js';
+import { calculationInputs } from './defaults.js';
 
 export const CALC_VERSION = '1.0.0';
 
@@ -329,4 +330,13 @@ export function snapshotOf(result) {
     velocity: round(r.velocity),
   });
   return { hours: result.hours, current: snap(result.current), positions: [...result.positions.values()].map(snap) };
+}
+
+/** Recompute every independent calculation with the project's shared catalogues. */
+export function computeProject(inputs) {
+  return { calculations: new Map(inputs.calculations.map((c) => [c.id, compute(calculationInputs(inputs, c.id))])) };
+}
+
+export function snapshotProjectOf(result) {
+  return { calculations: [...result.calculations].map(([id, calculation]) => ({ id, ...snapshotOf(calculation) })) };
 }

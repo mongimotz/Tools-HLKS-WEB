@@ -18,6 +18,13 @@ export const ACTIONS = {
   next: 'Nächste Seite',
   cancel: 'Abbrechen',
   apply: 'Übernehmen',
+  retry: 'Erneut umwandeln',
+};
+
+export const STATUS = {
+  empty: 'PDF öffnen',
+  pending: 'Wird geprüft',
+  clear: 'Keine Hinweise',
 };
 
 export const SECTIONS = {
@@ -64,7 +71,7 @@ export const FIELDS = {
 export const OPTIONS = {
   pages: { current: 'Aktuelle Seite', each: 'Jede Seite einzeln', sideBySide: 'Alle nebeneinander' },
   origin: { page: 'Seitenecke', center: 'Mitte' },
-  preset: { nova: 'Nova-Unterlage', geometry: 'Nur Geometrie', compat: 'Maximale Kompatibilität', custom: 'Benutzerdefiniert' },
+  preset: { nova: 'NOVA', geometry: 'Nur Geometrie', compat: 'Maximale Kompatibilität', custom: 'Benutzerdefiniert' },
   layerMode: { colorWidth: 'Farbe und Strichstärke', color: 'Farbe', width: 'Strichstärke', single: 'Ein Layer' },
   text: { text: 'Text', outline: 'Umriss', omit: 'Aus' },
   fills: { outline: 'Umriss', hatch: 'Fläche', ignore: 'Aus' },

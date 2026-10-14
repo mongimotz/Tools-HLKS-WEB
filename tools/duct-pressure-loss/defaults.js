@@ -3,7 +3,9 @@
 // Catalogue names are user-facing (German). Values are guide values ("Richtwerte").
 
 export const TOOL_ID = 'duct-pressure-loss';
-export const INPUT_VERSION = 2;
+import { sortedSections } from './network.js';
+
+export const INPUT_VERSION = 4;
 
 /** Nominal diameters of round ducts [mm]: Lindab SR circular duct, data sheet 17.11.002 (2024-05-30). */
 export const ROUND_DIAMETERS = [
@@ -123,10 +125,10 @@ const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const str = (v) => (v == null ? '' : String(v));
 
 export function normalizeSection(s = {}) {
+  s = s && typeof s === 'object' ? s : {};
   return {
     id: str(s.id),
-    nr: str(s.nr),
-    parent: s.parent ? str(s.parent) : null,
+    nr: str(s.nr).trim(),
     shape: s.shape === 'round' ? 'round' : 'rect',
     width: num(s.width),
     height: num(s.height),
@@ -135,23 +137,19 @@ export function normalizeSection(s = {}) {
     flow: num(s.flow),
     length: num(s.length),
     fittings: Array.isArray(s.fittings)
-      ? s.fittings.map((f) => ({ ref: str(f.ref), count: num(f.count) ?? 1, zeta: num(f.zeta) }))
+      ? s.fittings.filter((f) => f && typeof f === 'object').map((f) => ({ ref: str(f.ref), count: num(f.count) ?? 1, zeta: num(f.zeta) }))
       : [],
     zetaExtra: num(s.zetaExtra),
-    components: Array.isArray(s.components) ? s.components.map((c) => ({ name: str(c.name), dp: num(c.dp) })) : [],
+    components: Array.isArray(s.components) ? s.components.filter((c) => c && typeof c === 'object').map((c) => ({ name: str(c.name), dp: num(c.dp) })) : [],
     temperature: num(s.temperature),
     note: str(s.note),
   };
 }
 
-/**
- * Bring any (older / partial) input object into the current schema. Idempotent.
- * Version 1 → 2: system.frictionMethod dropped (always Colebrook-White).
- */
-export function normalizeInputs(raw = {}) {
+/** Normalize one independent system and network. Shared catalogues stay at project level. */
+export function normalizeCalculation(raw = {}) {
+  raw = raw && typeof raw === 'object' ? raw : {};
   const sys = { ...defaultSystem(), ...(raw.system ?? {}) };
-  const cat = raw.catalogs ?? {};
-  const settings = { ...defaultSettings(), ...(raw.settings ?? {}) };
   const sections = (Array.isArray(raw.sections) ? raw.sections : []).map(normalizeSection);
   // Ids must be unique and non-empty.
   const seen = new Set();
@@ -160,6 +158,7 @@ export function normalizeInputs(raw = {}) {
     seen.add(s.id);
   }
   return {
+    id: str(raw.id),
     system: {
       name: str(sys.name),
       direction: sys.direction === 'extract' ? 'extract' : 'supply',
@@ -169,63 +168,109 @@ export function normalizeInputs(raw = {}) {
       availablePressure: num(sys.availablePressure),
       safetyMargin: num(sys.safetyMargin) ?? 0,
     },
-    sections,
+    sections: sortedSections(sections),
+  };
+}
+
+export function nextCalculationId(calculations) {
+  let index = 1;
+  while (calculations.some((calculation) => calculation.id === `c${index}`)) index++;
+  return `c${index}`;
+}
+
+export function newCalculation(calculations) {
+  return normalizeCalculation({ id: nextCalculationId(calculations), sections: [newSection([], { nr: '1' })] });
+}
+
+export function duplicateCalculation(calculations, id) {
+  const source = calculations.find((calculation) => calculation.id === id);
+  if (!source) return null;
+  return { ...structuredClone(source), id: nextCalculationId(calculations) };
+}
+
+/** A live single-network view for the unchanged calculation functions. */
+export function calculationInputs(inputs, id = inputs.calculations[0]?.id) {
+  const calculation = inputs.calculations.find((item) => item.id === id) ?? inputs.calculations[0];
+  return { system: calculation.system, sections: calculation.sections, catalogs: inputs.catalogs, settings: inputs.settings };
+}
+
+export function calculationLabel(inputs, id) {
+  const index = inputs.calculations.findIndex((calculation) => calculation.id === id);
+  return inputs.calculations[index]?.system.name || `Berechnung ${index + 1}`;
+}
+
+/** Normalize the current project schema; older single-network data is not migrated during beta. */
+export function normalizeInputs(raw = {}) {
+  raw = raw && typeof raw === 'object' ? raw : {};
+  const cat = raw.catalogs ?? {};
+  const settings = { ...defaultSettings(), ...(raw.settings ?? {}) };
+  const list = (value, fallback) => Array.isArray(value) ? value.filter((item) => item && typeof item === 'object') : fallback;
+  const calculations = (Array.isArray(raw.calculations) ? raw.calculations : []).map(normalizeCalculation);
+  if (!calculations.length) calculations.push(newCalculation([]));
+  const seen = new Set();
+  for (const calculation of calculations) {
+    if (!calculation.id || seen.has(calculation.id)) calculation.id = nextCalculationId(calculations);
+    seen.add(calculation.id);
+  }
+  return {
+    calculations,
     catalogs: {
-      materials: (cat.materials ?? defaultMaterials()).map((m) => ({ id: str(m.id), name: str(m.name), roughness: num(m.roughness) ?? 0 })),
-      fittings: (cat.fittings ?? defaultFittings()).map((f) =>
+      materials: list(cat.materials, defaultMaterials()).map((m) => ({ id: str(m.id), name: str(m.name), roughness: num(m.roughness) ?? 0 })),
+      fittings: list(cat.fittings, defaultFittings()).map((f) =>
         f.kind === 'transition'
           ? { id: str(f.id), name: str(f.name), group: str(f.group) || 'any', kind: 'transition', factor: num(f.factor) ?? 1 }
           : { id: str(f.id), name: str(f.name), group: str(f.group) || 'any', kind: 'zeta', zeta: num(f.zeta) ?? 0 },
       ),
-      components: (cat.components ?? defaultComponents()).map((c) => ({ id: str(c.id), name: str(c.name), dp: num(c.dp) ?? 0 })),
-      velocityLimits: (cat.velocityLimits ?? defaultVelocityLimits()).map((v) => ({ below: num(v.below), vmax: num(v.vmax) })),
+      components: list(cat.components, defaultComponents()).map((c) => ({ id: str(c.id), name: str(c.name), dp: num(c.dp) ?? 0 })),
+      velocityLimits: list(cat.velocityLimits, defaultVelocityLimits()).map((v) => ({ below: num(v.below), vmax: num(v.vmax) })),
     },
     settings: { maxAspectRatio: num(settings.maxAspectRatio) },
   };
 }
 
 export function emptyInputs() {
-  const inputs = normalizeInputs({ system: defaultSystem(), sections: [] });
-  inputs.sections.push(newSection(inputs.sections, { nr: '1' }));
-  return inputs;
+  return normalizeInputs({});
 }
 
 /** A small branched supply-air system that shows the features. */
 export function exampleInputs() {
   return normalizeInputs({
-    system: { ...defaultSystem(), name: 'Zuluft Büro 1. OG', availablePressure: 350, safetyMargin: 10 },
-    sections: [
-      {
-        id: 's1', nr: '1', parent: null, shape: 'rect', width: 800, height: 400, material: 'galvanized', flow: 6000, length: 10,
-        fittings: [{ ref: 'bend90-rect-r1', count: 2 }], components: [{ name: 'Schalldämpfer', dp: 30 }],
-        note: 'Ab Monoblock',
-      },
-      {
-        id: 's6', nr: '1.1', parent: 's1', shape: 'rect', width: 500, height: 300, material: 'galvanized', flow: 2000, length: 15,
-        fittings: [{ ref: 'tee-branch', count: 1 }, { ref: 'bend90-rect-r1', count: 2 }],
-        components: [{ name: 'Brandschutzklappe', dp: 15 }, { name: 'Luftdurchlass', dp: 30 }],
-        note: 'Korridor Süd',
-      },
-      {
-        id: 's2', nr: '2', parent: 's1', shape: 'rect', width: 600, height: 400, material: 'galvanized', flow: 4000, length: 8,
-        fittings: [{ ref: 'tee-straight', count: 1 }, { ref: 'transition-conical', count: 1 }],
-      },
-      {
-        id: 's5', nr: '2.1', parent: 's2', shape: 'round', diameter: 400, material: 'galvanized', flow: 2000, length: 5,
-        fittings: [{ ref: 'tee-branch', count: 1 }],
-        components: [{ name: 'Volumenstromregler (min. Δp)', dp: 50 }, { name: 'Luftdurchlass', dp: 30 }],
-        note: 'Grossraumbüro Nord',
-      },
-      {
-        id: 's3', nr: '3', parent: 's2', shape: 'round', diameter: 400, material: 'galvanized', flow: 2000, length: 12,
-        fittings: [{ ref: 'tee-straight', count: 1 }, { ref: 'bend90-round-r1', count: 2 }],
-      },
-      {
-        id: 's4', nr: '4', parent: 's3', shape: 'round', diameter: 315, material: 'galvanized', flow: 1000, length: 6,
-        fittings: [{ ref: 'bend90-round-r1', count: 1 }],
-        components: [{ name: 'Volumenstromregler (min. Δp)', dp: 50 }, { name: 'Luftdurchlass', dp: 30 }],
-        note: 'Sitzungszimmer',
-      },
-    ],
+    calculations: [{
+      id: 'c1',
+      system: { ...defaultSystem(), name: 'Zuluft Büro 1. OG', availablePressure: 350, safetyMargin: 10 },
+      sections: [
+        {
+          id: 's1', nr: '1', shape: 'rect', width: 800, height: 400, material: 'galvanized', flow: 6000, length: 10,
+          fittings: [{ ref: 'bend90-rect-r1', count: 2 }], components: [{ name: 'Schalldämpfer', dp: 30 }],
+          note: 'Ab Monoblock',
+        },
+        {
+          id: 's6', nr: '1.1', shape: 'rect', width: 500, height: 300, material: 'galvanized', flow: 2000, length: 15,
+          fittings: [{ ref: 'tee-branch', count: 1 }, { ref: 'bend90-rect-r1', count: 2 }],
+          components: [{ name: 'Brandschutzklappe', dp: 15 }, { name: 'Luftdurchlass', dp: 30 }],
+          note: 'Korridor Süd',
+        },
+        {
+          id: 's2', nr: '2', shape: 'rect', width: 600, height: 400, material: 'galvanized', flow: 4000, length: 8,
+          fittings: [{ ref: 'tee-straight', count: 1 }, { ref: 'transition-conical', count: 1 }],
+        },
+        {
+          id: 's5', nr: '2.1', shape: 'round', diameter: 400, material: 'galvanized', flow: 2000, length: 5,
+          fittings: [{ ref: 'tee-branch', count: 1 }],
+          components: [{ name: 'Volumenstromregler (min. Δp)', dp: 50 }, { name: 'Luftdurchlass', dp: 30 }],
+          note: 'Grossraumbüro Nord',
+        },
+        {
+          id: 's3', nr: '3', shape: 'round', diameter: 400, material: 'galvanized', flow: 2000, length: 12,
+          fittings: [{ ref: 'tee-straight', count: 1 }, { ref: 'bend90-round-r1', count: 2 }],
+        },
+        {
+          id: 's4', nr: '4', shape: 'round', diameter: 315, material: 'galvanized', flow: 1000, length: 6,
+          fittings: [{ ref: 'bend90-round-r1', count: 1 }],
+          components: [{ name: 'Volumenstromregler (min. Δp)', dp: 50 }, { name: 'Luftdurchlass', dp: 30 }],
+          note: 'Sitzungszimmer',
+        },
+      ],
+    }],
   });
 }

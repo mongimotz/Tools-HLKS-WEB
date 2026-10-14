@@ -4,6 +4,8 @@ Berechnungsversion 1.0.0. Jede gespeicherte Datei enthält die Berechnungsversio
 
 Grundlage ist SIA 382/1:2025, Ziffern 5.11.5.7 und 5.11.5.8 mit den Tabellen 49 und 50, sowie Anhang G für die Elektro-Volllaststunden.
 
+Ein Projekt kann mehrere unabhängige Berechnungen enthalten. Jede hat eigene Betriebsdaten, eine aktuelle Eingabe und Pins. Katalogwerte, Rauigkeit und Lufttemperatur gelten für alle Berechnungen im Projekt. PDF und CSV enthalten alle Berechnungen mit ihren Namen.
+
 ## 1. Grenzgeschwindigkeit in runden Leitungen (Tabelle 49)
 
 Tabelle 49 gibt die maximale Geschwindigkeit v_a,du,rd in runden Leitungen. Sie hängt vom Auslegungs-Volumenstrom und von den Elektro-Volllaststunden ab.

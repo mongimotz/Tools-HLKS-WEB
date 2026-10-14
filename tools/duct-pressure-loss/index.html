@@ -40,20 +40,19 @@
   </header>
 
   <main class="page">
-    <div id="file-banner" hidden></div>
-
-    <section class="block" aria-label="Projekt">
+    <div class="workspace-head">
       <div id="project"></div>
-    </section>
+      <div id="issue-panel"></div>
+    </div>
+
+    <div class="calculation-bar">
+      <div id="calculation-tabs"></div>
+      <button class="btn ghost icon-only" data-action="catalogs" title="Kataloge" aria-label="Kataloge"></button>
+    </div>
 
     <section class="result-strip" id="summary" aria-live="polite" aria-label="Ergebnis"></section>
 
-    <nav class="tabs" role="tablist" aria-label="Ansicht">
-      <button class="tab" role="tab" data-tab="calc" aria-selected="true">Berechnung</button>
-      <button class="tab" role="tab" data-tab="catalogs" aria-selected="false">Kataloge</button>
-    </nav>
-
-    <div class="tab-panel" data-panel="calc">
+    <div class="tab-panel" id="calculation-panel" role="tabpanel">
       <section class="block" aria-labelledby="system-title">
         <div class="section-head"><h2 class="section-title" id="system-title">Anlage</h2></div>
         <div id="system" class="system-grid"></div>
@@ -80,11 +79,6 @@
         </div>
       </section>
 
-      <section class="block" id="issues-block" aria-labelledby="issues-title" hidden>
-        <div class="section-head"><h2 class="section-title" id="issues-title">Hinweise</h2></div>
-        <ul class="issues" id="issues"></ul>
-      </section>
-
       <section class="block charts" aria-label="Diagramme">
         <figure class="panel chart-panel" id="profile-panel">
           <figcaption><h3>Druckverlauf kritischer Strang</h3></figcaption>
@@ -97,10 +91,15 @@
       </section>
     </div>
 
-    <div class="tab-panel" data-panel="catalogs" hidden>
-      <div id="catalogs" class="catalog-grid"></div>
-    </div>
   </main>
+
+  <dialog id="catalog-dialog" class="catalog-dialog" aria-label="Kataloge">
+    <div class="catalog-dialog-head">
+      <h2>Kataloge</h2>
+      <button class="btn ghost icon-only" data-catalog-close title="Schliessen" aria-label="Schliessen"></button>
+    </div>
+    <div id="catalogs" class="catalog-grid"></div>
+  </dialog>
 
   <div class="drop-overlay" aria-hidden="true"><span>PDF / JSON öffnen</span></div>
 </body>

@@ -30,10 +30,12 @@ Detailed formulas remain in the German method document. Keep German UI labels in
 
 Settings stand on the left, the preview in the center, and the layers on the right. Preserve the responsive layout in `style.css`.
 
+The sidebar shows independent settings first: page thumbnails and page export mode when needed, scale, output unit and origin, fallback layers and hidden PDF layers, minimum length, tolerances, and scan settings when enabled. The preset selector follows these controls. Every `PRESET_FIELDS` control appears below that selector in one final fieldset: DXF version, true color, text, fills, hatches, curves, dashes, arcs, clipping, duplicate removal, and line joining. Do not place independent settings below the selector or preset-controlled settings above it.
+
 1. Open a PDF with the folder button, Strg+O, or drag and drop.
 2. For multiple pages, select a thumbnail or use ‹ and › above the preview.
 3. Select the plan scale from 1:1 through 1:1000, or enter a free value such as 98.7.
-4. Use the default `Nova-Unterlage`, or select another preset in the settings.
+4. Use the default `NOVA`, or select another preset in the settings.
 5. Disable unwanted layers, colors, and line weights in the panel on the right.
 6. Save with ↓ DXF or Strg+S.
 
@@ -90,12 +92,14 @@ R2000 is the default format. R12 supports old programs, but has no splines, fill
 
 | German preset | Conversion options |
 |---|---|
-| `Nova-Unterlage` | R2000, connected lines, detected arcs, text as TEXT, hatches on their own layer, fill outlines, and clipping |
+| `NOVA` | R2000, connected lines, detected arcs, text as TEXT, hatches on their own layer, fill outlines, and clipping |
 | `Nur Geometrie` | The same options, with no text, hatches, or fills |
 | `Maximale Kompatibilität` | R12, only lines and polylines. Arcs become polylines, and text becomes glyph outlines |
 | `Benutzerdefiniert` | Appears when conversion settings no longer match a preset |
 
 Presets change conversion options only. They preserve the scale, unit, origin, filters, and crop area. See `PRESETS` and `presetOf` in `defaults.js` for the complete option values.
+
+While a named preset applies, only its `PRESET_FIELDS` controls use strongly dimmed neutral styling. Selected values and checked states remain visible. Keyboard focus restores full contrast; buttons retain their hover feedback. The controls remain editable and keyboard accessible. Changing a preset value recomputes the matching preset, usually `Benutzerdefiniert`. Scale, units, origin, pages, scan settings, and filters keep their normal appearance. Dimming adds no disabled state; the existing R12 restriction on true color still applies.
 
 ## Content options
 
@@ -135,19 +139,24 @@ Resolution ranges from 200 to 600 dpi, with 300 dpi as the default. `Fang 0° / 
 
 ## Scanned plans
 
-A scanned page has almost no vector geometry and mainly contains an image. The status line shows `Seite ist ein Bild`. The preview shows the image, and the scan button appears.
+A scanned page has almost no vector geometry and mainly contains an image. The shared notice rail shows `Seite ist ein Bild`. The preview shows the image, and the scan button appears.
 
-Vectorization separates lines from the background, removes specks, measures skew, extracts lines, and rotates the result to remove skew. The status line shows the detected angle.
+Vectorization separates lines from the background, removes specks, measures skew, extracts lines, and rotates the result to remove skew. The notice rail shows the detected angle.
 
 The corrected vectors can appear slightly tilted against the original image beneath them. The tool corrects the vectors, not the source image.
 
-A scan has no reliable scale. Until calibration, the status line shows `Massstab kalibrieren`. Clicking this message starts calibration.
+A scan has no reliable scale. Until calibration, the notice rail shows `Massstab kalibrieren`. Clicking this message starts calibration.
 
 A scan supplies an underlay for tracing, with the accuracy of the scan. Text in scans becomes short lines.
 
 ## Status, warnings, and errors
 
-The status line shows the source object count, exported object count, and conversion time. A longer conversion shows a progress bar with × to cancel.
+The fixed-height status line shows the source object count, exported object count, and conversion time. A longer conversion shows a progress bar with × to cancel.
+
+The tool has no project fields. It keeps the shared notice row above the preview, as defined in the root `AGENTS.md`.
+Clicking a warning focuses its relevant control or the preview. Calibration starts from its warning.
+Conversion errors persist there with a retry action. File-open errors remain transient toasts.
+Before a PDF opens, during processing, and after cancellation, the row uses a neutral state.
 
 | German warning | Meaning or required check |
 |---|---|

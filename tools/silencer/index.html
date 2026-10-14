@@ -40,18 +40,16 @@
   </header>
 
   <main class="page">
-    <div id="file-banner" hidden></div>
-
-    <section class="block" aria-label="Projekt">
+    <div class="workspace-head">
       <div id="project"></div>
-    </section>
+      <div id="issue-status"></div>
+    </div>
 
     <section class="block" id="work" aria-label="Berechnung">
-      <div class="path-bar">
-        <nav class="tabs path-tabs" id="path-tabs" role="tablist" aria-label="Wege"></nav>
-        <div class="head-actions" id="path-actions"></div>
+      <div class="calculation-bar">
+        <div id="calculation-tabs"></div>
       </div>
-      <div class="work-grid">
+      <div class="work-grid" id="path-panel" role="tabpanel">
         <div class="panel levels-panel">
           <div class="path-head" id="path-head"></div>
           <div class="table-wrap">
@@ -64,10 +62,6 @@
       </div>
     </section>
 
-    <section class="block" id="issues-block" aria-labelledby="issues-title" hidden>
-      <div class="section-head"><h2 class="section-title" id="issues-title">Hinweise</h2></div>
-      <ul class="issues" id="issues"></ul>
-    </section>
   </main>
 
   <div class="drop-overlay" aria-hidden="true"><span>PDF / JSON öffnen</span></div>

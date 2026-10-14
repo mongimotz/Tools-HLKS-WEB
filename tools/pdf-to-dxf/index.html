@@ -30,6 +30,7 @@
   </header>
 
   <main class="p2d-layout">
+    <div class="p2d-issues" id="issues"></div>
     <section class="stage panel" aria-label="Vorschau">
       <div class="stage-bar" id="stage-bar"></div>
       <div class="calib-bar" id="calib-bar" hidden>
@@ -40,7 +41,7 @@
         <button type="button" class="btn primary icon-only" id="calib-ok" data-action="calib-ok" title="Übernehmen" aria-label="Übernehmen"></button>
         <button type="button" class="btn ghost icon-only" id="calib-cancel" data-action="calib-cancel" title="Abbrechen" aria-label="Abbrechen"></button>
       </div>
-      <div class="viewport" id="viewport">
+      <div class="viewport" id="viewport" tabindex="-1">
         <div class="empty" id="empty"></div>
       </div>
       <div class="statusbar" id="status" aria-live="polite"></div>

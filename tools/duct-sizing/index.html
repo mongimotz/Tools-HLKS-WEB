@@ -40,23 +40,21 @@
   </header>
 
   <main class="page">
-    <div id="file-banner" hidden></div>
-
-    <section class="block" aria-label="Projekt">
+    <div class="workspace-head">
       <div id="project"></div>
-    </section>
+      <div id="issue-panel"></div>
+    </div>
 
-    <nav class="tabs" role="tablist" aria-label="Ansicht">
-      <button class="tab" role="tab" data-tab="calc" aria-selected="true">Berechnung</button>
-      <button class="tab" role="tab" data-tab="catalogs" aria-selected="false">Kataloge</button>
-    </nav>
+    <div class="calculation-bar">
+      <div id="calculation-tabs"></div>
+      <button class="btn ghost icon-only" data-action="catalogs" title="Kataloge" aria-label="Kataloge"></button>
+    </div>
 
-    <div class="tab-panel calc-layout" data-panel="calc" id="calc-layout">
+    <div class="calc-layout" role="tabpanel" id="calc-layout">
       <section class="panel inputs" id="inputs" aria-label="Eingaben"></section>
 
       <section class="stage" aria-label="Resultat">
         <div class="panel canvas" id="drawing"></div>
-        <ul class="issues" id="notes"></ul>
         <div class="tiles" id="results"></div>
       </section>
 
@@ -69,10 +67,15 @@
       </aside>
     </div>
 
-    <div class="tab-panel" data-panel="catalogs" hidden>
-      <div id="catalogs" class="catalog-grid"></div>
-    </div>
   </main>
+
+  <dialog id="catalog-dialog" class="catalog-dialog" aria-label="Kataloge">
+    <div class="catalog-dialog-head">
+      <h2>Kataloge</h2>
+      <button class="btn ghost icon-only" data-catalog-close title="Schliessen" aria-label="Schliessen"></button>
+    </div>
+    <div id="catalogs" class="catalog-grid"></div>
+  </dialog>
 
   <div class="drop-overlay" aria-hidden="true"><span>PDF / JSON öffnen</span></div>
 </body>

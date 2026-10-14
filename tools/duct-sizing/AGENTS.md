@@ -10,6 +10,16 @@ The tool sizes or checks circular, rectangular, and flat oval ventilation ducts.
 Read it before you change calculations. Section 4 defines equivalent electrical full-load hours. Section 6 defines modes, size series, and drag increments.
 The input panel is at the left. The drawing and result are in the center. Pinned results are at the right.
 
+## Independent calculations
+
+- The project contains `calculations: [{ id, system, current, positions }]`, shared `catalogs`, and shared pressure-gradient `settings`.
+- Use the shared calculation tab strip below `.workspace-head`. The tab name comes from the current input's `Bezeichnung`, with `Berechnung N` as the fallback.
+- Add starts an independent default calculation. Duplicate copies all its inputs, operating stages, and pins. Delete keeps at least one calculation and offers undo.
+- Selection is UI state. Switching tabs must not change the saved inputs.
+- `calculationInputs(inputs, id)` provides a writable single-calculation view with references to the shared catalogues and settings. `compute()` retains its single-calculation contract.
+- `computeProject()` and `snapshotProjectOf()` cover every calculation. Recalculate all results for exports and imported snapshots.
+- The shared notice area covers every calculation. A jump selects its calculation and focuses its input, pin, or catalogue field. Do not change inputs merely to navigate to a pin.
+
 ## Inputs
 
 - `Luftmenge` contains a free description and the design flow. The description appears in pins and the PDF.
@@ -54,7 +64,9 @@ The exact drawing scale and rounding behavior are in section 6 of the method doc
 
 ## Results and warnings
 
-Messages appear above the result. A velocity warning includes the necessary size.
+Use the shared `.workspace-head` from the root `AGENTS.md`: project name left, notices right.
+A notice opens the appropriate tab and focuses the affected input or catalogue field. Imported version and result changes use the same row and can be dismissed there.
+A velocity warning includes the necessary size.
 Other messages cover aspect ratios below 1/5 and dimensions above the standard series.
 
 | Label | Meaning or display rule |
@@ -75,12 +87,14 @@ Other messages cover aspect ratios below 1/5 and dimensions above the standard s
 - A line at the left of a pin marks the current input.
 - A click on a pin loads its input. `×` removes one pin. Trash removes all pins.
 - The deletion notification includes an undo icon.
-- Pins are part of the saved file. The PDF and CSV contain every pin.
+- Pins belong to one calculation and are part of the saved file. The PDF and CSV contain every calculation and every pin.
 - If the current input is not pinned, the PDF and CSV also contain it.
+- Each calculation starts a named PDF section on a new page. The CSV includes the calculation name in its own column.
 
 ## Catalogs
 
-The `Kataloge` tab contains tables 49 and 50, circular standard sizes, flat oval standard heights, roughness, and air temperature for `R`.
+The catalogue icon beside the calculation tabs opens a modal window with tables 49 and 50, circular standard sizes, flat oval standard heights, roughness, and air temperature for `R`.
+The catalogues and pressure-gradient settings apply to every calculation in the project.
 List entries use spaces as separators. `↺` restores a catalog's standard values. Every saved file includes its catalogs.
 
 ## Symbols and keyboard controls

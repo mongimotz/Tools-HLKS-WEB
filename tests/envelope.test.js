@@ -23,6 +23,7 @@ test('reject foreign JSON and broken files', () => {
 test('compatibility: newer input version is refused, other calc version gives a note', () => {
   const env = createEnvelope(base);
   assert.throws(() => checkCompatibility({ ...env, version: 2 }, { tool: 'demo', version: 1, calcVersion: '1.0.0' }), (e) => e.code === 'version-too-new');
+  assert.throws(() => checkCompatibility(env, { tool: 'demo', version: 2, calcVersion: '1.0.0' }), (e) => e.code === 'version-too-old' && e.message.includes('1 (aktuell 2)'));
   assert.throws(() => checkCompatibility(env, { tool: 'other', version: 1, calcVersion: '1.0.0' }), (e) => e.code === 'wrong-tool');
   assert.deepEqual(checkCompatibility(env, { tool: 'demo', version: 1, calcVersion: '1.0.0' }), []);
   assert.equal(checkCompatibility({ ...env, calcVersion: '0.9.0' }, { tool: 'demo', version: 1, calcVersion: '1.0.0' }).length, 1);

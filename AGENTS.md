@@ -30,7 +30,7 @@ index.html                 start page (tools as one network per discipline H, L,
 assets/css/                tokens.css, base.css (shared), home.css
 assets/js/home.js          start page logic
 assets/fonts/              font subsets with generic names: sans/mono.woff2 (web), pdf/*.ttf (PDF), source/ (original variable TTFs + license)
-lib/core/                  shared core: envelope, pdf (export/import), files (incl. file hand-over via IndexedDB), store (undo + draft), ui (icons, toasts, theme, source link), combo (number field with standard sizes), format, registry, project-info, air (air properties, friction factor λ)
+lib/core/                  shared core: envelope, pdf (export/import), files (incl. file hand-over via IndexedDB), store (undo + draft), ui (icons, toasts, theme, source link), combo (number field with standard sizes), format, registry, project-info (project fields), issues (notice panel), air (air properties, friction factor λ)
 lib/vendor/pdf-lib/        pdf-lib 1.17.1 (MIT)
 lib/vendor/fontkit/        @pdf-lib/fontkit 1.1.1 + pako, one ES module (MIT), for Plex in PDFs
 lib/vendor/mupdf/          MuPDF.js 1.28.1 (AGPL-3.0): mupdf.js, mupdf-wasm.js, mupdf-wasm.wasm; used only by tools/pdf-to-dxf in its worker
@@ -72,6 +72,31 @@ scripts/                   serve.mjs (dev server, --base for a sub-path), make-f
 - Strg+Z / Strg+Y undo and redo. Strg+O opens a file. Strg+S saves the tool's primary export, PDF or DXF.
 - Deletion offers undo in its toast. Catalogue reset uses ↺. Hint arrows jump to the affected row.
 - On the homepage, hover or keyboard focus opens the ready branch's valve or damper and starts flow to its terminal.
+
+## Shared workspace header
+
+These rules apply to existing and new tools.
+
+- Calculation tools use one `.workspace-head` row below the app bar. Mount `mountProjectInfo()` from `lib/core/project-info.js` on the left. Mount `createIssuePanel()` from `lib/core/issues.js` on the right.
+- Keep the row 32 px high with `--issue-bar-h`. It stays visible below the app bar while the page scrolls. Keep its height when notices appear, change, or disappear.
+- Keep the project name visible and editable inline. An icon button opens `Projekt-Nr.`, `Bearbeiter`, and `Datum` in a dropdown overlay. Preserve these fields in saved files.
+- Sort notices by severity: errors, warnings, then information. Use severity colors and icons together. Show a short summary and a jump action for the affected input, row, or receiver.
+- The notice count opens the full list as an overlay. Project details and notice lists must not move the workspace. Keep technical details in one primary place, with short indicators elsewhere when necessary.
+- Keep the notice area visible without messages. Its empty state keeps a check icon on the left and `0 Hinweise` on the right, without repeating `Keine Hinweise` visibly. Preserve the accessible empty-state label. This state does not certify the calculation.
+- Keep controls keyboard accessible. Escape closes an overlay and returns focus to its trigger. Outside clicks or focus close the overlay. Retain focus when notices update or disappear.
+- PDF → DXF has no project fields. It uses the shared notice row alone above the preview. Its empty, processing, and cancelled states use neutral status messages.
+
+## Calculation tabs and catalogues
+
+- Calculation tools use `mountCalculationTabs()` from `lib/core/calculation-tabs.js` below the shared workspace header. Each tab holds one independent calculation. Schalldämpfer uses its existing paths as calculations.
+- Use the shared add, duplicate, and delete icons. Keep at least one calculation. Deletion offers undo. Arrow keys, Home, and End select tabs.
+- Keep calculation names editable in their existing name fields. Show a short key result beside each tab name. Indicate limit violations with a color and an icon.
+- Project fields and editable catalogues apply to all calculations in the project. Calculation inputs and pinned variants belong to their calculation. Duplicates must not share mutable calculation data.
+- JSON and PDF data contain every calculation. PDF reports and CSV exports include every calculation, with its name. Recalculate results from the saved inputs.
+- During beta, reject imports with older input versions before normalization. Show the saved and current versions. Do not replace an open project with reset inputs from an unsupported schema.
+- Collect notices from all calculations. Selecting a notice activates its calculation before focusing the affected field, row, or receiver.
+- Tools with catalogue editors use one small book icon beside the calculation tabs. Open the editor with `mountCatalogDialog()` from `lib/core/catalog-dialog.js`. Keep the workspace in place beneath this window.
+- PDF → DXF has no calculation tabs or editable project catalogues. Put independent settings above the preset selector and all preset-controlled options below it. While a named preset applies, visibly dim its controlled labels, values and borders using the existing tokens, without extra selection outlines. Keep them editable and show full keyboard focus. A changed option makes the preset `Benutzerdefiniert`.
 
 ## Commands
 

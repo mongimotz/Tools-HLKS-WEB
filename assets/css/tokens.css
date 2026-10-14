@@ -47,6 +47,7 @@
   --r-input: 4px; --r-button: 6px; --r-panel: 10px;
 
   --appbar-h: 52px;
+  --issue-bar-h: 32px;
   --gutter: clamp(16px, 3vw, 32px);
 
   /* ---- Dragon Ink, light ---- */

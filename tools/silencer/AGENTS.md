@@ -16,7 +16,7 @@ The right panel sizes the selected silencer from manufacturer data: insertion lo
 ## Paths, rows, and receiver
 
 - A `Weg` runs from a source to a receiver, such as `Zuluft Büro`. Its description and starting flow `V̇` appear above the list.
-- Multiple paths appear as adjacent tabs. Each tab shows the receiver's `L_pA` in red if it exceeds the target.
+- Multiple paths use the shared calculation tabs from `lib/core/calculation-tabs.js`. Each tab shows the receiver's `L_pA`, with a severity icon and color if it exceeds the target. Arrow keys, Home, and End select tabs.
 - `+` adds a path. The copy icon duplicates it. Trash deletes it.
 - Buttons below the list append rows of the types below.
 - The receiver appears below the list. Its fields are distance `r`, directivity `Q`, and room data.
@@ -85,7 +85,9 @@ Section 7 of the method document defines duplicate-gap handling, length selectio
 
 - The six-dot handle changes row order through dragging. A silencer moves together with its flow-noise row. `Esc` cancels dragging.
 - Pasting eight octave values from an Excel row into the first octave field distributes them across all octave fields.
-- Notices identify limits that a row does not meet, such as excessive flow noise. The notice arrow jumps to that row.
+- Use the shared `.workspace-head` from the root `AGENTS.md`: project name left, notices right.
+- Notices identify limits that a row does not meet, such as excessive flow noise. Selecting a notice jumps to its row or receiver, including on another path. Exact receiver target values appear at the receiver. The status overview uses a short summary.
+- File compatibility and manufacturer-data notices use the same panel. Each file notice can be dismissed; the manufacturer-data notice keeps its update action.
 - A red line at the row's left indicates an error. An orange line indicates a warning.
 - Trash deletes a row. The deletion notification includes an undo icon.
 
