@@ -16,22 +16,24 @@ Browser-basierte Tools für Gebäudetechniker.
 ## Dokumentation
 
 Agentenregeln und Werkzeugdetails: [AGENTS.md](AGENTS.md).
+
+
 Rechenwege: [Druckverlust Lüftung](docs/duct-pressure-loss-method.md) | [Kanalrechner](docs/duct-sizing-method.md) | [Schalldämpfer](docs/silencer-method.md) | [PDF → DXF](docs/pdf-to-dxf-method.md).
 
 ## Entwicklung
 
-Node.js 20 oder neuer, kein Build-Schritt und keine Installation von Abhängigkeiten.
+Node.js 20 oder neuer erforderlich. Keine Installation von Abhängigkeiten ist nötig.
 
 ```bash
 npm run serve
 npm test
 ```
 
-Die lokale Seite läuft unter [localhost:8080](http://localhost:8080/). Weitere Befehle stehen in [AGENTS.md](AGENTS.md#commands).
+Die lokale Seite läuft unter [localhost:8080](http://localhost:8080/).
 
 ## Lizenz und Fremdcode
 
-Copyright (C) 2025–2026 Fabio. HLKS-Tools steht unter [AGPL v3 oder später](LICENSE). Das Symbol `</>` auf jeder Seite führt zum Quellcode.
+Copyright (C) 2025–2026 Fabio. HLKS-Tools steht unter [AGPL v3 oder später](LICENSE).
 
 | Fremdcode                 | Lizenz                                                | Dateien               |
 | ------------------------- | ----------------------------------------------------- | --------------------- |
