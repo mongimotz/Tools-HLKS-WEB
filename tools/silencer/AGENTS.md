@@ -15,7 +15,7 @@ The right panel sizes the selected silencer from manufacturer data: insertion lo
 
 ## Paths, rows, and receiver
 
-- A `Weg` runs from a source to a receiver, such as `Zuluft Büro`. Its description and starting flow `V̇` appear above the list.
+- A `Weg` runs from a source to a receiver, such as `Zuluft Büro`. Its name is edited in its tab (fallback `Weg N`); its starting flow `V̇` appears above the list.
 - Multiple paths use the shared calculation tabs from `lib/core/calculation-tabs.js`. Each tab shows the receiver's `L_pA`, with a severity icon and color if it exceeds the target. Arrow keys, Home, and End select tabs.
 - `+` adds a path. The copy icon duplicates it. Trash deletes it.
 - Buttons below the list append rows of the types below.

@@ -11,7 +11,7 @@
   grid-template-rows: auto minmax(0, 1fr);
   gap: var(--sp-3);
   padding: var(--sp-3) var(--gutter);
-  height: calc(100dvh - var(--appbar-h) - 48px); /* the footer with the source link stays in view */
+  height: calc(100dvh - var(--appbar-h));
   min-height: 480px;
 }
 .p2d-layout:has(.layers[hidden]) { grid-template-columns: 300px minmax(0, 1fr); grid-template-areas: 'issues issues' 'settings stage'; }

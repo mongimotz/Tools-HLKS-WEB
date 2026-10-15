@@ -259,7 +259,7 @@ function renderCalculationTabs() {
   calculationTabs.render(projectInputs().calculations.map((calculation) => {
     const result = ui.projectResult.calculations.get(calculation.id);
     const severity = ['error', 'warning', 'info'].find((level) => result.issues.some((issue) => issue.severity === level));
-    return { id: calculation.id, label: calculationLabel(projectInputs(), calculation.id), value: `${fmt(result.totals.required, 0)} Pa`, severity };
+    return { id: calculation.id, name: calculation.system.name, value: `${fmt(result.totals.required, 0)} Pa`, severity };
   }), ui.activeId);
 }
 
@@ -278,7 +278,14 @@ function addCalculation() {
   ui.activeId = calculation.id;
   ui.expanded.clear();
   commitAndRender();
-  $('[data-sys="name"]')?.focus();
+  calculationTabs.rename(calculation.id);
+}
+
+function renameCalculation(id, name) {
+  const calculation = projectInputs().calculations.find((c) => c.id === id);
+  if (!calculation) return;
+  calculation.system.name = name;
+  commitAndRender();
 }
 
 function copyCalculation() {
@@ -355,10 +362,6 @@ function numInput(attrs, value, { placeholder = '', unit = '', label, wide = fal
 function renderSystem() {
   const s = inputs().system;
   $('#system').innerHTML = String(html`
-    <label class="field field-wide">
-      <span class="field-label">Anlage / Strang</span>
-      <input class="input" type="text" data-sys="name" value="${s.name}" autocomplete="off" />
-    </label>
     <label class="field field-wide">
       <span class="field-label">Strömungsrichtung</span>
       <select class="select" data-sys="direction">
@@ -1267,7 +1270,7 @@ function bindSystem() {
   root.addEventListener('input', (e) => {
     const key = e.target.dataset.sys;
     if (!key) return;
-    const isNum = !['name', 'direction'].includes(key);
+    const isNum = key !== 'direction';
     if (setFromInput(e.target, inputs().system, key, isNum)) {
       if (isNum && inputs().system[key] == null && ['altitude', 'temperature', 'humidity', 'safetyMargin'].includes(key)) {
         inputs().system[key] = key === 'temperature' ? 20 : 0;
@@ -1353,6 +1356,7 @@ async function start() {
     onAdd: addCalculation,
     onDuplicate: copyCalculation,
     onDelete: deleteCalculation,
+    onRename: renameCalculation,
   });
 
   addThemeButton();

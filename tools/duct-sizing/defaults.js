@@ -6,7 +6,7 @@
 // `current` is the position in the input panel, `positions` are the pinned ones (in the PDF and the CSV).
 
 export const TOOL_ID = 'duct-sizing';
-export const INPUT_VERSION = 2;
+export const INPUT_VERSION = 3;
 
 export const SHAPES = ['round', 'rect', 'oval'];
 
@@ -92,7 +92,7 @@ export function defaultSettings() {
 
 /** The input panel of a new calculation (values of the first version). */
 export function defaultCurrent() {
-  return { id: 'current', note: '', flow: 1000, shape: 'round', mode: 'size', ratio: 3, width: null, height: null, diameter: null };
+  return { id: 'current', flow: 1000, shape: 'round', mode: 'size', ratio: 3, width: null, height: null, diameter: null };
 }
 
 // ---- positions ------------------------------------------------------------------
@@ -119,7 +119,6 @@ export function normalizePosition(p = {}) {
   const shape = SHAPES.includes(p.shape) ? p.shape : 'round';
   return {
     id: str(p.id),
-    note: str(p.note),
     flow: num(p.flow),
     shape,
     mode: modeFor(shape, p.mode),
@@ -169,6 +168,7 @@ export function normalizeCalculation(raw = {}, id = 'c1') {
   }
   return {
     id,
+    name: str(raw.name).trim(),
     system: {
       simple: sys.simple !== false,
       hours: num(sys.hours),
@@ -201,7 +201,7 @@ export function calculationInputs(inputs, id = inputs.calculations[0]?.id) {
 }
 
 export function calculationName(calculation, index) {
-  return calculation.current.note.trim() || `Berechnung ${index + 1}`;
+  return calculation.name || `Berechnung ${index + 1}`;
 }
 
 /** Current beta schema only. Old or foreign data is safely reset, without migration. Idempotent. */
@@ -247,20 +247,24 @@ export function emptyInputs() {
   return normalizeInputs({});
 }
 
-/** The example of SIA 382/1, 5.11.5.7 and 5.11.5.8 (5'800 m³/h, 2'740 h/a): round in the panel, variants pinned. */
+/** The example of SIA 382/1, 5.11.5.7 and 5.11.5.8 (5'800 m³/h, 2'740 h/a): round in the panel, variants pinned; corridor and meeting room as own calculations. */
 export function exampleInputs() {
+  const system = { ...defaultSystem(), simple: false, hours: 2740 };
   return normalizeInputs({
-    calculations: [{
-      id: 'c1',
-      system: { ...defaultSystem(), simple: false, hours: 2740 },
-      current: { flow: 5800, shape: 'round', mode: 'size', ratio: 5, note: 'Hauptleitung' },
-      positions: [
-        { id: 'p1', note: 'Hauptleitung', flow: 5800, shape: 'round', mode: 'size', ratio: 5 },
-        { id: 'p2', note: 'Hauptleitung eckig', flow: 5800, shape: 'rect', mode: 'size', ratio: 5 },
-        { id: 'p3', note: 'Hauptleitung flachoval', flow: 5800, shape: 'oval', mode: 'size', ratio: 5 },
-        { id: 'p4', note: 'Korridor', flow: 2900, shape: 'rect', mode: 'height', ratio: 3, height: 300 },
-        { id: 'p5', note: 'Sitzungszimmer', flow: 800, shape: 'round', mode: 'check', ratio: 3, diameter: 315 },
-      ],
-    }],
+    calculations: [
+      {
+        id: 'c1',
+        name: 'Hauptleitung',
+        system,
+        current: { flow: 5800, shape: 'round', mode: 'size', ratio: 5 },
+        positions: [
+          { id: 'p1', flow: 5800, shape: 'round', mode: 'size', ratio: 5 },
+          { id: 'p2', flow: 5800, shape: 'rect', mode: 'size', ratio: 5 },
+          { id: 'p3', flow: 5800, shape: 'oval', mode: 'size', ratio: 5 },
+        ],
+      },
+      { id: 'c2', name: 'Korridor', system, current: { flow: 2900, shape: 'rect', mode: 'height', ratio: 3, height: 300 } },
+      { id: 'c3', name: 'Sitzungszimmer', system, current: { flow: 800, shape: 'round', mode: 'check', ratio: 3, diameter: 315 } },
+    ],
   });
 }

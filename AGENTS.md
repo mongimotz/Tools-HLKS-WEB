@@ -69,7 +69,7 @@ scripts/                   serve.mjs (dev server, --base for a sub-path), make-f
 - Seeded examples and `Beispiel laden` set `project.name` to exactly `Beispiel`. Preserve other editable project names.
 - Recalculate imported results from inputs. A calculation-version warning shows both versions; changed key results show the old and new values.
 - Shared controls: ↶ / ↷ undo and redo, folder opens a file, ↓ PDF exports, and ⋯ opens further actions.
-- The half-circle, sun and moon indicate `System`, `Hell` and `Dunkel`. The theme button cycles through those states.
+- The theme button switches between `Hell` (sun) and `Dunkel` (moon); its icon shows the current scheme. Without a stored choice the page follows the system setting. There is no separate `System` state (owner decision, 2026-10-15).
 - Strg+Z / Strg+Y undo and redo. Strg+O opens a file. Strg+S saves the tool's primary export, PDF or DXF.
 - Deletion offers undo in its toast. Catalogue reset uses ↺. Hint arrows jump to the affected row.
 - On the homepage, hover or keyboard focus opens the ready branch's valve or damper and starts flow to its terminal.
@@ -91,7 +91,7 @@ These rules apply to existing and new tools.
 
 - Calculation tools use `mountCalculationTabs()` from `lib/core/calculation-tabs.js` below the shared workspace header. Each tab holds one independent calculation. Schalldämpfer uses its existing paths as calculations.
 - Use the shared add, duplicate, and delete icons. Keep at least one calculation. Deletion offers undo. Arrow keys, Home, and End select tabs.
-- Keep calculation names editable in their existing name fields. Show a short key result beside each tab name. Indicate limit violations with a color and an icon.
+- Edit calculation names only in the tab itself (owner decision, 2026-10-15): a click on the active tab, a double click or F2 opens an inline field; Enter or leaving the field saves, Escape cancels. A new calculation opens this field at once. Pass `onRename` and each item's raw `name`; an empty name shows the fallback (`Berechnung N`, or the tool's `placeholder`). Tools have no separate name field below the tabs. Show a short key result beside each tab name. Indicate limit violations with a color and an icon.
 - Project fields and editable catalogues apply to all calculations in the project. Calculation inputs and pinned variants belong to their calculation. Duplicates must not share mutable calculation data.
 - JSON and PDF data contain every calculation. PDF reports and CSV exports include every calculation, with its name. Recalculate results from the saved inputs.
 - During beta, reject imports with older input versions before normalization. Show the saved and current versions. Do not replace an open project with reset inputs from an unsupported schema.
@@ -136,11 +136,11 @@ Available: shared core, PDF export/import with embedded data, start page import,
 ## License
 
 - Copyright (C) 2025–2026 Fabio. Users can use, modify and redistribute the tools under AGPL-3.0-or-later.
-- A modified version distributed or offered online must disclose its source under the same license. Keep the source footer visible.
+- A modified version distributed or offered online must disclose its source under the same license. Keep the source link visible.
 - The repo is AGPL-3.0-or-later (`LICENSE`). Every own source file (`.js`, `.mjs`, `.css`, `.html`, `.py` outside `lib/vendor/`, `assets/fonts/` and `tests/fixtures/`) starts with `// SPDX-License-Identifier: AGPL-3.0-or-later` (`/* … */` in CSS, `#` in Python, `<!-- … -->` on line 2 of HTML, after the doctype). `tests/spdx.test.js` checks it.
 - New third-party code only under an AGPL-compatible license: MIT, BSD, ISC, Zlib, Apache-2.0, BSL-1.0, LGPL-3.0, GPL-3.0, AGPL-3.0; fonts under OFL. Not allowed: GPL-2.0-only, proprietary, unclear.
 - Every vendored library lives in `lib/vendor/<name>/` with its `LICENSE` and is listed in `README.md` (section "Lizenz und Fremdcode").
-- Every page calls `mountSourceLink()` from `lib/core/ui.js`: a small footer link to the source code (AGPL section 13).
+- Every page calls `mountSourceLink()` from `lib/core/ui.js`: a code icon (`</>`) in the app bar, before the theme button, linking to the source code (AGPL section 13). There is no footer (owner decision, 2026-10-15).
 - MuPDF.js 1.28.1 is by Artifex Software, vendored unchanged from the npm package `mupdf` under AGPL-3.0-or-later.
 - MuPDF upstream: [source repository](https://cgit.ghostscript.com/mupdf.git/) and [project website](https://mupdf.com).
 

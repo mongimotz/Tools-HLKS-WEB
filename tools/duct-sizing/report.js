@@ -67,7 +67,6 @@ export async function buildReport(doc, _result, envelope) {
         ok ? fmt(r.vmax, 2) : '',
         ok ? fmt(r.utilization * 100, 0) : '',
         ok ? fmt(r.gradient, 2) : '',
-        p.note,
       ];
     });
     w.table({
@@ -87,7 +86,6 @@ export async function buildReport(doc, _result, envelope) {
         { label: 'v max', unit: 'm/s', width: 36, align: 'right' },
         { label: 'Ausnutzung', unit: '%', width: 44, align: 'right' },
         { label: 'R', unit: 'Pa/m', width: 34, align: 'right' },
-        { label: 'Bezeichnung', width: 110 },
       ],
       rows,
     });

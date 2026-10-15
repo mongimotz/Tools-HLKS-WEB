@@ -9,7 +9,7 @@ export function buildCsv(doc) {
   const { inputs } = doc;
   const n = (v, d) => (v == null || !Number.isFinite(v) ? '' : v.toFixed(d));
   const q = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
-  const head = ['Berechnung', 'Nr.', 'Bezeichnung', 'V [m3/h]', 'Form', 'Vorgabe', 'D [mm]', 'B [mm]', 'H [mm]', 'erforderlich D [mm]', 'erforderlich B [mm]', 'erforderlich H [mm]', 'Seitenverhältnis 1/n', 'A [m2]', 'dh [mm]', 'v [m/s]', 'v max rund [m/s]', 'f', 'v max [m/s]', 'Ausnutzung [%]', 'R [Pa/m]'];
+  const head = ['Berechnung', 'Nr.', 'V [m3/h]', 'Form', 'Vorgabe', 'D [mm]', 'B [mm]', 'H [mm]', 'erforderlich D [mm]', 'erforderlich B [mm]', 'erforderlich H [mm]', 'Seitenverhältnis 1/n', 'A [m2]', 'dh [mm]', 'v [m/s]', 'v max rund [m/s]', 'f', 'v max [m/s]', 'Ausnutzung [%]', 'R [Pa/m]'];
   const lines = [head.map(q).join(';')];
   inputs.calculations.forEach((calculation, index) => {
     const view = calculationInputs(inputs, calculation.id);
@@ -22,7 +22,6 @@ export function buildCsv(doc) {
         [
           q(calculationName(calculation, index)),
           String(i + 1),
-          q(p.note),
           n(p.flow, 0),
           q(SHAPE_LABELS[p.shape]),
           q(modeLabel(p.shape, p.mode)),

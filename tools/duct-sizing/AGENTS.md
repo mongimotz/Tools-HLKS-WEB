@@ -13,7 +13,7 @@ The input panel is at the left. The drawing and result are in the center. Pinned
 ## Independent calculations
 
 - The project contains `calculations: [{ id, system, current, positions }]`, shared `catalogs`, and shared pressure-gradient `settings`.
-- Use the shared calculation tab strip below `.workspace-head`. The tab name comes from the current input's `Bezeichnung`, with `Berechnung N` as the fallback.
+- Use the shared calculation tab strip below `.workspace-head`. The tab name is the calculation's own `name` (input schema 3), edited in the tab, with `Berechnung N` as the fallback. Positions and pins have no `Bezeichnung`; pins show their shape instead.
 - Add starts an independent default calculation. Duplicate copies all its inputs, operating stages, and pins. Delete keeps at least one calculation and offers undo.
 - Selection is UI state. Switching tabs must not change the saved inputs.
 - `calculationInputs(inputs, id)` provides a writable single-calculation view with references to the shared catalogues and settings. `compute()` retains its single-calculation contract.

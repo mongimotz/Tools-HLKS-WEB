@@ -53,10 +53,11 @@ const tools = [
           calculations: [{
             id: 'c1',
             system: { simple: false, hours: 4410, stages: [{ flow: 100, hours: 3000 }, { flow: 50, hours: 4000 }], exponent: 1.5, rectStep: 0 },
-            current: { note: 'Abluft Nachweis', flow: 3000, shape: 'rect', mode: 'check', width: 600, height: 250 },
+            name: 'Abluft Nachweis',
+            current: { flow: 3000, shape: 'rect', mode: 'check', width: 600, height: 250 },
             positions: [
-              { id: 'p1', note: 'Abluft Hauptleitung', flow: 12000, shape: 'rect', mode: 'size', ratio: 3 },
-              { id: 'p2', note: 'Variante flachoval', flow: 12000, shape: 'oval', mode: 'size', ratio: 4 },
+              { id: 'p1', flow: 12000, shape: 'rect', mode: 'size', ratio: 3 },
+              { id: 'p2', flow: 12000, shape: 'oval', mode: 'size', ratio: 4 },
               { id: 'p3', flow: 450, shape: 'round', mode: 'size' },
               { id: 'p4', flow: 3000, shape: 'oval', mode: 'height', height: 250 },
             ],
@@ -91,10 +92,9 @@ function pressureCalculations() {
 function sizingCalculations() {
   const inputs = sizingDefaults.exampleInputs();
   const copy = structuredClone(inputs.calculations[0]);
-  copy.id = 'c2';
+  copy.id = 'c4';
+  copy.name = 'Hauptleitung einfach';
   copy.system.simple = true;
-  copy.current.note = 'Sitzungszimmer';
-  copy.current.flow = 800;
   copy.positions = [];
   inputs.calculations.push(copy);
   return sizingDefaults.normalizeInputs(inputs);

@@ -13,7 +13,7 @@ Section 8 defines the Lindab size series and rectangular dimension proposals.
 
 - A project stores `{ calculations: [{ id, system, sections }], catalogs, settings }` (input version 4). Each calculation has an independent system and network; section ids may repeat between calculations. Sections have no authoritative `parent` field: connections are derived from `nr` in `network.js`.
 - `calculationInputs(projectInputs, id)` exposes live references for the unchanged single-network `compute()` API. `computeProject()` and `snapshotProjectOf()` cover all calculations.
-- The shared calculation tabs sit below the project header and above the pressure summary. Labels use `system.name`, falling back to `Berechnung N`; the active calculation id stays in UI state only.
+- The shared calculation tabs sit below the project header and above the pressure summary. Labels use `system.name`, falling back to `Berechnung N`, and are edited in the tab (no `Anlage / Strang` field); the active calculation id stays in UI state only.
 - `+` adds an empty calculation. Copy duplicates the whole network independently and adds `Kopie` to its name. Trash removes the active calculation with undo; the last calculation remains.
 - The system inputs are flow direction, elevation, air temperature, humidity, available fan pressure, and the safety allowance.
 - Users enter sections away from the fan. Positive integer numbers form the main run in ascending order; the first starts at the fan. Gaps are allowed: deleting main section `2` connects `3` to `1`.
@@ -82,7 +82,7 @@ The section controls have these meanings:
 | Folder | Open |
 | `↓ PDF` | Save PDF |
 | `⋯` | More actions |
-| Half-circle, sun, moon | System, light, dark theme |
+| Sun, moon | Light or dark theme (system setting until chosen) |
 | Branch | Add a section attached to this row |
 | Trash | Delete a section. The notification includes an undo icon. |
 | `↺` | Restore a catalog's standard values |

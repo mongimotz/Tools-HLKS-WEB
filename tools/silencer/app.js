@@ -345,7 +345,8 @@ function renderTabs() {
     const rc = ui.result.paths.find((result) => result.id === p.id)?.receiver;
     return {
       id: p.id,
-      label: pathLabel(p, i),
+      name: p.name,
+      placeholder: pathLabel({}, i),
       value: Number.isFinite(rc?.lpa) ? db(rc.lpa) : '–',
       severity: rc?.status === 'over' ? 'error' : undefined,
     };
@@ -359,7 +360,6 @@ function fillTabs() {
 function renderPathHead() {
   const p = path();
   $('#path-head').innerHTML = String(html`
-    ${field('Weg', raw(`<input class="cell-input w-name" type="text" autocomplete="off" data-pf="name" value="${String(html`${p.name}`)}" placeholder="${String(html`${pathLabel(p, inputs().paths.indexOf(p))}`)}" />`))}
     ${field('V̇', numField('data-pf', 'flow', p.flow, { placeholder: '–' }), 'm³/h')}`);
 }
 
@@ -816,16 +816,10 @@ function bindWork() {
         changed = true;
       }
     } else if (t.dataset.pf) {
-      const p = path();
-      if (t.dataset.pf === 'name') {
-        p.name = t.value;
+      const v = readNumber(t);
+      if (v !== undefined) {
+        path().flow = v;
         changed = true;
-      } else {
-        const v = readNumber(t);
-        if (v !== undefined) {
-          p.flow = v;
-          changed = true;
-        }
       }
     } else if (t.dataset.rf) {
       const rc = path().receiver;
@@ -1041,7 +1035,14 @@ function addPath() {
   ui.pathId = p.id;
   ui.selectedId = null;
   commitAndRender();
-  $('[data-pf="name"]')?.focus();
+  calculationTabs.rename(p.id);
+}
+
+function renamePath(id, name) {
+  const p = inputs().paths.find((candidate) => candidate.id === id);
+  if (!p) return;
+  p.name = name;
+  commitAndRender();
 }
 
 function duplicateCurrentPath() {
@@ -1160,6 +1161,7 @@ async function start() {
     onAdd: addPath,
     onDuplicate: duplicateCurrentPath,
     onDelete: deleteCurrentPath,
+    onRename: renamePath,
   });
   projectView = mountProjectInfo($('#project'), {
     getProject: () => doc().project,

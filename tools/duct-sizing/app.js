@@ -244,7 +244,7 @@ function renderCalculationTabs() {
     const r = ui.projectResult.calculations.get(c.id);
     const issues = [...r.issues, ...r.current.issues, ...[...r.positions.values()].flatMap((p) => p.issues)];
     const severity = ['error', 'warning', 'info'].find((level) => issues.some((i) => i.severity === level));
-    return { id: c.id, label: calculationName(c, index), value: r.current.status === 'ok' ? `${fmt(r.current.utilization * 100, 0)} %` : '', severity };
+    return { id: c.id, name: c.name, value: r.current.status === 'ok' ? `${fmt(r.current.utilization * 100, 0)} %` : '', severity };
   }), activeCalculation().id);
 }
 
@@ -260,11 +260,18 @@ function addCalculation(duplicate = false) {
   const list = projectInputs().calculations;
   const id = nextCalculationId(list);
   const c = duplicate ? { ...structuredClone(activeCalculation()), id } : newCalculation(id);
-  if (duplicate) c.current.note = `${calculationName(activeCalculation(), list.indexOf(activeCalculation()))} Kopie`;
+  if (duplicate) c.name = `${calculationName(activeCalculation(), list.indexOf(activeCalculation()))} Kopie`;
   list.push(c);
   ui.activeCalculationId = id;
   commitAndRender();
-  $('[data-cur="note"]')?.focus();
+  calculationTabs.rename(id);
+}
+
+function renameCalculation(id, name) {
+  const c = projectInputs().calculations.find((calculation) => calculation.id === id);
+  if (!c) return;
+  c.name = name;
+  commitAndRender();
 }
 
 function deleteCalculation() {
@@ -446,8 +453,6 @@ function renderInputs() {
   $('#inputs').innerHTML = String(html`
     <fieldset>
       <legend>Luftmenge</legend>
-      <label class="field"><span class="field-label">Bezeichnung</span>
-        <input class="input" type="text" data-cur="note" value="${p.note}" autocomplete="off" /></label>
       ${numField('Volumenstrom', 'm³/h', 'data-cur="flow"', p.flow)}
       <input class="range" type="range" min="0" max="${FLOW_RANGE.steps}" step="1" value="${flowToPos(p.flow)}" data-flow-range aria-label="Volumenstrom" />
     </fieldset>
@@ -635,7 +640,7 @@ function renderPins() {
     return html`<li data-pin="${p.id}" tabindex="0" class="${samePosition(p, cur) ? 'is-current' : ''}">
       <span class="pin-nr">${i + 1}</span><b>${size} mm</b><br />
       <span class="${over ? 'over' : ''}">${ok ? fmt(r.velocity, 2) : '–'} m/s${over ? ' ↑' : ''}</span> | ${fmt(p.flow, 0)} m³/h
-      <span class="pin-note">${p.note || SHAPE_LABELS[p.shape]}</span>
+      <span class="pin-note">${SHAPE_LABELS[p.shape]}</span>
       <button class="icon-btn rm" data-act="pin-del" title="Entfernen" aria-label="Pin entfernen">${icon('close', { size: 13 })}</button>
     </li>`;
   })}`);
@@ -1103,6 +1108,7 @@ async function start() {
     onAdd: () => addCalculation(),
     onDuplicate: () => addCalculation(true),
     onDelete: deleteCalculation,
+    onRename: renameCalculation,
   });
 
   addThemeButton();

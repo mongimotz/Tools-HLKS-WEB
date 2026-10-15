@@ -63,7 +63,7 @@ Tools without a discipline (registry group `general`) sit below the networks as 
 - Status (`--success`, `--warning`, `--danger`) always with an icon or a word. Toasts use `--surface-inverse` with the `--inverse-*` status colours.
 - Charts take `--chart-1`, `--chart-2`, `--chart-3` … in this order, never skipping a slot.
 - PDF reports use the light column only: `loadInk()` in `lib/core/pdf.js` reads it from `tokens.css`, so there is no second copy.
-- Dark mode follows the OS; the theme button (System → Hell → Dunkel, icon shows the state) overrides it.
+- Dark mode follows the OS until the user picks a scheme; the theme button switches Hell ↔ Dunkel (sun / moon, icon shows the current scheme). No separate `System` state.
 
 ## Type
 
@@ -85,8 +85,8 @@ Only IBM Plex Sans and IBM Plex Mono (SIL OFL). Sources: `assets/fonts/source/` 
 ## Layout and components
 
 - 4 px spacing grid (`--sp-1` … `--sp-8`). Radius: inputs 4, buttons 6, panels 10.
-- App bar on every tool page: brand (back to start), tool name, icon actions; the primary action is "PDF" ("DXF" in PDF → DXF, which saves nothing else).
-- Footer on every page: one muted code icon (`</>`) linking to the source code (`mountSourceLink()`, AGPL). Nothing else in the footer.
+- App bar on every tool page: brand (back to start), tool name, icon actions; the primary action is "PDF" ("DXF" in PDF → DXF, which saves nothing else). Below 640 px the tool name hides, below 480 px the wordmark (the mark stays).
+- No footer. The source link (`</>`, `mountSourceLink()`, AGPL) is a ghost icon button in the app bar, before the theme button.
 - Calculation tools use the shared `.workspace-head`: project name on the left, notices on the right. The row stays below the app bar.
 - Keep this row 32 px high through `--issue-bar-h`, including the empty notice state. Do not add separate project or notice blocks.
 - The project name stays visible and editable inline. An icon button opens the remaining fields in a dropdown overlay: Projekt-Nr., Bearbeiter, Datum.

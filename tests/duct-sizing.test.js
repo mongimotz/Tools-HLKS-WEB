@@ -198,7 +198,7 @@ test('independent calculations isolate operating data and pins while catalogues 
   const before = computeProject(inputs);
   first.catalogs.velocityLimits.forEach((r) => { r.v2000 = 1; r.v4000 = 1; r.v8000 = 1; });
   const after = computeProject(inputs);
-  for (const c of inputs.calculations) assert.ok(after.calculations.get(c.id).current.diameter > before.calculations.get(c.id).current.diameter);
+  for (const id of ['c1', duplicate.id]) assert.ok(after.calculations.get(id).current.diameter > before.calculations.get(id).current.diameter);
 });
 
 test('collection normalisation repairs duplicate ids and safely handles foreign and old inputs', () => {
@@ -215,15 +215,16 @@ test('collection normalisation repairs duplicate ids and safely handles foreign 
 
 test('calculation deletion and edits are restored by the document history', () => {
   const inputs = exampleInputs();
+  inputs.calculations.splice(1);
   inputs.calculations.push(newCalculation('c2'));
   const store = new DocumentStore({ inputs });
-  inputs.calculations[1].current.note = 'Abluft';
+  inputs.calculations[1].name = 'Abluft';
   store.commit();
   inputs.calculations.splice(1, 1);
   store.commit();
   assert.equal(store.doc.inputs.calculations.length, 1);
   assert.equal(store.undo(), true);
-  assert.equal(store.doc.inputs.calculations[1].current.note, 'Abluft');
+  assert.equal(store.doc.inputs.calculations[1].name, 'Abluft');
   assert.equal(store.redo(), true);
   assert.equal(store.doc.inputs.calculations.length, 1);
 });
@@ -281,9 +282,9 @@ test('PDF round trip keeps project and inputs identical', async () => {
   const inputs = exampleInputs();
   const view = calculationInputs(inputs);
   view.system.hours = 3480; // from the stages
-  view.current.note = 'Sonderzeichen: Ø × ≤ ² ³ ° “Zitat” <tag> & ;';
-  const second = newCalculation('c2');
-  second.current.note = 'Abluft Sitzung';
+  inputs.calculations[0].name = 'Sonderzeichen: Ø × ≤ ² ³ ° “Zitat” <tag> & ;';
+  const second = newCalculation('c4');
+  second.name = 'Abluft Sitzung';
   second.current.flow = 9000;
   second.system.simple = false;
   second.system.hours = 8000;
@@ -299,14 +300,15 @@ test('PDF round trip keeps project and inputs identical', async () => {
 test('CSV export has one line per printed position plus header', () => {
   const inputs = exampleInputs();
   const csv = buildCsv({ project, inputs });
-  assert.equal(csv.trim().split('\r\n').length, printedPositions(calculationInputs(inputs)).length + 1);
+  const positions = inputs.calculations.reduce((n, c) => n + printedPositions(calculationInputs(inputs, c.id)).length, 0);
+  assert.equal(csv.trim().split('\r\n').length, positions + 1);
   assert.ok(csv.startsWith('﻿'));
 });
 
 test('all calculations are named in CSV and saved in separate PDF sections', async () => {
   const inputs = normalizeInputs({ calculations: [
-    { id: 'c1', current: { note: 'Zuluft', flow: 1000 } },
-    { id: 'c2', current: { note: 'Abluft', flow: 9000 } },
+    { id: 'c1', name: 'Zuluft', current: { flow: 1000 } },
+    { id: 'c2', name: 'Abluft', current: { flow: 9000 } },
   ] });
   const csv = buildCsv({ project, inputs });
   const lines = csv.trim().split('\r\n');
@@ -316,7 +318,7 @@ test('all calculations are named in CSV and saved in separate PDF sections', asy
   assert.ok(lines[2].startsWith('"Abluft";'));
   assert.ok(lines[1].includes(';1000;'));
   assert.ok(lines[2].includes(';9000;'));
-  const staleInputs = normalizeInputs({ calculations: [{ id: 'c1', current: { note: 'Alt', flow: 500 } }] });
+  const staleInputs = normalizeInputs({ calculations: [{ id: 'c1', name: 'Alt', current: { flow: 500 } }] });
   const staleResult = computeProject(staleInputs);
   const staleEnvelope = createEnvelope({
     tool: TOOL_ID,
