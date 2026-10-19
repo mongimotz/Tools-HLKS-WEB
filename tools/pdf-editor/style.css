@@ -1,0 +1,13 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* PDF-Editor: the viewer fills the page below the app bar. */
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+#viewer {
+  display: block;
+  height: 100vh;
+}

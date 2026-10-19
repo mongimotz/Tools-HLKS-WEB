@@ -6,6 +6,13 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["scripts/serve.mjs", "8080"],
       "port": 8080
+    },
+    {
+      "name": "hlks-tools-subpath",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/serve.mjs", "8083", "--base", "Tools-HLKS-WEB"],
+      "port": 8083,
+      "url": "http://localhost:8083"
     }
   ]
 }
