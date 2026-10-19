@@ -106,6 +106,12 @@ class ViewerBridge {
     this.plugin('stage')?.goToPage(index);
   }
 
+  /** Close a side panel unless it is docked beside the pages (an overlay or a sheet covers them). */
+  closePanelIfFloating(id) {
+    const panel = this.el.shadowRoot?.querySelector(`[data-epdf-panel="${id}"]`);
+    if (panel && panel.dataset.present !== 'dock') this.plugin('shell')?.close(id);
+  }
+
   execute(id, args) {
     return this.viewer.commands.execute(id, args === undefined ? undefined : { args });
   }

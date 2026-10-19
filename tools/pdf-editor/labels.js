@@ -59,6 +59,41 @@ export const VIEWER_STRINGS = {
   },
 };
 
+/** Names of the annotation colours (--annot-1 … 9), for titles and screen readers. */
+export const COLOR_NAMES = ['Rot', 'Blau', 'Grün', 'Gelb', 'Schwarz', 'Orange', 'Magenta', 'Cyan', 'Weiss'];
+export const ROLE_LABELS = { markup: 'Markierung', measure: 'Messung', highlight: 'Hervorhebung', text: 'Text' };
+export const FRAME_LABELS = { rect: 'Rechteck', round: 'Rund', none: 'Ohne Rahmen' };
+export const DATE_LABELS = { 'dd.mm.yyyy': 'TT.MM.JJJJ', 'yyyy-mm-dd': 'JJJJ-MM-TT' };
+
+export const SETTINGS = {
+  title: 'Einstellungen',
+  name: 'Name für Stempel',
+  dateFormat: 'Datum',
+  colors: 'Standardfarben',
+  scales: 'Massstäbe',
+  ownStamps: 'Eigene Stempel',
+  stampText: 'Stempeltext',
+  frame: 'Rahmen',
+  addStamp: 'Stempel hinzufügen',
+  deleteStamp: 'Stempel löschen',
+};
+
+export const SYMBOLS = {
+  own: 'Eigene',
+  add: 'SVG hinzufügen',
+  open: 'Symbol-Bibliothek öffnen',
+  save: 'Eigene Symbole speichern',
+  delete: 'Symbol löschen',
+  fileName: 'Eigene-Symbole.pdf',
+  added: (n) => (n === 1 ? '1 Symbol hinzugefügt' : `${n} Symbole hinzugefügt`),
+  failed: (names) => `SVG nicht lesbar: ${names}`,
+  deleted: (label) => `${label} gelöscht`,
+  saveFailed: 'Symbole nicht gespeichert',
+  openFailed: 'Keine Symbol-Bibliothek',
+  installFailed: 'Symbole nicht geladen',
+  stampsFailed: 'Stempel nicht geladen',
+};
+
 /** Labels of own annotation tools (the viewer takes them as plain text). */
 export const TOOL_LABELS = {
   cloud: 'Revisionswolke',

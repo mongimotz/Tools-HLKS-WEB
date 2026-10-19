@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "stamps": [
+    { "id": "geprueft", "label": "Geprüft", "file": "geprueft.svg", "color": 3 },
+    { "id": "freigegeben", "label": "Freigegeben", "file": "freigegeben.svg", "color": 3 },
+    { "id": "entwurf", "label": "Entwurf", "file": "entwurf.svg", "color": 6 },
+    { "id": "ungueltig", "label": "Ungültig", "file": "ungueltig.svg", "color": 1 },
+    { "id": "zur-kenntnis", "label": "Zur Kenntnis", "file": "zur-kenntnis.svg", "color": 2 }
+  ]
+}

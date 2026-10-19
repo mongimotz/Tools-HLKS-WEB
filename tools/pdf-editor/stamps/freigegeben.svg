@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="56mm" height="16mm" viewBox="0 0 224 64">
+<rect x="2" y="2" width="220" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="3"/>
+<text x="112" y="30" font-size="24" font-weight="600" text-anchor="middle" fill="currentColor">Freigegeben</text>
+<text x="112" y="52" font-size="13" text-anchor="middle" fill="currentColor">{name} | {datum}</text>
+</svg>

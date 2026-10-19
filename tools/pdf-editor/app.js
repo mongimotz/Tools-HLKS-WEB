@@ -7,8 +7,12 @@ import { ACTIONS, DEFAULT_NAME, ERRORS, STATUS, TITLE, VIEWER_STRINGS, pageDelet
 import { SWISS_DE } from './viewer-strings.js';
 import { VIEWER_ICONS, currentScheme, defaultMeasure, followScheme, readAnnotColors, scalePresets, toolDefinitions, viewerFonts } from './theme.js';
 import { mountViewer } from './bridge.js';
+import { WorkerClient } from './client.js';
+import { installSymbols, installStamps } from './library.js';
+import { mountSymbolPanel, openSettingsDialog } from './tools-ui.js';
+import { SYMBOLS } from './labels.js';
 import { pickFile, download, enableFileDrop, takeFileHandoff, stashFileHandoff } from '../../lib/core/files.js';
-import { html, icon, toast, bindThemeToggle, mountSourceLink } from '../../lib/core/ui.js';
+import { html, raw, icon, toast, bindThemeToggle, mountSourceLink } from '../../lib/core/ui.js';
 import { createIssuePanel } from '../../lib/core/issues.js';
 import { toolUrl } from '../../lib/core/registry.js';
 
@@ -18,6 +22,9 @@ const isPdf = (b) => b.length > 4 && b[0] === 0x25 && b[1] === 0x50 && b[2] === 
 
 const app = {
   bridge: null,
+  worker: new WorkerClient(),
+  symbols: null, // Symbole panel
+  colors: [], // --annot-1 … 9
   settings: null,
   issues: null,
   notices: new Map(),
@@ -104,6 +111,8 @@ function editLayout(layout) {
   for (const bar of ['annotate', 'shapes', 'insert', 'form', 'redact']) l = l.remove(['history:undo', 'history:redo'], { from: bar });
   l = l.add('tool:cloud', { to: 'shapes', group: 'polygons' });
   l = l.add('tool:whiteout', { to: 'redact', group: 'redact', before: 'tool:redact' });
+  l = l.addPanel('symbols', { side: 'end', titleKey: 'hlks.symbols', icon: 'symbols' });
+  l = l.add('panel:symbols', { to: 'insert', group: 'stamps', after: 'tool:stamp' });
   return l.addBar('pages', {
     place: { with: 'main' },
     mode: 'pages',
@@ -118,7 +127,7 @@ function editLayout(layout) {
 }
 
 function viewerConfig() {
-  const colors = readAnnotColors();
+  const colors = (app.colors = readAnnotColors());
   globalThis.HLKS_ANNOT_SWATCHES = colors; // the vendored style panel reads it (lib/vendor/embedpdf/PATCHES.md)
   return {
     locale: 'de',
@@ -136,8 +145,58 @@ function viewerConfig() {
     plugins: {
       annotation: { tools: toolDefinitions(colors, app.settings.colors) },
       measurement: { presets: scalePresets(app.settings.scales), defaultScale: defaultMeasure() },
+      // own stamps (stamps/ and the settings) instead of the viewer's standard set; signatures without
+      // handwriting fonts (only IBM Plex is allowed), so they are drawn or uploaded
+      stamp: { standard: false },
+      signature: { fonts: [] },
     },
   };
+}
+
+/** Settings that the running viewer takes without a new mount: tool colours and plan scales. */
+function applySettings() {
+  const tools = app.bridge?.plugin('annotation')?.tools;
+  for (const def of tools ? toolDefinitions(app.colors, app.settings.colors) : []) {
+    try {
+      tools.register(def);
+    } catch {
+      /* a tool the viewer refuses keeps its previous defaults */
+    }
+  }
+  try {
+    app.bridge?.plugin('measurement')?.updateSettings({ presets: scalePresets(app.settings.scales) });
+  } catch {
+    /* no document open: the presets apply with the next one (viewerConfig) */
+  }
+}
+
+/** Symbol libraries once, the stamp library for the current settings and date; then the Symbole panel. */
+async function installLibraries({ symbols = true } = {}) {
+  const stamp = app.bridge?.plugin('stamp');
+  if (!stamp) return;
+  if (symbols) {
+    try {
+      await installSymbols(stamp);
+      setNotice('symbols', null);
+    } catch {
+      setNotice('symbols', { severity: 'warning', text: SYMBOLS.installFailed });
+    }
+  }
+  try {
+    await installStamps(stamp, app.worker, app.settings, app.colors);
+    setNotice('stamps', null);
+  } catch {
+    setNotice('stamps', { severity: 'warning', text: SYMBOLS.stampsFailed });
+  }
+  app.symbols?.render();
+}
+
+function openSettings() {
+  openSettingsDialog(app.settings, app.colors, (next) => {
+    saveSettings(next);
+    applySettings();
+    installLibraries({ symbols: false });
+  });
 }
 
 // ============================================================================
@@ -150,6 +209,10 @@ async function openPicked() {
 
 async function openFile(file) {
   if (!file || !app.bridge) return;
+  if (/\.svg$/i.test(file.name) || file.type === 'image/svg+xml') {
+    app.symbols?.addFiles([file]); // an SVG dropped anywhere becomes an own symbol
+    return;
+  }
   let bytes;
   try {
     bytes = new Uint8Array(await file.arrayBuffer());
@@ -236,10 +299,31 @@ function updateUi() {
   $('[data-action="to-dxf"]').disabled = !has;
   $('[data-action="undo"]').disabled = !has || !app.bridge.enabled('history:undo');
   $('[data-action="redo"]').disabled = !has || !app.bridge.enabled('history:redo');
+  app.symbols?.setEnabled(has);
   renderNotices();
 }
 
 const isEditable = (el) => !!el && (el.isContentEditable || /^(input|textarea|select)$/i.test(el.tagName ?? ''));
+
+/** The ⋯ menu: the document tools (stage 4) and the settings. `doc` entries need an open document. */
+const MENU = [{ action: 'settings', icon: 'settings', label: 'Einstellungen', run: () => openSettings() }];
+
+function renderMenu() {
+  const has = !!app.bridge?.hasDocument();
+  $('#more-list').innerHTML = String(
+    html`${MENU.map((m) =>
+      m.separator
+        ? html`<li><hr /></li>`
+        : html`<li><button type="button" role="menuitem" data-menu="${m.action}" ${m.doc && !has ? raw('disabled') : ''}>${icon(m.icon)}<span>${m.label}</span></button></li>`,
+    )}`,
+  );
+  $('#more-menu').hidden = false;
+}
+
+function closeMenu() {
+  $('#more-menu').classList.remove('open');
+  $('[data-action="menu"]').setAttribute('aria-expanded', 'false');
+}
 
 function bindActions() {
   const setIcon = (sel, name, text) => {
@@ -255,14 +339,38 @@ function bindActions() {
   $('[data-action="to-dxf"]').setAttribute('aria-label', ACTIONS.toDxf);
 
   document.addEventListener('click', (e) => {
+    const item = e.target.closest('[data-menu]');
+    if (item && !item.disabled) {
+      closeMenu();
+      MENU.find((m) => m.action === item.dataset.menu)?.run();
+      return;
+    }
     const a = e.target.closest('[data-action]');
-    if (!a || a.disabled) return;
+    if (!a) {
+      if (!e.target.closest('#more-menu')) closeMenu();
+      return;
+    }
+    if (a.disabled) return;
+    if (a.dataset.action !== 'menu') closeMenu();
     switch (a.dataset.action) {
+      case 'menu': {
+        renderMenu();
+        const open = $('#more-menu').classList.toggle('open');
+        a.setAttribute('aria-expanded', String(open));
+        if (open) $('#more-list button:not([disabled])')?.focus();
+        break;
+      }
       case 'undo': undo(); break;
       case 'redo': redo(); break;
       case 'open': openPicked(); break;
       case 'save': save(); break;
       case 'to-dxf': toDxf(); break;
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && $('#more-menu').classList.contains('open')) {
+      closeMenu();
+      $('[data-action="menu"]').focus();
     }
   });
   // Capture on window: the app's shortcuts win over the viewer's, so each runs once. While a text field is
@@ -305,6 +413,7 @@ async function start() {
   addThemeButton();
   mountSourceLink();
   bindActions();
+  renderMenu();
   renderNotices();
   const el = $('#viewer');
   try {
@@ -314,14 +423,23 @@ async function start() {
     return;
   }
   followScheme((scheme) => (el.theme = scheme));
+  app.symbols = mountSymbolPanel($('#symbols-panel'), {
+    getStamp: () => app.bridge.plugin('stamp'),
+    worker: app.worker,
+    hasDocument: () => app.bridge.hasDocument(),
+    onArmed: () => app.bridge.closePanelIfFloating('symbols'),
+  });
   app.bridge.onChange(() => {
     app.dirty = true;
     updateUi();
   });
   app.bridge.onDocument((type) => {
     if (type === 'failed') setNotice('open-failed', { severity: 'error', text: ERRORS.damaged, dismiss: () => setNotice('open-failed', null) });
+    if (type === 'opened') applySettings();
+    if (type === 'opened' || type === 'closed') app.symbols.render();
     updateUi();
   });
+  installLibraries();
   app.bridge.viewer.watch(
     () => `${app.bridge.enabled('history:undo')}|${app.bridge.enabled('history:redo')}`,
     () => updateUi(),

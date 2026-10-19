@@ -1,0 +1,36 @@
+{
+  "libraries": [
+    {
+      "id": "lueftung",
+      "libraryId": "hlks-symbole-lueftung",
+      "title": "Symbole Lüftung",
+      "file": "lueftung.pdf",
+      "source": "975328d6452973b5",
+      "count": 11
+    },
+    {
+      "id": "heizung",
+      "libraryId": "hlks-symbole-heizung",
+      "title": "Symbole Heizung",
+      "file": "heizung.pdf",
+      "source": "5420b64cc4141c37",
+      "count": 7
+    },
+    {
+      "id": "sanitaer",
+      "libraryId": "hlks-symbole-sanitaer",
+      "title": "Symbole Sanitär",
+      "file": "sanitaer.pdf",
+      "source": "b42a7ca926938b9c",
+      "count": 4
+    },
+    {
+      "id": "allgemein",
+      "libraryId": "hlks-symbole-allgemein",
+      "title": "Symbole Allgemein",
+      "file": "allgemein.pdf",
+      "source": "05836a11375d8a0a",
+      "count": 3
+    }
+  ]
+}

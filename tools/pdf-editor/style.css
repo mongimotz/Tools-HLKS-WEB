@@ -42,10 +42,41 @@
   .pe-viewer { border-width: 1px 0 0; border-radius: 0; }
 }
 
-/* own dialogs (document tools, settings): the shared catalogue window look */
+/* ---- Symbole panel (light DOM projected into the viewer's panel) ---------------------------- */
+
+.pe-symbols { display: grid; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3) var(--sp-4); font-family: var(--font-sans); color: var(--text); }
+.pe-symbols.is-over { outline: 2px dashed var(--primary); outline-offset: -4px; }
+.pe-symbols-bar { display: flex; gap: var(--sp-1); }
+.pe-symbol-group h3 { margin: 0 0 var(--sp-1); font-size: var(--fs-xs); font-weight: 500; color: var(--text-muted); }
+.pe-symbol-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: var(--sp-1); margin: 0; padding: 0; list-style: none; }
+.pe-symbol { position: relative; }
+.pe-symbol > button[data-arm] { display: grid; place-items: center; width: 100%; aspect-ratio: 1; padding: 6px; border: 1px solid var(--border); border-radius: var(--r-input); background: var(--annot-9); cursor: pointer; }
+.pe-symbol > button[data-arm]:hover:not(:disabled) { border-color: var(--primary); }
+.pe-symbol > button[data-arm]:disabled { opacity: 0.45; cursor: default; }
+.pe-symbol img { max-width: 100%; max-height: 100%; }
+.pe-symbol-del { position: absolute; top: 2px; right: 2px; display: none; place-items: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: var(--r-input); background: var(--surface); color: var(--text-muted); cursor: pointer; }
+.pe-symbol:hover .pe-symbol-del, .pe-symbol-del:focus-visible { display: grid; }
+.pe-symbol-del:hover { color: var(--danger); }
+.pe-symbol-empty { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); height: 56px; border: 1px dashed var(--border-strong); border-radius: var(--r-input); color: var(--text-muted); font-size: var(--fs-xs); }
+
+/* ---- own dialogs (settings, document tools): the shared catalogue window look ------------------ */
+
 .pe-dialog { width: min(520px, calc(100vw - 2 * var(--gutter))); }
+.pe-dialog.is-wide { width: min(680px, calc(100vw - 2 * var(--gutter))); }
 .pe-dialog .dialog-body { display: grid; gap: var(--sp-4); }
-.pe-dialog .dialog-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--sp-3); }
-.pe-dialog .dialog-actions { display: flex; justify-content: flex-end; gap: var(--sp-2); }
+.pe-dialog .dialog-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--sp-3); }
+.pe-dialog .dialog-actions { display: flex; justify-content: flex-end; gap: var(--sp-2); margin-top: var(--sp-4); }
 .pe-dialog .check { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); }
+.pe-fieldset { display: grid; gap: var(--sp-2); margin: 0; padding: 0; border: 0; min-width: 0; }
+.pe-color-row { display: grid; grid-template-columns: 110px minmax(0, 1fr); align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); }
+.pe-swatches { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+.pe-swatch { position: relative; display: grid; place-items: center; width: 22px; height: 22px; cursor: pointer; }
+.pe-swatch input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.pe-swatch span { width: 16px; height: 16px; border-radius: 50%; background: var(--sw); box-shadow: 0 0 0 1px var(--border-strong); }
+.pe-swatch input:checked + span { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary); }
+.pe-swatch input:focus-visible + span { outline: 2px solid var(--primary); outline-offset: 3px; }
+.pe-stamp-list { display: grid; gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+.pe-stamp-row { display: grid; grid-template-columns: minmax(120px, 1fr) auto 120px auto; align-items: center; gap: var(--sp-2); }
+@media (max-width: 640px) { .pe-stamp-row { grid-template-columns: minmax(0, 1fr) auto; } }
 .menu-list .icon { color: var(--text-muted); }
+.menu-list button:disabled { opacity: 0.45; cursor: default; }

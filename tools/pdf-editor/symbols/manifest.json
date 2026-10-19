@@ -1,0 +1,181 @@
+{
+  "version": 1,
+  "size": "12 mm",
+  "symbols": [
+    {
+      "id": "ventilator",
+      "name": "Ventilator",
+      "category": "Lüftung",
+      "file": "ventilator.svg",
+      "norm": "SN EN 12792, DIN 1946-1"
+    },
+    {
+      "id": "klappe",
+      "name": "Klappe",
+      "category": "Lüftung",
+      "file": "klappe.svg",
+      "norm": "SN EN 12792, DIN 1946-1"
+    },
+    {
+      "id": "brandschutzklappe",
+      "name": "Brandschutzklappe",
+      "category": "Lüftung",
+      "file": "brandschutzklappe.svg",
+      "norm": "SN EN 12792, DIN 1946-1"
+    },
+    {
+      "id": "volumenstromregler",
+      "name": "Volumenstromregler",
+      "category": "Lüftung",
+      "file": "volumenstromregler.svg",
+      "norm": "SN EN 12792, DIN 1946-1"
+    },
+    {
+      "id": "filter",
+      "name": "Filter",
+      "category": "Lüftung",
+      "file": "filter.svg",
+      "norm": "SN EN 12792, DIN 1946-1"
+    },
+    {
+      "id": "waermerueckgewinnung",
+      "name": "Wärmerückgewinnung",
+      "category": "Lüftung",
+      "file": "waermerueckgewinnung.svg",
+      "norm": "SN EN 12792, DIN 1946-1"
+    },
+    {
+      "id": "schalldaempfer",
+      "name": "Schalldämpfer",
+      "category": "Lüftung",
+      "file": "schalldaempfer.svg",
+      "norm": "SN EN 12792, DIN 1946-1"
+    },
+    {
+      "id": "zuluftauslass",
+      "name": "Zuluftauslass",
+      "category": "Lüftung",
+      "file": "zuluftauslass.svg",
+      "norm": "SN EN 12792, DIN 1946-1"
+    },
+    {
+      "id": "abluftauslass",
+      "name": "Abluftauslass",
+      "category": "Lüftung",
+      "file": "abluftauslass.svg",
+      "norm": "SN EN 12792, DIN 1946-1"
+    },
+    {
+      "id": "lufterhitzer",
+      "name": "Lufterhitzer",
+      "category": "Lüftung",
+      "file": "lufterhitzer.svg",
+      "norm": "SN EN 12792, DIN 1946-1"
+    },
+    {
+      "id": "luftkuehler",
+      "name": "Luftkühler",
+      "category": "Lüftung",
+      "file": "luftkuehler.svg",
+      "norm": "SN EN 12792, DIN 1946-1"
+    },
+    {
+      "id": "pumpe",
+      "name": "Pumpe",
+      "category": "Heizung",
+      "file": "pumpe.svg",
+      "norm": "SIA 410, DIN 2481"
+    },
+    {
+      "id": "absperrventil-heizung",
+      "name": "Absperrventil",
+      "category": "Heizung",
+      "file": "absperrventil-heizung.svg",
+      "norm": "SIA 410, DIN 2481"
+    },
+    {
+      "id": "regelventil",
+      "name": "Regelventil",
+      "category": "Heizung",
+      "file": "regelventil.svg",
+      "norm": "SIA 410, DIN 2481"
+    },
+    {
+      "id": "dreiwegventil",
+      "name": "Dreiwegventil",
+      "category": "Heizung",
+      "file": "dreiwegventil.svg",
+      "norm": "SIA 410, DIN 2481"
+    },
+    {
+      "id": "rueckschlagventil",
+      "name": "Rückschlagventil",
+      "category": "Heizung",
+      "file": "rueckschlagventil.svg",
+      "norm": "SIA 410, DIN 2481"
+    },
+    {
+      "id": "heizkoerper",
+      "name": "Heizkörper",
+      "category": "Heizung",
+      "file": "heizkoerper.svg",
+      "norm": "SIA 410, DIN 2481"
+    },
+    {
+      "id": "waermeerzeuger",
+      "name": "Wärmeerzeuger",
+      "category": "Heizung",
+      "file": "waermeerzeuger.svg",
+      "norm": "SIA 410, DIN 2481"
+    },
+    {
+      "id": "absperrventil-sanitaer",
+      "name": "Absperrventil",
+      "category": "Sanitär",
+      "file": "absperrventil-sanitaer.svg",
+      "norm": "SN EN 806-1, SVGW W3"
+    },
+    {
+      "id": "rueckflussverhinderer",
+      "name": "Rückflussverhinderer",
+      "category": "Sanitär",
+      "file": "rueckflussverhinderer.svg",
+      "norm": "SN EN 806-1, SVGW W3"
+    },
+    {
+      "id": "wasserzaehler",
+      "name": "Wasserzähler",
+      "category": "Sanitär",
+      "file": "wasserzaehler.svg",
+      "norm": "SN EN 806-1, SVGW W3"
+    },
+    {
+      "id": "druckreduzierventil",
+      "name": "Druckreduzierventil",
+      "category": "Sanitär",
+      "file": "druckreduzierventil.svg",
+      "norm": "SN EN 806-1, SVGW W3"
+    },
+    {
+      "id": "nordpfeil",
+      "name": "Nordpfeil",
+      "category": "Allgemein",
+      "file": "nordpfeil.svg",
+      "norm": "SIA 400"
+    },
+    {
+      "id": "hoehenkote",
+      "name": "Höhenkote",
+      "category": "Allgemein",
+      "file": "hoehenkote.svg",
+      "norm": "SIA 400"
+    },
+    {
+      "id": "revisionsdreieck",
+      "name": "Revisionsdreieck",
+      "category": "Allgemein",
+      "file": "revisionsdreieck.svg",
+      "norm": "SIA 400"
+    }
+  ]
+}

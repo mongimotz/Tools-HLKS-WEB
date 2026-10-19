@@ -39,7 +39,7 @@ lib/vendor/mupdf/          MuPDF.js 1.28.1 (AGPL-3.0): mupdf.js, mupdf-wasm.js, 
 lib/vendor/embedpdf/       EmbedPDF viewer 3.0.0-next.15 (Apache-2.0), the files its snippet entry embedpdf.js reaches, PATCHES.md, VERSION; used only by tools/pdf-editor
 tools/<tool-id>/           one folder per tool: AGENTS.md (local contracts), index.html, app.js (UI), calc.js (pure maths), defaults.js, labels.js, report.js (PDF), csv.js, charts.js / drawing.js, style.css
 tools/pdf-to-dxf/          PDF → DXF: app.js, preview.js (DOM); worker.js, convert.js, backend.js (MuPDF), ir.js, pipeline.js, geometry.js, dxf.js, scan.js, defaults.js, labels.js (no DOM)
-tools/pdf-editor/          PDF-Editor: app.js, bridge.js (EmbedPDF), theme.js, library.js, tools-ui.js (DOM); worker.js, engine.js (MuPDF), pages.js, images.js, compress.js, ocr.js, svg.js, zip.js, defaults.js, labels.js (no DOM); symbols/, stamps/
+tools/pdf-editor/          PDF-Editor: app.js, bridge.js (EmbedPDF), theme.js, library.js, tools-ui.js, client.js (DOM); worker.js, engine.js (MuPDF), pages.js, images.js, compress.js, ocr.js, svg.js, svg-render.js, stamps.js, zip.js, defaults.js, labels.js (no DOM); symbols/ (SVG + library PDFs), stamps/ (templates)
 docs/                      DESIGN.md, dragon-ink.md, <tool-id>-method.md (user-facing calculation docs, German), pdf-to-dxf-nova-test.md
 docs/dev/pdf-to-dxf/       PROGRESS, DECISIONS, TESTREPORT, TODO-OWNER of the PDF → DXF build (English)
 docs/dev/pdf-editor/       PLAN, PROGRESS, DECISIONS, TODO-OWNER of the PDF-Editor build (English)
@@ -122,6 +122,7 @@ The optional Python helpers have their own prerequisites.
 - `python scripts/check-dxf.py file.dxf …` – check DXF files with ezdxf (recover + audit; install with `pip install ezdxf`); not part of `npm test`
 - `node scripts/vendor-embedpdf.mjs [version]` – vendor EmbedPDF from the npm registry (integrity checked) into `lib/vendor/embedpdf/`, apply `PATCHES.md`, regenerate `tools/pdf-editor/viewer-strings.js`
 - `node scripts/make-pdf-editor-fixtures.mjs` – rewrite the PDF-Editor test files in `tests/fixtures/pdf-editor/` (only when they should change)
+- `node scripts/build-symbol-library.mjs` – rebuild the PDF-Editor's symbol library PDFs from `tools/pdf-editor/symbols/*.svg` (commit the result; `npm test` fails when they are out of date)
 - Real plans for local tests go into `tests/fixtures/pdf-to-dxf/real/` (git-ignored); `npm test` converts every PDF there.
 - Full PDF → DXF CLI options and test procedures: [tools/pdf-to-dxf/AGENTS.md](tools/pdf-to-dxf/AGENTS.md#development-helpers).
 
