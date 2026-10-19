@@ -482,6 +482,24 @@ async function passwordTool() {
   await withTool(async () => reload(await runOnDocument(TOOLS.password, 'password', v), { password: v.remove ? undefined : v.userPassword || undefined }));
 }
 
+async function ocrTool() {
+  const v = await ui.askOcr(toolContext());
+  if (!v) return;
+  await withTool(async () => {
+    const r = await runOnDocument(TOOLS.ocr, 'ocr', v);
+    if (!r.bytes) {
+      toast(RESULTS.ocrNone);
+      return;
+    }
+    if (!r.words) {
+      toast(RESULTS.ocrEmpty, { kind: 'warning' });
+      return;
+    }
+    await reload(r.bytes);
+    toast(RESULTS.ocr(r.pages, r.words), { kind: 'success', timeout: 7000 });
+  });
+}
+
 async function outlineTool() {
   let items = null;
   await withTool(async () => (items = await runOnDocument(TOOLS.outline, 'readOutline')));
@@ -553,6 +571,7 @@ const MENU = [
   { action: 'flatten', icon: 'layers', doc: true, run: flattenTool },
   { action: 'compress', icon: 'compress', doc: true, run: compressTool },
   { action: 'password', icon: 'lock', doc: true, run: passwordTool },
+  { action: 'ocr', icon: 'ocr', doc: true, run: ocrTool },
   { action: 'outline', icon: 'bookmark', doc: true, run: outlineTool },
   { action: 'properties', icon: 'file', doc: true, run: propertiesTool },
   { action: 'blank', icon: 'plus', run: blankTool },

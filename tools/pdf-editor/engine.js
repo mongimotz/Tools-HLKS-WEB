@@ -9,13 +9,14 @@ import { parseRanges, everyN, oddEven, groupFileName, extractPages, addPageNumbe
 import { renderPages, imagesToPdf, blankPdf } from './images.js';
 import { flatten, compressPdf, COMPACT } from './compress.js';
 import { zip } from './zip.js';
+import { ocrPages, pagesWithoutText } from './ocr.js';
 
 /** Permission bits of the PDF /P entry (ISO 32000-1, table 22); the reserved bits are set. */
 export const PERMISSION_BITS = { print: 4 | 2048, modify: 8 | 1024, copy: 16 | 512, annotate: 32, forms: 256 };
 const P_NONE = -3904;
 
 export class EngineError extends Error {
-  /** code: 'damaged' | 'password' | 'empty' | 'range' | 'image' | 'not-svg' | 'cancelled' | 'input' | 'internal' */
+  /** code: 'damaged' | 'password' | 'empty' | 'range' | 'image' | 'not-svg' | 'ocr' | 'cancelled' | 'input' | 'internal' */
   constructor(code, message = code) {
     super(message);
     this.name = 'EngineError';
@@ -35,9 +36,10 @@ const FONT_FILES = { regular: 'assets/fonts/pdf/sans-400.ttf', semibold: 'assets
 
 /**
  * The engine. `readAsset(path)` reads a site file (relative to the site root) as bytes: fetch in the worker,
- * the file system in Node. Fonts are read on first use.
+ * the file system in Node. Fonts are read on first use. `recognizer()` starts OCR (ocr.js): tesseract.js in
+ * the worker, the tesseract core directly in Node tests; it resolves { recognize(png, progress), terminate }.
  */
-export async function createEngine({ readAsset }) {
+export async function createEngine({ readAsset, recognizer = null }) {
   const mupdf = await loadMupdf();
   let fonts = null;
   const getFonts = async () => (fonts ??= { regular: await readAsset(FONT_FILES.regular), semibold: await readAsset(FONT_FILES.semibold) });
@@ -204,6 +206,31 @@ export async function createEngine({ readAsset }) {
         }
       }
       return done(save(doc));
+    },
+
+    /**
+     * OCR: pages without text (`pages.mode` 'notext') or the chosen pages get an invisible text layer.
+     * Resolves { bytes (null when no page needs it), pages, words }.
+     */
+    async ocr({ bytes, password, pages }, ctx) {
+      const doc = open(bytes, password);
+      const indices = pages?.mode === 'notext' ? pagesWithoutText(doc) : select(doc, pages);
+      if (!indices.length) return { value: { bytes: null, pages: 0, words: 0 } };
+      if (!recognizer) throw new EngineError('internal', 'no OCR');
+      const fonts = await getFonts();
+      let reader;
+      try {
+        reader = await recognizer();
+      } catch (e) {
+        throw new EngineError('ocr', String(e?.message ?? e));
+      }
+      try {
+        const r = await ocrPages(mupdf, doc, fonts, reader, indices, ctx);
+        const out = save(doc);
+        return { value: { bytes: out, ...r }, transfer: [out.buffer] };
+      } finally {
+        await reader.terminate?.();
+      }
     },
 
     /** Repair: MuPDF reads what it can of a damaged file and writes it new. */

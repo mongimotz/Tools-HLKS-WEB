@@ -117,6 +117,7 @@ export const TOOLS = {
 export const F = {
   pages: 'Seiten',
   all: 'Alle',
+  notext: 'Ohne Text',
   current: 'Aktuelle Seite',
   range: 'Bereich',
   odd: 'Ungerade',
@@ -212,6 +213,7 @@ export const ENGINE_ERRORS = {
   range: 'Seitenbereich ungültig',
   image: 'Bild nicht lesbar',
   'not-svg': 'SVG nicht lesbar',
+  ocr: 'Texterkennung nicht geladen',
   cancelled: 'Abgebrochen',
   input: 'Angaben fehlen',
   worker: 'Dieser Browser unterstützt keine Module-Worker',
@@ -226,6 +228,9 @@ export const RESULTS = {
   repaired: 'PDF repariert',
   inserted: (n) => (n === 1 ? '1 Seite eingefügt' : `${n} Seiten eingefügt`),
   notInserted: (names) => `Nicht eingefügt: ${names}`,
+  ocr: (pages, words) => `${words} ${words === 1 ? 'Wort' : 'Wörter'} auf ${pages} ${pages === 1 ? 'Seite' : 'Seiten'} erkannt`,
+  ocrNone: 'Alle Seiten enthalten Text',
+  ocrEmpty: 'Kein Text erkannt',
 };
 
 /** Progress text of a running document tool. */

@@ -9,6 +9,7 @@ The editor is a client-side PDF editor for plans: view, mark up, measure with sc
 - [Build plan](../../docs/dev/pdf-editor/PLAN.md), [decisions](../../docs/dev/pdf-editor/DECISIONS.md), [progress](../../docs/dev/pdf-editor/PROGRESS.md) and [owner checks](../../docs/dev/pdf-editor/TODO-OWNER.md).
 - [Method](../../docs/pdf-editor-method.md) (German): measuring with scale, OCR, compression, limits.
 - Vendored viewer: `lib/vendor/embedpdf/` with `VERSION` and `PATCHES.md`; update only with `node scripts/vendor-embedpdf.mjs <version>`.
+- Vendored OCR: `lib/vendor/tesseract/` with `VERSION`; update only with `node scripts/vendor-tesseract.mjs` (versions and model hashes are constants in the script).
 
 ## Files and saved state
 
@@ -65,11 +66,20 @@ Order (plan section 5): `PDFs anhängen`, `Seiten teilen / extrahieren`, `Wasser
 | Reduzieren | `flatten` (MuPDF `bake`): annotations and/or form fields | reload |
 | Komprimieren | `compress`: lossless rewrite, images optionally to 300/200/150 dpi | reload and toast `alt → neu`; `Keine Verkleinerung möglich` keeps the file |
 | Kennwort | `password`: set (open password and/or permission password, AES-256, permissions print, copy, modify, annotate, forms) or remove | reload with the new open password |
+| Texterkennung (OCR) | `ocr` (see below): pages without text (default), all, the current page or a range | reload and toast with words and pages; `Alle Seiten enthalten Text` or `Kein Text erkannt` keep the file |
 | Lesezeichen | `readOutline` → dialog (title, page, level; indent, outdent, remove, add for the current page) → `writeOutline` | reload when changed |
 | Eigenschaften | viewer metadata plugin (title, author, subject, keywords) | no reload; part of the next save |
 | Neues Dokument | `blank`: A4 or A3, portrait or landscape | opens `Dokument.pdf` |
 
-Engine ops (`engine.js`, no DOM, Node tests) answer `{ value, transfer }` or throw `EngineError` with a code: `damaged`, `password`, `empty`, `range`, `image`, `not-svg`, `cancelled`, `input`, `internal`. Inserted text uses IBM Plex Sans from `assets/fonts/pdf/` (glyph ids, ToUnicode, searchable).
+### OCR
+
+`ocr.js` (ported from BentoPDF, AGPL-3.0-only): MuPDF renders each page as shown (rotation and crop box applied) in grey at 300 dpi (pages above 40 Mpx smaller), tesseract.js reads it (`deu+eng`, LSTM only, page segmentation 3 = automatic) and returns hOCR. `parseHocr` reads it with regular expressions (a worker has no DOMParser); `placeWords` puts each word on its baseline (line baseline and slope from hOCR; lines turned by 90°, 180°, 270° along their box) and adds the gaps as spaces. The text layer is IBM Plex Sans in render mode 3 (invisible), each word stretched to its box with `Tz`, appended to the page through `overlayWriter` (pages.js). Search, selection and highlight in the viewer then work on scans.
+
+- tesseract.js runs as its own worker inside the editor's worker, started on the first OCR and ended after it (memory). `tesseractRecognizer()` passes `workerPath`, `corePath` (the SIMD core when `WebAssembly.validate` accepts a SIMD probe, else the plain one; the relaxed-SIMD variant is not vendored) and `langPath`, all from `lib/vendor/tesseract/`, and `cacheMethod: 'none'`; tesseract.js would otherwise load from cdn.jsdelivr.net (`tests/pdf-editor.vendor.test.js` checks the paths).
+- Node tests use the same core file and models directly (`tests/helpers/tesseract-node.js`), because tesseract.js needs a browser worker.
+- Progress per page in the notice row; cancel between pages, else the worker is replaced.
+
+Engine ops (`engine.js`, no DOM, Node tests) answer `{ value, transfer }` or throw `EngineError` with a code: `damaged`, `password`, `empty`, `range`, `image`, `not-svg`, `ocr`, `cancelled`, `input`, `internal`. Inserted text uses IBM Plex Sans from `assets/fonts/pdf/` (glyph ids, ToUnicode, searchable).
 
 ## Settings dialog
 

@@ -37,6 +37,7 @@ lib/vendor/pdf-lib/        pdf-lib 1.17.1 (MIT)
 lib/vendor/fontkit/        @pdf-lib/fontkit 1.1.1 + pako, one ES module (MIT), for Plex in PDFs
 lib/vendor/mupdf/          MuPDF.js 1.28.1 (AGPL-3.0): mupdf.js, mupdf-wasm.js, mupdf-wasm.wasm; used only in the workers of tools/pdf-to-dxf and tools/pdf-editor
 lib/vendor/embedpdf/       EmbedPDF viewer 3.0.0-next.15 (Apache-2.0), the files its snippet entry embedpdf.js reaches, PATCHES.md, VERSION; used only by tools/pdf-editor
+lib/vendor/tesseract/      tesseract.js 7.0.0 + core 7.0.0 (LSTM, SIMD and plain) (Apache-2.0), lang/ deu + eng from tessdata_fast 4.1.0 (Apache-2.0), VERSION; used only by tools/pdf-editor/ocr.js in the editor's worker
 tools/<tool-id>/           one folder per tool: AGENTS.md (local contracts), index.html, app.js (UI), calc.js (pure maths), defaults.js, labels.js, report.js (PDF), csv.js, charts.js / drawing.js, style.css
 tools/pdf-to-dxf/          PDF → DXF: app.js, preview.js (DOM); worker.js, convert.js, backend.js (MuPDF), ir.js, pipeline.js, geometry.js, dxf.js, scan.js, defaults.js, labels.js (no DOM)
 tools/pdf-editor/          PDF-Editor: app.js, bridge.js (EmbedPDF), theme.js, library.js, tools-ui.js, client.js (DOM); worker.js, engine.js (MuPDF), pages.js, images.js, compress.js, ocr.js, svg.js, svg-render.js, stamps.js, zip.js, defaults.js, labels.js (no DOM); symbols/ (SVG + library PDFs), stamps/ (templates)
@@ -44,7 +45,7 @@ docs/                      DESIGN.md, dragon-ink.md, <tool-id>-method.md (user-f
 docs/dev/pdf-to-dxf/       PROGRESS, DECISIONS, TESTREPORT, TODO-OWNER of the PDF → DXF build (English)
 docs/dev/pdf-editor/       PLAN, PROGRESS, DECISIONS, TODO-OWNER of the PDF-Editor build (English)
 tests/                     node --test, fixtures/ holds reference PDFs, fixtures/pdf-to-dxf/ the PDF → DXF corpus with *.truth.json, fixtures/pdf-editor/ the editor's test files, helpers/
-scripts/                   serve.mjs (dev server, --base for a sub-path), make-fixtures.mjs, build-fonts.py, make-pdf-to-dxf-fixtures.mjs, pdf-to-dxf.mjs (CLI), check-dxf.py (ezdxf), npm-package.mjs + vendor-embedpdf.mjs (vendoring), make-pdf-editor-fixtures.mjs
+scripts/                   serve.mjs (dev server, --base for a sub-path), make-fixtures.mjs, build-fonts.py, make-pdf-to-dxf-fixtures.mjs, pdf-to-dxf.mjs (CLI), check-dxf.py (ezdxf), npm-package.mjs + vendor-embedpdf.mjs + vendor-tesseract.mjs (vendoring), make-pdf-editor-fixtures.mjs
 ```
 
 ## Rules for tools
@@ -121,6 +122,7 @@ The optional Python helpers have their own prerequisites.
 - `node scripts/make-pdf-to-dxf-fixtures.mjs` – rewrite the PDF → DXF test corpus (only when the corpus should change)
 - `python scripts/check-dxf.py file.dxf …` – check DXF files with ezdxf (recover + audit; install with `pip install ezdxf`); not part of `npm test`
 - `node scripts/vendor-embedpdf.mjs [version]` – vendor EmbedPDF from the npm registry (integrity checked) into `lib/vendor/embedpdf/`, apply `PATCHES.md`, regenerate `tools/pdf-editor/viewer-strings.js`
+- `node scripts/vendor-tesseract.mjs` – vendor tesseract.js and its core from the npm registry (integrity checked) and the deu + eng models from tessdata_fast (pinned commit, SHA-256 checked) into `lib/vendor/tesseract/`; versions are constants in the script
 - `node scripts/make-pdf-editor-fixtures.mjs` – rewrite the PDF-Editor test files in `tests/fixtures/pdf-editor/` (only when they should change)
 - `node scripts/build-symbol-library.mjs` – rebuild the PDF-Editor's symbol library PDFs from `tools/pdf-editor/symbols/*.svg` (commit the result; `npm test` fails when they are out of date)
 - Real plans for local tests go into `tests/fixtures/pdf-to-dxf/real/` (git-ignored); `npm test` converts every PDF there.

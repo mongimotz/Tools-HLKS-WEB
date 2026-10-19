@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Vendored third-party code of the PDF-Editor: EmbedPDF (and tesseract.js once OCR is added) is complete,
-// pinned, licensed, patched as documented, and fetches nothing from outside the site at runtime.
+// Vendored third-party code of the PDF-Editor: EmbedPDF and tesseract.js are complete, pinned, licensed,
+// patched as documented, and fetch nothing from outside the site at runtime.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,6 +9,7 @@ import { posix } from 'node:path';
 
 const ROOT = new URL('../', import.meta.url);
 const EMBED = new URL('lib/vendor/embedpdf/', ROOT);
+const TESS = new URL('lib/vendor/tesseract/', ROOT);
 
 async function listFiles(dir, prefix = '') {
   const out = [];
@@ -126,4 +127,36 @@ test('an EmbedPDF export reopens without repair in MuPDF and pdf-lib, with every
   const pl = await PDFDocument.load(bytes);
   assert.equal(pl.getPage(0).node.Annots().size(), kinds.length + 2);
   assert.deepEqual(pl.getForm().getFields().map((f) => f.getName()).sort(), ['Bemerkung', 'Geprueft']);
+});
+
+test('tesseract.js: pinned versions, licenses, the files OCR loads and nothing else', async () => {
+  const version = await readFile(new URL('VERSION', TESS), 'utf8');
+  assert.match(version, /^tesseract\.js \d+\.\d+\.\d+\ntesseract\.js-core \d+\.\d+\.\d+\ntessdata_fast [\d.]+ [0-9a-f]{40} \(deu, eng\)\n$/);
+  for (const f of ['LICENSE', 'core/LICENSE', 'lang/LICENSE']) assert.match(await readFile(new URL(f, TESS), 'utf8'), /Apache License\s+Version 2\.0/, f);
+  const files = (await listFiles(TESS)).sort();
+  assert.deepEqual(files, [
+    'LICENSE', 'VERSION',
+    'core/LICENSE', 'core/tesseract-core-lstm.wasm.js', 'core/tesseract-core-simd-lstm.wasm.js',
+    'lang/LICENSE', 'lang/deu.traineddata.gz', 'lang/eng.traineddata.gz',
+    'tesseract.esm.min.js', 'tesseract.min.js.LICENSE.txt', 'worker.min.js', 'worker.min.js.LICENSE.txt',
+  ]);
+  for (const f of files.filter((n) => n.endsWith('.gz'))) {
+    const b = await readFile(new URL(f, TESS));
+    assert.ok(b[0] === 0x1f && b[1] === 0x8b, `${f} is gzip`);
+  }
+});
+
+test('tesseract.js: OCR passes every path, so the CDN defaults in the library are never used', async () => {
+  // tesseract.js falls back to cdn.jsdelivr.net for the worker, the core and the models; ocr.js sets all three
+  const src = await readFile(new URL('tools/pdf-editor/ocr.js', ROOT), 'utf8');
+  for (const key of ['workerPath', 'corePath', 'langPath']) assert.match(src, new RegExp(`${key}: url\\(`), key);
+  assert.match(src, /workerPath: url\('worker\.min\.js'\)/);
+  assert.match(src, /corePath: url\(`core\/tesseract-core-\$\{simd \? 'simd-' : ''\}lstm\.wasm\.js`\)/);
+  assert.match(src, /langPath: url\('lang'\)/);
+  assert.match(src, /cacheMethod: 'none'/);
+  assert.match(src, /OCR_LANGS = 'deu\+eng'/);
+  for (const f of ['tesseract.esm.min.js', 'worker.min.js']) {
+    const lib = await readFile(new URL(f, TESS), 'utf8');
+    for (const re of REMOTE) assert.doesNotMatch(lib, re, `${f}: ${re}`);
+  }
 });

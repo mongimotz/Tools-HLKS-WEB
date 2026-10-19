@@ -77,13 +77,7 @@ test('heavy libraries are named only in their allowed modules, each loaded with 
 test('each tool worker reaches its MuPDF module, and only workers do', async () => {
   for (const [worker, backend] of Object.entries(WORKERS)) {
     const url = new URL(worker, ROOT);
-    let graph;
-    try {
-      graph = [...(await importGraph(url))].map((u) => u.slice(ROOT.href.length));
-    } catch (e) {
-      if (e.code === 'ENOENT' && worker.startsWith('tools/pdf-editor/')) continue; // the editor worker comes with stage 4
-      throw e;
-    }
+    const graph = [...(await importGraph(url))].map((u) => u.slice(ROOT.href.length));
     assert.ok(graph.includes(backend), `${worker} imports ${backend}`);
   }
 });

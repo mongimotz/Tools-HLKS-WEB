@@ -697,6 +697,23 @@ export function askOpenPassword(wrong = false) {
   });
 }
 
+/** OCR: pages without text (the default), all, the current one or a range. */
+export function askOcr(ctx) {
+  const p = { pages: { mode: 'notext' }, ...last.get('ocr') };
+  return ask({
+    id: 'ocr',
+    title: TOOLS.ocr,
+    body: html`<div class="dialog-row">
+      ${selectField('pages-mode', F.pages, ['notext', 'all', 'current', 'range'].map((m) => [m, F[m]]), p.pages.mode)}
+      ${textField('pages-range', F.range, p.pages.range ?? '', { attrs: RANGE_ATTRS, when: 'pages-mode=range' })}
+    </div>`,
+    read: (form) => {
+      const pages = readPages(form, ctx);
+      return pages === undefined ? undefined : { pages };
+    },
+  });
+}
+
 const MAX_LEVEL = 6;
 
 /** Bookmarks: title, page and level per row; indent, outdent, remove, add one for the current page. */

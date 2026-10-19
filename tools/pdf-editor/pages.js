@@ -210,13 +210,18 @@ export function overlayWriter(mupdf, doc, fonts) {
       return {
         width: x1 - x0,
         height: y1 - y0,
-        /** Text with its top-left corner at (x, y), or centred on (x, y) and turned by `angle` degrees (counter-clockwise). */
-        text(str, { x, y, size = 10, bold = false, color = '#000000', opacity = 1, angle = 0, center = false }) {
+        /**
+         * Text with its top-left corner at (x, y), centred on (x, y) (`center`) or starting on its baseline at
+         * (x, y) (`baseline`), turned by `angle` degrees (counter-clockwise). `fit`: stretch it to this width
+         * (horizontal scaling). `invisible`: render mode 3, found by search and selection but not drawn (OCR).
+         */
+        text(str, { x, y, size = 10, bold = false, color = '#000000', opacity = 1, angle = 0, center = false, baseline = false, fit = 0, invisible = false }) {
           if (!str) return;
           const { hex, width } = plex.encode(str, bold);
           const name = bold ? 'HLKSF2' : 'HLKSF1';
           res.Font[name] = fontRef(bold);
-          const w = width * size;
+          const scale = fit > 0 && width > 0 ? Math.max(0.05, Math.min(20, fit / (width * size))) : 1;
+          const w = width * size * scale;
           const cap = 0.7 * size;
           const rad = (angle * Math.PI) / 180;
           const u = [Math.cos(rad), -Math.sin(rad)]; // baseline direction (visual)
@@ -226,11 +231,17 @@ export function overlayWriter(mupdf, doc, fonts) {
           if (center) {
             ox = x - (w / 2) * u[0] - (cap / 2) * up[0];
             oy = y - (w / 2) * u[1] - (cap / 2) * up[1];
+          } else if (baseline) {
+            ox = x;
+            oy = y;
           } else {
             ox = x;
             oy = y + cap; // baseline below the top edge
           }
-          ops.push(`q ${alpha(opacity)}${hexColor(color).map(num).join(' ')} rg BT /${name} ${num(size)} Tf ${mat([u[0], u[1], up[0], up[1], ox, oy])} Tm <${hex}> Tj ET Q`);
+          const paint = invisible ? '' : `${alpha(opacity)}${hexColor(color).map(num).join(' ')} rg `;
+          const mode = invisible ? '3 Tr ' : '';
+          const tz = scale !== 1 ? `${num(scale * 100)} Tz ` : '';
+          ops.push(`q ${paint}BT ${mode}/${name} ${num(size)} Tf ${tz}${mat([u[0], u[1], up[0], up[1], ox, oy])} Tm <${hex}> Tj ET Q`);
         },
         /** An image (bytes) of `w` × `h` points centred on (cx, cy), turned by `angle` degrees. */
         image(bytes, { cx, cy, w, h, angle = 0, opacity = 1 }) {
