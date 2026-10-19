@@ -3,7 +3,8 @@
 // keyboard, start-page hand-over and → DXF. The PDF stays in this browser; only the edited PDF is saved.
 
 import { TOOL_ID, normalizeSettings, formatDate } from './defaults.js';
-import { ACTIONS, DEFAULT_NAME, ENGINE_ERRORS, ERRORS, RESULTS, STATUS, SYMBOLS, TITLE, TOOLS, VIEWER_STRINGS, pageDeleted, progress, saved } from './labels.js';
+import { ACTIONS, AUTOSAVE, DEFAULT_NAME, ENGINE_ERRORS, ERRORS, RESULTS, STATUS, SYMBOLS, TITLE, TOOLS, VIEWER_STRINGS, pageDeleted, progress, saved } from './labels.js';
+import { DEBOUNCE_MS, slotKey, slotStore } from './autosave.js';
 import { SWISS_DE } from './viewer-strings.js';
 import { VIEWER_ICONS, currentScheme, defaultMeasure, followScheme, readAnnotColors, scalePresets, toolDefinitions, viewerFonts } from './theme.js';
 import { mountViewer } from './bridge.js';
@@ -28,10 +29,13 @@ const app = {
   settings: null,
   issues: null,
   notices: new Map(),
-  file: null, // { name, password? } of the open document (the password once a document tool needed it)
+  file: null, // { name, origin: { name, size }, password? } of the open document (password once a tool needed it)
   loading: false,
   busy: false, // a document tool runs
   dirty: false, // changed since the last save by the user
+  slots: null, // autosave store (autosave.js)
+  saveTimer: 0,
+  pending: new Set(), // slots of opened files that wait for restore or discard
 };
 
 // ============================================================================
@@ -73,6 +77,95 @@ function renderNotices() {
   } else {
     app.issues.update(items, { emptyText: 'Keine Hinweise', emptyIcon: 'check' });
   }
+}
+
+// ============================================================================
+// Autosave (autosave.js): unsaved changes in IndexedDB, one slot per file
+// ============================================================================
+
+/** The slot the open document writes to, or null (no document, or its old slot waits for a decision). */
+function liveKey() {
+  const o = app.file?.origin;
+  if (!o || !app.bridge?.hasDocument()) return null;
+  const key = slotKey(o.name, o.size);
+  return app.pending.has(key) ? null : key;
+}
+
+function markDirty() {
+  app.dirty = true;
+  updateUi();
+  scheduleAutosave();
+}
+
+function scheduleAutosave() {
+  clearTimeout(app.saveTimer);
+  app.saveTimer = app.slots && app.dirty && liveKey() ? setTimeout(writeSlot, DEBOUNCE_MS) : 0;
+}
+
+async function writeSlot() {
+  app.saveTimer = 0;
+  const key = liveKey();
+  if (!key || !app.dirty) return;
+  let bytes;
+  try {
+    bytes = await app.bridge.bytes();
+  } catch {
+    return;
+  }
+  const { name, size } = app.file.origin;
+  const ok = await app.slots.put({ key, name, size, bytes: bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes) });
+  if (ok && !app.dirty) await app.slots.remove(key); // saved meanwhile
+  setNotice('autosave-failed', ok ? null : { severity: 'warning', text: AUTOSAVE.failed, dismiss: () => setNotice('autosave-failed', null) });
+  showSlots();
+}
+
+/** Write a waiting autosave now (another file opens, the page is hidden). */
+async function flushAutosave() {
+  if (!app.saveTimer) return;
+  clearTimeout(app.saveTimer);
+  await writeSlot();
+}
+
+const slotTime = (ms) => {
+  const d = new Date(ms);
+  return `${formatDate(d, app.settings.dateFormat)}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
+/** One notice per slot except the one the open document writes to: restore or discard. */
+async function showSlots() {
+  const list = (await app.slots?.list()) ?? [];
+  const live = liveKey();
+  const shown = new Set();
+  for (const s of list) {
+    if (s.key === live) continue;
+    shown.add(`slot:${s.key}`);
+    app.notices.set(`slot:${s.key}`, {
+      id: `slot:${s.key}`,
+      severity: 'warning',
+      text: AUTOSAVE.unsaved(s.name, slotTime(s.savedAt)),
+      actions: [
+        { icon: 'undo', label: ACTIONS.restore, run: () => restoreSlot(s.key) },
+        { icon: 'trash', label: ACTIONS.discard, run: () => discardSlot(s.key) },
+      ],
+    });
+  }
+  for (const id of [...app.notices.keys()]) if (id.startsWith('slot:') && !shown.has(id)) app.notices.delete(id);
+  renderNotices();
+}
+
+async function restoreSlot(key) {
+  const slot = await app.slots.get(key);
+  if (!slot) return showSlots();
+  app.pending.delete(key);
+  const { name, size } = slot.meta;
+  if (await openBytes(slot.bytes, name, { origin: { name, size } })) toast(AUTOSAVE.restored(name), { kind: 'success' });
+}
+
+async function discardSlot(key) {
+  await app.slots.remove(key);
+  app.pending.delete(key);
+  await showSlots();
+  scheduleAutosave(); // the open file may write to this slot now
 }
 
 // ============================================================================
@@ -233,8 +326,10 @@ const openedOk = (doc) => doc && doc.status !== 'error' && doc.status !== 'faile
 /**
  * Open bytes as the document. A file the viewer cannot read is repaired by MuPDF in the worker and opened
  * again. `keep`: the same document after a document tool (name and password stay, it counts as changed).
+ * `origin`: the autosave slot the document belongs to (a restored slot); else the file as opened.
  */
-async function openBytes(bytes, name, { keep = false, password } = {}) {
+async function openBytes(bytes, name, { keep = false, password, origin } = {}) {
+  if (!keep) await flushAutosave(); // the last changes of the document that closes
   app.loading = true;
   setNotice('open-failed', null);
   if (!keep) setNotice('history', null);
@@ -251,11 +346,18 @@ async function openBytes(bytes, name, { keep = false, password } = {}) {
     }
     if (!openedOk(doc)) throw new Error('open');
     setNotice('open-failed', null); // the viewer reported the first attempt
-    app.file = keep ? { ...app.file, name, password } : { name };
-    app.dirty = keep || repaired;
+    app.file = keep ? { ...app.file, name, password } : { name, origin: origin ?? { name, size: copy.length } };
+    app.dirty = keep || repaired || !!origin;
     document.title = `${name} – ${TITLE} – HLKS-Tools`;
     if (repaired) setNotice('repaired', { severity: 'warning', text: RESULTS.repaired, dismiss: () => setNotice('repaired', null) });
     else if (!keep) setNotice('repaired', null);
+    if (!keep && !origin) {
+      // unsaved changes of this file from before: they wait for restore or discard and are not overwritten
+      const key = slotKey(name, copy.length);
+      if ((await app.slots?.list())?.some((s) => s.key === key)) app.pending.add(key);
+    }
+    showSlots();
+    scheduleAutosave();
     return doc;
   } catch {
     app.file = null;
@@ -280,6 +382,10 @@ async function save() {
     const bytes = await app.bridge.bytes();
     download(bytes, fileName(), 'application/pdf');
     app.dirty = false;
+    clearTimeout(app.saveTimer);
+    app.saveTimer = 0;
+    const key = liveKey();
+    if (key) app.slots.remove(key); // saved: nothing to restore
     toast(saved(fileName()), { kind: 'success' });
   } catch {
     toast(ERRORS.save, { kind: 'error', timeout: 7000 });
@@ -450,7 +556,7 @@ async function fromImagesTool() {
     const images = await Promise.all(v.files.map(async (f) => u8(await f.arrayBuffer())));
     const bytes = u8(await track(TOOLS.fromImages, 'imagesToPdf', { images, size: v.size, orientation: v.orientation, marginMm: v.margin }, images.map((b) => b.buffer)));
     if (v.insert === 'new' || !app.bridge.hasDocument()) {
-      if (await openBytes(bytes, `${v.files[0].name.replace(/\.[^.]+$/, '')}.pdf`)) app.dirty = true;
+      if (await openBytes(bytes, `${v.files[0].name.replace(/\.[^.]+$/, '')}.pdf`)) markDirty();
     } else {
       await insertPdfs([{ name: TOOLS.fromImages, bytes }], v.insert);
     }
@@ -701,9 +807,9 @@ async function start() {
     hasDocument: () => app.bridge.hasDocument(),
     onArmed: () => app.bridge.closePanelIfFloating('symbols'),
   });
-  app.bridge.onChange(() => {
-    app.dirty = true;
-    updateUi();
+  app.bridge.onChange((source) => {
+    // the viewer's own unsaved flag follows the edits; changes while a file opens are the file itself
+    if (source !== 'unsaved' && !app.loading) markDirty();
   });
   app.bridge.onDocument((type) => {
     if (type === 'failed') setNotice('open-failed', { severity: 'error', text: ERRORS.damaged, dismiss: () => setNotice('open-failed', null) });
@@ -718,8 +824,11 @@ async function start() {
   );
   enableFileDrop(openFile);
   updateUi();
-  const handoff = await takeFileHandoff();
+  app.slots = slotStore();
+  document.addEventListener('visibilitychange', () => document.hidden && flushAutosave());
+  const [handoff] = await Promise.all([takeFileHandoff(), app.slots.prune()]);
   if (handoff) await openFile(handoff);
+  else showSlots();
 }
 
 start();

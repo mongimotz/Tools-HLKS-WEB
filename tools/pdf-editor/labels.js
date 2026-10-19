@@ -39,6 +39,12 @@ export const ERRORS = {
 };
 
 export const saved = (name) => `${name} gespeichert`;
+
+export const AUTOSAVE = {
+  unsaved: (name, when) => `Ungesicherte Änderungen: ${name} (${when})`,
+  restored: (name) => `${name} wiederhergestellt`,
+  failed: 'Automatisch sichern nicht möglich',
+};
 export const pageDeleted = (n) => `Seite ${n} gelöscht`;
 
 /** Words for the viewer's own commands, modes and tools that this tool adds (strings option, locale de). */

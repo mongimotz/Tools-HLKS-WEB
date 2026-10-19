@@ -40,7 +40,7 @@ lib/vendor/embedpdf/       EmbedPDF viewer 3.0.0-next.15 (Apache-2.0), the files
 lib/vendor/tesseract/      tesseract.js 7.0.0 + core 7.0.0 (LSTM, SIMD and plain) (Apache-2.0), lang/ deu + eng from tessdata_fast 4.1.0 (Apache-2.0), VERSION; used only by tools/pdf-editor/ocr.js in the editor's worker
 tools/<tool-id>/           one folder per tool: AGENTS.md (local contracts), index.html, app.js (UI), calc.js (pure maths), defaults.js, labels.js, report.js (PDF), csv.js, charts.js / drawing.js, style.css
 tools/pdf-to-dxf/          PDF → DXF: app.js, preview.js (DOM); worker.js, convert.js, backend.js (MuPDF), ir.js, pipeline.js, geometry.js, dxf.js, scan.js, defaults.js, labels.js (no DOM)
-tools/pdf-editor/          PDF-Editor: app.js, bridge.js (EmbedPDF), theme.js, library.js, tools-ui.js, client.js (DOM); worker.js, engine.js (MuPDF), pages.js, images.js, compress.js, ocr.js, svg.js, svg-render.js, stamps.js, zip.js, defaults.js, labels.js (no DOM); symbols/ (SVG + library PDFs), stamps/ (templates)
+tools/pdf-editor/          PDF-Editor: app.js, bridge.js (EmbedPDF), theme.js, library.js, tools-ui.js, client.js (DOM); worker.js, engine.js (MuPDF), pages.js, images.js, compress.js, ocr.js, autosave.js, svg.js, svg-render.js, stamps.js, zip.js, defaults.js, labels.js (no DOM); symbols/ (SVG + library PDFs), stamps/ (templates)
 docs/                      DESIGN.md, dragon-ink.md, <tool-id>-method.md (user-facing calculation docs, German), pdf-to-dxf-nova-test.md
 docs/dev/pdf-to-dxf/       PROGRESS, DECISIONS, TESTREPORT, TODO-OWNER of the PDF → DXF build (English)
 docs/dev/pdf-editor/       PLAN, PROGRESS, DECISIONS, TODO-OWNER of the PDF-Editor build (English)

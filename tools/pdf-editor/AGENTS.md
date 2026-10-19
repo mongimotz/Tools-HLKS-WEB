@@ -14,10 +14,10 @@ The editor is a client-side PDF editor for plans: view, mark up, measure with sc
 ## Files and saved state
 
 - `app.js` (page controller), `bridge.js` (the only module that talks to the EmbedPDF API and the only one that imports it, with `await import()`), `theme.js` (site look → viewer), `library.js` (libraries in the viewer), `tools-ui.js` (Symbole panel, dialogs), `client.js` (worker client) touch the DOM.
-- `defaults.js`, `labels.js`, `viewer-strings.js` (generated), `svg.js`, `svg-render.js`, `stamps.js` and the document-tool modules (`engine.js`, `pages.js`, `images.js`, `compress.js`, `ocr.js`, `zip.js`) are DOM-free and run in Node tests. `worker.js` runs `engine.js` (MuPDF, `await import()`).
+- `defaults.js`, `labels.js`, `viewer-strings.js` (generated), `svg.js`, `svg-render.js`, `stamps.js` and the document-tool modules (`engine.js`, `pages.js`, `images.js`, `compress.js`, `ocr.js`, `zip.js`) are DOM-free and run in Node tests. `autosave.js` is DOM-free too (slot rules tested in Node; its store needs IndexedDB). `worker.js` runs `engine.js` (MuPDF, `await import()`).
 - Save only the edited PDF: no envelope, no `data.json`, no JSON or CSV.
 - Settings are a browser draft (`hlks-tools:pdf-editor:settings`, `normalizeSettings`, idempotent): name for stamps, date format, default colours by role, plan scales, own stamps.
-- Autosave keeps the open PDF in IndexedDB on this device only.
+- Autosave keeps the open PDF with its unsaved changes in IndexedDB on this device only (see Autosave).
 
 ## Page and viewer
 
@@ -80,6 +80,19 @@ Order (plan section 5): `PDFs anhängen`, `Seiten teilen / extrahieren`, `Wasser
 - Progress per page in the notice row; cancel between pages, else the worker is replaced.
 
 Engine ops (`engine.js`, no DOM, Node tests) answer `{ value, transfer }` or throw `EngineError` with a code: `damaged`, `password`, `empty`, `range`, `image`, `not-svg`, `ocr`, `cancelled`, `input`, `internal`. Inserted text uses IBM Plex Sans from `assets/fonts/pdf/` (glyph ids, ToUnicode, searchable).
+
+## Autosave
+
+`autosave.js` (rules) and `app.js` (wiring). IndexedDB `hlks-tools-pdf-editor-autosave`, stores `meta` ({ key, name, size, savedAt, length }) and `bytes` (apart, so listing does not read the PDFs).
+
+- One slot per file: name + size of the file as it was opened (`slotKey`). A document tool's result, a restored slot and a repaired file keep the slot of their file; a new document (blank, images) gets its own.
+- Written 2 s after the last change (annotations, form, pages, metadata, page scale, a document tool), with the viewer's current bytes (`documents.download()`). Opening a file does not count as a change. A waiting write runs at once when another file opens or the page is hidden.
+- At most 3 slots: writing drops the oldest other slot. Slots older than 14 days go on page start.
+- Saving (↓ PDF, Strg+S) removes the slot of the open document.
+- Every slot except the one the open document writes to shows as a warning in the notice row: `Ungesicherte Änderungen: <name> (<date>, <time>)` with `Wiederherstellen` (↶, opens the slot's PDF as the document, it counts as changed) and `Verwerfen` (trash, removes the slot).
+- Opening a file that has a slot: the slot waits for restore or discard and is not overwritten; edits of the newly opened file are not autosaved until then.
+- When writing fails (storage full or blocked): warning `Automatisch sichern nicht möglich` (dismissable).
+- The shared notice panel (`lib/core/issues.js`) takes `actions` (several icon buttons) for this.
 
 ## Settings dialog
 
