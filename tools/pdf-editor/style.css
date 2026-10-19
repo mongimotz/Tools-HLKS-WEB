@@ -80,3 +80,22 @@
 @media (max-width: 640px) { .pe-stamp-row { grid-template-columns: minmax(0, 1fr) auto; } }
 .menu-list .icon { color: var(--text-muted); }
 .menu-list button:disabled { opacity: 0.45; cursor: default; }
+.pe-dialog [hidden] { display: none !important; }
+.pe-dialog .dialog-row.pe-row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 560px) { .pe-dialog .dialog-row.pe-row-3 { grid-template-columns: minmax(0, 1fr); } }
+.pe-checks { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); }
+.pe-pick { justify-content: flex-start; min-width: 0; }
+.pe-pick-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pe-files { display: grid; gap: var(--sp-2); }
+.pe-files.is-over .pe-file-add { border-color: var(--primary); color: var(--primary); }
+.pe-file-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; max-height: 240px; overflow-y: auto; }
+.pe-file { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; align-items: center; gap: var(--sp-1); font-size: var(--fs-sm); }
+.pe-file > .icon { color: var(--text-muted); }
+.pe-file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pe-file-add { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); min-height: 40px; padding: var(--sp-2); border: 1px dashed var(--border-strong); border-radius: var(--r-input); background: none; color: var(--text-muted); font: inherit; font-size: var(--fs-xs); cursor: pointer; }
+.pe-file-add:hover, .pe-file-add:focus-visible { border-color: var(--primary); color: var(--text); }
+.pe-file-list:not(:empty) + .pe-file-add { min-height: 32px; }
+.pe-outline { display: grid; gap: var(--sp-1); margin: 0; padding: 0; list-style: none; max-height: 50vh; overflow-y: auto; }
+.pe-outline-row { display: grid; grid-template-columns: minmax(0, 1fr) 72px auto auto auto; align-items: center; gap: var(--sp-1); padding-left: calc(var(--level, 0) * 16px); }
+#more-list { max-height: calc(100vh - 72px); overflow-y: auto; }
+.pe-check-field { display: flex; align-items: center; align-self: end; min-height: 34px; }

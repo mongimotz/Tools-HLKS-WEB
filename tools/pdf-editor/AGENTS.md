@@ -42,6 +42,35 @@ All three are stamp libraries of the viewer's stamp plugin (one PDF per library,
 - **SVG drawing**: the MuPDF.js build has no SVG reader, so `svg-render.js` draws the common SVG subset into PDF content (paths, shapes, transforms, styles and simple `<style>` rules, gradients as their first colour, text in IBM Plex Sans, inline PNG/JPEG); clip paths, masks, filters and patterns are left out.
 - **Signatures**: the viewer's signature plugin (draw or upload; typed signatures are off because only Plex is allowed: `signature.fonts: []`). Each person is a library of kind `signatures`, kept by the viewer in this browser only. Without a key the mark is drawn into the field, not sealed.
 
+## Document tools (⋯ menu)
+
+Order (plan section 5): `PDFs anhängen`, `Seiten teilen / extrahieren`, `Wasserzeichen`, `Seitenzahlen`, `Kopf- und Fusszeile`, `Seiten als Bilder`, `Bilder als Seiten`, `Reduzieren`, `Komprimieren`, `Kennwort`, `Texterkennung (OCR)`, `Lesezeichen`, `Eigenschaften`, `Neues Dokument`, then `Einstellungen` after a separator. Entries that need a document are disabled without one; all except `Einstellungen` are disabled while a tool runs (one at a time).
+
+- Dialogs are in `tools-ui.js` (`ask…()`, shared catalogue-window look). Each starts from the options of its last run in this visit (memory only). Invalid fields are marked (`aria-invalid`) and keep the dialog open; ranges are checked with `parseRanges` against the page count. Fields that do not apply are hidden (`data-when`).
+- Page choice: `Alle`, `Aktuelle Seite`, `Bereich` (`1-3, 5, 8-`; also `-3`, `;`), `Ungerade`, `Gerade`.
+- Flow (`app.js`): `bridge.bytes()` (every change) → worker (`engine.js` op) → result. Tools that change the document reopen the result as the same document (name, current page and password kept, counts as changed) and show `Verlauf nach Dokumentwerkzeug zurückgesetzt` (dismissable): the viewer's history starts new. Tools that make other files download them and leave the document unchanged.
+- Progress and cancel: the notice row shows the tool (with % when the operation reports it) and an `Abbrechen` action. Loops stop between steps; a worker that does not answer within 1.5 s is replaced.
+- Password: the viewer unlocks a file itself and does not tell the page. When the worker answers `password`, the page asks for it (`Kennwort`, marked when wrong) and keeps it in memory for this document.
+- Errors: German toasts from `ENGINE_ERRORS` (labels.js); a cancel shows nothing.
+
+| Entry | Operation | Result |
+|---|---|---|
+| PDFs anhängen | viewer `pageEdit.insertFromBytes` (no worker) | pages at the end, at the start or after the current page; files keep their order; toast with the number of pages; files that fail are named |
+| Seiten teilen / extrahieren | `split`: one file for the range, one per range, every n pages, each page, odd, even | `<name>_Seite-3.pdf`, `<name>_Seiten-1-3.pdf`, `<name>_Seiten-1,3,5.pdf`; several files as `<name>_Seiten.zip` |
+| Wasserzeichen | `watermark`: text (Plex semibold, colour 1–8, size pt) or PNG/JPG (size in % of the shorter page side), opacity, angle, position or tiled, pages | reload |
+| Seitenzahlen | `pageNumbers`: template (`{n}`, `{total}`, suggestions `Seite {n}`, `Seite {n} von {total}`, `{n}/{total}`), position (9), start number, size, pages | reload |
+| Kopf- und Fusszeile | `headerFooter`: six slots with `{n}`, `{total}`, `{datei}` (file name), `{datum}` (today, settings date format), size, pages | reload |
+| Seiten als Bilder | `toImages`: PNG or JPG, 72–600 dpi, pages; pages above 100 Mpx are rendered smaller (warning toast) | `<name>_Seite-3.png`; several as `<name>_Bilder.zip` |
+| Bilder als Seiten | `imagesToPdf`: JPG/PNG, image size or A4/A3 (orientation auto/portrait/landscape, margin mm) | into the open file (viewer insert) or a new document named after the first image |
+| Reduzieren | `flatten` (MuPDF `bake`): annotations and/or form fields | reload |
+| Komprimieren | `compress`: lossless rewrite, images optionally to 300/200/150 dpi | reload and toast `alt → neu`; `Keine Verkleinerung möglich` keeps the file |
+| Kennwort | `password`: set (open password and/or permission password, AES-256, permissions print, copy, modify, annotate, forms) or remove | reload with the new open password |
+| Lesezeichen | `readOutline` → dialog (title, page, level; indent, outdent, remove, add for the current page) → `writeOutline` | reload when changed |
+| Eigenschaften | viewer metadata plugin (title, author, subject, keywords) | no reload; part of the next save |
+| Neues Dokument | `blank`: A4 or A3, portrait or landscape | opens `Dokument.pdf` |
+
+Engine ops (`engine.js`, no DOM, Node tests) answer `{ value, transfer }` or throw `EngineError` with a code: `damaged`, `password`, `empty`, `range`, `image`, `not-svg`, `cancelled`, `input`, `internal`. Inserted text uses IBM Plex Sans from `assets/fonts/pdf/` (glyph ids, ToUnicode, searchable).
+
 ## Settings dialog
 
 ⋯ → `Einstellungen`: name for stamps, date format (`TT.MM.JJJJ`, `JJJJ-MM-TT`), default colours for markup, measurement, highlight and text (swatches with colour names), plan scales (`1:50, 1:100, …`), own stamps. Applying re-registers the tool defaults (`tools.register`), updates the measurement presets and redraws the stamp library.
@@ -58,6 +87,6 @@ The page listens in the capture phase on `window`, so these shortcuts run once e
 
 ## Open, save, hand-over
 
-- Open: folder button, Strg+O, drag and drop, empty-state button (slot `empty` of the viewer), start-page hand-over (`takeFileHandoff`). A password-protected file shows the viewer's own password prompt; the notice row says `Kennwort erforderlich`. A file the viewer cannot read shows `PDF nicht lesbar`.
+- Open: folder button, Strg+O, drag and drop, empty-state button (slot `empty` of the viewer), start-page hand-over (`takeFileHandoff`). A password-protected file shows the viewer's own password prompt; the notice row says `Kennwort erforderlich`. A file the viewer cannot read is repaired by MuPDF in the worker and opened again (`PDF repariert`, warning); when MuPDF cannot read it either, the notice row shows `PDF nicht lesbar`.
 - Save (↓ PDF, Strg+S): `documents.download()` writes incrementally (changes appended), so existing digital signatures stay valid. The file keeps its original name.
 - `→ DXF`: the current bytes (with all changes) go to PDF → DXF through `stashFileHandoff`.

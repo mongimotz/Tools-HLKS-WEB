@@ -2,19 +2,19 @@
 // Page controller of the PDF-Editor: app bar, notice row, the EmbedPDF viewer (bridge.js), open and save,
 // keyboard, start-page hand-over and → DXF. The PDF stays in this browser; only the edited PDF is saved.
 
-import { TOOL_ID, normalizeSettings } from './defaults.js';
-import { ACTIONS, DEFAULT_NAME, ERRORS, STATUS, TITLE, VIEWER_STRINGS, pageDeleted, saved } from './labels.js';
+import { TOOL_ID, normalizeSettings, formatDate } from './defaults.js';
+import { ACTIONS, DEFAULT_NAME, ENGINE_ERRORS, ERRORS, RESULTS, STATUS, SYMBOLS, TITLE, TOOLS, VIEWER_STRINGS, pageDeleted, progress, saved } from './labels.js';
 import { SWISS_DE } from './viewer-strings.js';
 import { VIEWER_ICONS, currentScheme, defaultMeasure, followScheme, readAnnotColors, scalePresets, toolDefinitions, viewerFonts } from './theme.js';
 import { mountViewer } from './bridge.js';
 import { WorkerClient } from './client.js';
 import { installSymbols, installStamps } from './library.js';
-import { mountSymbolPanel, openSettingsDialog } from './tools-ui.js';
-import { SYMBOLS } from './labels.js';
+import * as ui from './tools-ui.js';
 import { pickFile, download, enableFileDrop, takeFileHandoff, stashFileHandoff } from '../../lib/core/files.js';
 import { html, raw, icon, toast, bindThemeToggle, mountSourceLink } from '../../lib/core/ui.js';
 import { createIssuePanel } from '../../lib/core/issues.js';
 import { toolUrl } from '../../lib/core/registry.js';
+import { fmt } from '../../lib/core/format.js';
 
 const SETTINGS_KEY = `hlks-tools:${TOOL_ID}:settings`;
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -28,8 +28,9 @@ const app = {
   settings: null,
   issues: null,
   notices: new Map(),
-  file: null, // { name } of the open document
+  file: null, // { name, password? } of the open document (the password once a document tool needed it)
   loading: false,
+  busy: false, // a document tool runs
   dirty: false, // changed since the last save by the user
 };
 
@@ -192,7 +193,7 @@ async function installLibraries({ symbols = true } = {}) {
 }
 
 function openSettings() {
-  openSettingsDialog(app.settings, app.colors, (next) => {
+  ui.openSettingsDialog(app.settings, app.colors, (next) => {
     saveSettings(next);
     applySettings();
     installLibraries({ symbols: false });
@@ -227,17 +228,38 @@ async function openFile(file) {
   await openBytes(bytes, file.name || DEFAULT_NAME);
 }
 
-async function openBytes(bytes, name) {
+const openedOk = (doc) => doc && doc.status !== 'error' && doc.status !== 'failed';
+
+/**
+ * Open bytes as the document. A file the viewer cannot read is repaired by MuPDF in the worker and opened
+ * again. `keep`: the same document after a document tool (name and password stay, it counts as changed).
+ */
+async function openBytes(bytes, name, { keep = false, password } = {}) {
   app.loading = true;
   setNotice('open-failed', null);
+  if (!keep) setNotice('history', null);
+  const copy = bytes.slice(); // the viewer may take the buffer over
   try {
-    const doc = await app.bridge.open(bytes, { name });
-    app.file = { name };
-    app.dirty = false;
+    let doc = await app.bridge.open(bytes, { name, password }).catch(() => null);
+    let repaired = false;
+    if (!openedOk(doc)) {
+      const fixed = await app.worker.call('repair', { bytes: copy }, { transfer: [copy.buffer] }).promise.catch(() => null);
+      if (fixed?.bytes) {
+        doc = await app.bridge.open(fixed.bytes, { name }).catch(() => null);
+        repaired = openedOk(doc);
+      }
+    }
+    if (!openedOk(doc)) throw new Error('open');
+    setNotice('open-failed', null); // the viewer reported the first attempt
+    app.file = keep ? { ...app.file, name, password } : { name };
+    app.dirty = keep || repaired;
     document.title = `${name} – ${TITLE} – HLKS-Tools`;
+    if (repaired) setNotice('repaired', { severity: 'warning', text: RESULTS.repaired, dismiss: () => setNotice('repaired', null) });
+    else if (!keep) setNotice('repaired', null);
     return doc;
   } catch {
     app.file = null;
+    document.title = `${TITLE} – HLKS-Tools`;
     setNotice('open-failed', { severity: 'error', text: ERRORS.damaged, dismiss: () => setNotice('open-failed', null) });
     return null;
   } finally {
@@ -282,6 +304,220 @@ async function toDxf() {
 }
 
 // ============================================================================
+// Document tools (⋯ menu): MuPDF in the worker, on the viewer's current bytes
+// ============================================================================
+
+const u8 = (b) => (b instanceof Uint8Array ? b : new Uint8Array(b));
+const sizeText = (n) => (n >= 1e6 ? fmt(n / 1e6, 1, { unit: 'MB' }) : fmt(Math.max(1, n / 1e3), 0, { unit: 'kB' }));
+const MIME = { pdf: 'application/pdf', zip: 'application/zip', png: 'image/png', jpg: 'image/jpeg' };
+const cancelled = () => Object.assign(new Error('cancelled'), { code: 'cancelled' });
+
+/** What the dialogs need to know about the open document. */
+const toolContext = () => ({
+  pageCount: app.bridge?.pageCount() ?? 0,
+  current: app.bridge?.currentPage() ?? 0,
+  colors: app.colors,
+  hasDocument: !!app.bridge?.hasDocument(),
+});
+
+/** One worker operation, with progress and cancel in the notice row. */
+async function track(label, type, args, transfer = []) {
+  let finished = false;
+  const show = (value) => setNotice('task', { severity: 'info', text: progress(label, value), action: { icon: 'close', label: ACTIONS.cancel, run: cancel } });
+  const job = app.worker.call(type, args, { transfer, onProgress: show });
+  function cancel() {
+    app.worker.cancel(job.id);
+    // one long MuPDF call cannot stop in between: the worker is replaced when it does not answer
+    setTimeout(() => finished || app.worker.restart(), 1500);
+  }
+  show(0);
+  try {
+    return await job.promise;
+  } finally {
+    finished = true;
+    setNotice('task', null);
+  }
+}
+
+/**
+ * A document tool on the open document: its current bytes (with every change) go to the worker. A file that
+ * needs its password (the viewer asked for it, the page does not know it) asks for it once.
+ */
+async function runOnDocument(label, type, args = {}) {
+  const bytes = u8(await app.bridge.bytes());
+  for (let wrong = false; ; wrong = true) {
+    const copy = bytes.slice();
+    try {
+      return await track(label, type, { ...args, bytes: copy, password: app.file?.password }, [copy.buffer]);
+    } catch (e) {
+      if (e.code !== 'password') throw e;
+      const password = await ui.askOpenPassword(wrong);
+      if (password === null) throw cancelled();
+      app.file = { ...app.file, password };
+    }
+  }
+}
+
+/** Run a tool once at a time; errors as a toast, a cancel quietly. */
+async function withTool(fn) {
+  if (app.busy) return;
+  app.busy = true;
+  updateUi();
+  try {
+    await fn();
+  } catch (e) {
+    if (e?.code !== 'cancelled') toast(ENGINE_ERRORS[e?.code] ?? ENGINE_ERRORS.internal, { kind: 'error', timeout: 7000 });
+  } finally {
+    app.busy = false;
+    updateUi();
+  }
+}
+
+/** Show a tool's result as the open document, on the same page. The viewer's history starts new. */
+async function reload(bytes, { password = app.file?.password } = {}) {
+  const page = app.bridge.currentPage();
+  if (!(await openBytes(u8(bytes), fileName(), { keep: true, password }))) return;
+  requestAnimationFrame(() => requestAnimationFrame(() => app.bridge.goToPage(Math.min(page, app.bridge.pageCount() - 1))));
+  setNotice('history', { severity: 'info', text: STATUS.historyReset, dismiss: () => setNotice('history', null) });
+}
+
+function downloadFiles(files) {
+  for (const f of files) download(f.bytes, f.name, MIME[f.name.split('.').pop().toLowerCase()] ?? 'application/octet-stream');
+  if (files.length === 1) toast(saved(files[0].name), { kind: 'success' });
+}
+
+/** Viewer placement of new pages: 'start', 'end' or after the current page. */
+const placement = (insert) => (insert === 'start' ? 'start' : insert === 'after' ? { after: app.bridge.currentPage() } : 'end');
+
+async function insertPdfs(list, insert) {
+  const before = app.bridge.pageCount();
+  const failed = [];
+  const at = placement(insert);
+  // before a fixed page the last file goes first, so the files keep their order
+  for (const { name, bytes } of insert === 'end' ? list : [...list].reverse()) {
+    try {
+      if (!isPdf(bytes)) throw new Error('not a PDF');
+      await app.bridge.pages.insertBytes(bytes, at);
+    } catch {
+      failed.push(name);
+    }
+  }
+  const added = app.bridge.pageCount() - before;
+  if (added > 0) toast(RESULTS.inserted(added), { kind: 'success' });
+  if (failed.length) toast(RESULTS.notInserted(failed.join(', ')), { kind: 'error', timeout: 8000 });
+}
+
+async function mergeTool() {
+  const v = await ui.askMerge();
+  if (v) await withTool(async () => insertPdfs(await Promise.all(v.files.map(async (f) => ({ name: f.name, bytes: u8(await f.arrayBuffer()) }))), v.insert));
+}
+
+async function splitTool() {
+  const v = await ui.askSplit(toolContext());
+  if (v) await withTool(async () => downloadFiles((await runOnDocument(TOOLS.split, 'split', { ...v, name: fileName() })).files));
+}
+
+async function watermarkTool() {
+  const v = await ui.askWatermark(toolContext());
+  if (v) await withTool(async () => reload(await runOnDocument(TOOLS.watermark, 'watermark', ui.watermarkOptions(v, app.colors))));
+}
+
+async function pageNumbersTool() {
+  const v = await ui.askPageNumbers(toolContext());
+  if (v) await withTool(async () => reload(await runOnDocument(TOOLS.pageNumbers, 'pageNumbers', v)));
+}
+
+async function headerFooterTool() {
+  const v = await ui.askHeaderFooter(toolContext());
+  const values = { datei: fileName(), datum: formatDate(new Date(), app.settings.dateFormat) };
+  if (v) await withTool(async () => reload(await runOnDocument(TOOLS.headerFooter, 'headerFooter', { ...v, ...values })));
+}
+
+async function toImagesTool() {
+  const v = await ui.askToImages(toolContext());
+  if (!v) return;
+  await withTool(async () => {
+    const r = await runOnDocument(TOOLS.toImages, 'toImages', { ...v, name: fileName() });
+    downloadFiles(r.files);
+    if (r.reduced?.length) toast(RESULTS.reduced(r.reduced.join(', ')), { kind: 'warning', timeout: 8000 });
+  });
+}
+
+async function fromImagesTool() {
+  const v = await ui.askFromImages(toolContext());
+  if (!v) return;
+  await withTool(async () => {
+    const images = await Promise.all(v.files.map(async (f) => u8(await f.arrayBuffer())));
+    const bytes = u8(await track(TOOLS.fromImages, 'imagesToPdf', { images, size: v.size, orientation: v.orientation, marginMm: v.margin }, images.map((b) => b.buffer)));
+    if (v.insert === 'new' || !app.bridge.hasDocument()) {
+      if (await openBytes(bytes, `${v.files[0].name.replace(/\.[^.]+$/, '')}.pdf`)) app.dirty = true;
+    } else {
+      await insertPdfs([{ name: TOOLS.fromImages, bytes }], v.insert);
+    }
+  });
+}
+
+async function flattenTool() {
+  const v = await ui.askFlatten();
+  if (v) await withTool(async () => reload(await runOnDocument(TOOLS.flatten, 'flatten', v)));
+}
+
+async function compressTool() {
+  const v = await ui.askCompress();
+  if (!v) return;
+  await withTool(async () => {
+    const r = await runOnDocument(TOOLS.compress, 'compress', v);
+    if (!r.smaller) {
+      toast(RESULTS.notSmaller);
+      return;
+    }
+    await reload(r.bytes);
+    toast(RESULTS.compressed(sizeText(r.before), sizeText(r.after)), { kind: 'success', timeout: 7000 });
+  });
+}
+
+async function passwordTool() {
+  const v = await ui.askPassword();
+  if (!v) return;
+  await withTool(async () => reload(await runOnDocument(TOOLS.password, 'password', v), { password: v.remove ? undefined : v.userPassword || undefined }));
+}
+
+async function outlineTool() {
+  let items = null;
+  await withTool(async () => (items = await runOnDocument(TOOLS.outline, 'readOutline')));
+  if (!items) return;
+  const next = await ui.askOutline(toolContext(), items);
+  const same = (a) => JSON.stringify(a.map(({ title, page, level }) => [title, page, level]));
+  if (next && same(next) !== same(items)) await withTool(async () => reload(await runOnDocument(TOOLS.outline, 'writeOutline', { items: next })));
+}
+
+async function propertiesTool() {
+  const meta = app.bridge.plugin('metadata');
+  if (!meta) return;
+  let current = {};
+  try {
+    await meta.ensureLoaded();
+    current = meta.getSnapshot() ?? {};
+  } catch {
+    /* empty fields */
+  }
+  const v = await ui.askProperties(current);
+  if (!v) return;
+  const changed = Object.fromEntries(Object.entries(v).filter(([k, x]) => x !== (current[k] ?? '')));
+  if (!Object.keys(changed).length) return;
+  try {
+    await meta.update(changed);
+  } catch {
+    toast(ENGINE_ERRORS.internal, { kind: 'error' });
+  }
+}
+
+async function blankTool() {
+  const v = await ui.askBlank();
+  if (v) await withTool(async () => openBytes(u8(await track(TOOLS.blank, 'blank', v)), DEFAULT_NAME));
+}
+
+// ============================================================================
 // App bar, keyboard
 // ============================================================================
 
@@ -305,16 +541,33 @@ function updateUi() {
 
 const isEditable = (el) => !!el && (el.isContentEditable || /^(input|textarea|select)$/i.test(el.tagName ?? ''));
 
-/** The ⋯ menu: the document tools (stage 4) and the settings. `doc` entries need an open document. */
-const MENU = [{ action: 'settings', icon: 'settings', label: 'Einstellungen', run: () => openSettings() }];
+/** The ⋯ menu: the document tools in the plan's order, then the settings. `doc` entries need an open document. */
+const MENU = [
+  { action: 'merge', icon: 'merge', doc: true, run: mergeTool },
+  { action: 'split', icon: 'split', doc: true, run: splitTool },
+  { action: 'watermark', icon: 'stamp', doc: true, run: watermarkTool },
+  { action: 'pageNumbers', icon: 'number', doc: true, run: pageNumbersTool },
+  { action: 'headerFooter', icon: 'pages', doc: true, run: headerFooterTool },
+  { action: 'toImages', icon: 'image', doc: true, run: toImagesTool },
+  { action: 'fromImages', icon: 'upload', run: fromImagesTool },
+  { action: 'flatten', icon: 'layers', doc: true, run: flattenTool },
+  { action: 'compress', icon: 'compress', doc: true, run: compressTool },
+  { action: 'password', icon: 'lock', doc: true, run: passwordTool },
+  { action: 'outline', icon: 'bookmark', doc: true, run: outlineTool },
+  { action: 'properties', icon: 'file', doc: true, run: propertiesTool },
+  { action: 'blank', icon: 'plus', run: blankTool },
+  { separator: true },
+  { action: 'settings', icon: 'settings', settings: true, run: () => openSettings() },
+].map((m) => ({ label: TOOLS[m.action], ...m }));
 
 function renderMenu() {
   const has = !!app.bridge?.hasDocument();
+  const off = (m) => (m.doc && !has) || (app.busy && !m.settings) || (!app.bridge && !m.settings);
   $('#more-list').innerHTML = String(
     html`${MENU.map((m) =>
       m.separator
-        ? html`<li><hr /></li>`
-        : html`<li><button type="button" role="menuitem" data-menu="${m.action}" ${m.doc && !has ? raw('disabled') : ''}>${icon(m.icon)}<span>${m.label}</span></button></li>`,
+        ? html`<li role="separator"><hr /></li>`
+        : html`<li><button type="button" role="menuitem" data-menu="${m.action}" ${off(m) ? raw('disabled') : ''}>${icon(m.icon)}<span>${m.label}</span></button></li>`,
     )}`,
   );
   $('#more-menu').hidden = false;
@@ -423,7 +676,7 @@ async function start() {
     return;
   }
   followScheme((scheme) => (el.theme = scheme));
-  app.symbols = mountSymbolPanel($('#symbols-panel'), {
+  app.symbols = ui.mountSymbolPanel($('#symbols-panel'), {
     getStamp: () => app.bridge.plugin('stamp'),
     worker: app.worker,
     hasDocument: () => app.bridge.hasDocument(),
