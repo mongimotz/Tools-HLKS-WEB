@@ -720,6 +720,7 @@ function bindActions() {
     const item = e.target.closest('[data-menu]');
     if (item && !item.disabled) {
       closeMenu();
+      $('[data-action="menu"]').focus({ preventScroll: true }); // the item hides: a dialog returns focus to ⋯
       MENU.find((m) => m.action === item.dataset.menu)?.run();
       return;
     }
@@ -746,10 +747,19 @@ function bindActions() {
     }
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && $('#more-menu').classList.contains('open')) {
+    if (!$('#more-menu').classList.contains('open')) return;
+    if (e.key === 'Escape') {
       closeMenu();
       $('[data-action="menu"]').focus();
+      return;
     }
+    // ↑ ↓ Home End move through the enabled entries (15 of them; Tab works too)
+    const items = [...$('#more-list').querySelectorAll('button:not([disabled])')];
+    const at = items.indexOf(document.activeElement);
+    const to = { ArrowDown: at + 1, ArrowUp: at - 1, Home: 0, End: items.length - 1 }[e.key];
+    if (at < 0 || to === undefined || !items.length) return;
+    e.preventDefault();
+    items[(to + items.length) % items.length].focus();
   });
   // Capture on window: the app's shortcuts win over the viewer's, so each runs once. While a text field is
   // focused (also inside the viewer), Strg+Z / Strg+Y stay with the field.

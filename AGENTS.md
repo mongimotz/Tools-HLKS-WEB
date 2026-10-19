@@ -144,7 +144,7 @@ Open technical items:
 - Excel export as `.xlsx` (CSV exists).
 - Own domain: buy it, add `CNAME`, set the DNS record, enable HTTPS in the Pages settings.
 
-Available: shared core, PDF export/import with embedded data, start page import, calcVersion warning, reference PDFs, Druckverlust Lüftung, Kanalrechner, Schalldämpfer, PDF → DXF (test version; vector and scanned PDFs, R2000 and R12; open: the owner's test in Trimble Nova, `docs/pdf-to-dxf-nova-test.md`), PDF-Editor (in progress, `docs/dev/pdf-editor/PROGRESS.md`).
+Available: shared core, PDF export/import with embedded data, start page import, calcVersion warning, reference PDFs, Druckverlust Lüftung, Kanalrechner, Schalldämpfer, PDF → DXF (test version; vector and scanned PDFs, R2000 and R12; open: the owner's test in Trimble Nova, `docs/pdf-to-dxf-nova-test.md`), PDF-Editor (test version; open: the owner's checks in `docs/dev/pdf-editor/TODO-OWNER.md`).
 
 ## License
 

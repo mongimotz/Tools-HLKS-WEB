@@ -108,6 +108,15 @@ Engine ops (`engine.js`, no DOM, Node tests) answer `{ value, transfer }` or thr
 
 The page listens in the capture phase on `window`, so these shortcuts run once even when the viewer has focus. All other shortcuts are the viewer's (zoom, pages, search, delete, Escape).
 
+- ⋯ menu: Enter or a click opens it with focus on the first enabled entry; ↑ ↓ Home End move (wrapping), Tab works too; Escape closes it and focuses ⋯. A menu entry focuses ⋯ before it runs, so its dialog returns focus to ⋯.
+- Dialogs: Escape, the close icon and a click outside close them; focus returns to the opener. Invalid fields keep the dialog open.
+- Notice row: the count opens the list; restore, discard and cancel actions are buttons in it. Escape closes it and focuses the count; focus stays in the row when notices change.
+- Tab order without a document: home, source, theme, open, ⋯, notices, viewer menu, the empty-state open button (disabled buttons are skipped).
+
+## Mobile
+
+No own mobile layout: the viewer folds its mode tabs into a selector (`Ansicht` ▾) and its tool bar into ⋯ on narrow screens; the app bar shows icons only; below 640 px the viewer runs edge to edge (`style.css`). Dialogs fit the screen width (`min(520px, 100vw - 2 gutters)`, rows one column below 560 px). Checked at 375 px: view, fill form fields, simple markup, ⋯ menu, dialogs, no horizontal scroll.
+
 ## Open, save, hand-over
 
 - Open: folder button, Strg+O, drag and drop, empty-state button (slot `empty` of the viewer), start-page hand-over (`takeFileHandoff`). A password-protected file shows the viewer's own password prompt; the notice row says `Kennwort erforderlich`. A file the viewer cannot read is repaired by MuPDF in the worker and opened again (`PDF repariert`, warning); when MuPDF cannot read it either, the notice row shows `PDF nicht lesbar`.

@@ -82,3 +82,10 @@ Decisions taken while working through [PLAN.md](PLAN.md) (owner, 2026-10-19) whe
 - **A5 Saving clears the slot.** Saving cannot know whether the browser really stored the download; the slot is removed when the download starts (the saved file is the newer state).
 - **A6 Notices with two actions.** The plan wants restore and discard icons in the notice row. `lib/core/issues.js` takes `actions` (a list of `{ icon, label, run }`) besides `action`; other tools are unchanged. Restore uses ↶, discard the trash icon. The notice is a warning (unsaved work), with file name, date (settings format) and time.
 - **A7 Flush on hide.** A waiting write runs at once when another file opens or the page is hidden (`visibilitychange`), so closing the tab right after an edit keeps it in most browsers; `beforeunload` prompts are not used (autosave replaces them).
+
+## Stage 7: finish
+
+- **F1 Focus after a menu dialog.** A ⋯ entry hides with the menu before its dialog opens, so the dialog's opener was the page body and Escape left focus nowhere. The menu click now focuses ⋯ first; every dialog opened from the menu returns focus to ⋯. Change: `bindActions()` in `app.js`.
+- **F2 Arrow keys in the ⋯ menu.** The editor's menu has 15 entries; ↑ ↓ Home End move through the enabled ones (wrapping), Tab still works. The other tools' menus are short and keep Tab only. Change: the `keydown` handler in `bindActions()`.
+- **F3 Mobile: the viewer's own layout.** At 375 px the viewer folds its mode tabs into a selector (`Ansicht` ▾) and its tools into ⋯; the app bar shows icons only, menus and dialogs fit (dialogs one column, no horizontal scroll). Checked: view, fill a text field, draw a rectangle, ⋯ menu, a dialog. No own mobile code beyond the existing 640 px rules in `style.css`.
+- **F4 Accuracy figures in the method doc.** The click error uses 96 px per inch at 100 % zoom (measured in the viewer: an A3 page is 1.333 px per pt at 100 %) and no snapping (the viewer has none). Figures the code does not fix (scanner distortion, OCR font sizes, typical compression gains) are left out instead of guessed.
