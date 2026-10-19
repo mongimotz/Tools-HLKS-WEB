@@ -24,7 +24,7 @@ Detailed formulas remain in the German method document. Keep German UI labels in
 - The browser draft stores settings, not the source PDF. Undo and redo apply to settings.
 - A new PDF resets the page, scan switch, crop area, and disabled layers, colors, and line weights.
 - A calibrated scale belongs to one PDF. A new PDF clears calibration and restores the nearest standard scale.
-- The start page passes PDFs without HLKS `data.json` through IndexedDB with `stashFileHandoff`.
+- PDFs arrive from the PDF-Editor's `→ DXF` button through IndexedDB (`stashFileHandoff` / `takeFileHandoff`). The start page sends PDFs without HLKS `data.json` to the PDF-Editor first.
 
 ## Layout and workflow
 

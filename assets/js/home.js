@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Start page: one small network per discipline (Heizung, Lüftung, Klima, Sanitär) with one branch per tool,
 // tiles for tools without a discipline, and one open button for any PDF (HLKS-Tools PDFs open in their tool,
-// other PDFs in PDF → DXF).
+// other PDFs in the PDF-Editor).
 
 import { GROUPS, GENERAL, TOOLS, findTool, toolUrl } from '../../lib/core/registry.js';
 import { readEnvelopeFromFile, pickFile, stashHandoff, stashFileHandoff, enableFileDrop } from '../../lib/core/files.js';
@@ -266,15 +266,15 @@ function renderGeneral() {
     .join('');
 }
 
-/** A PDF without HLKS-Tools data goes to the PDF → DXF tool. */
+/** A PDF without HLKS-Tools data opens in the PDF-Editor (its → DXF button hands it on to PDF → DXF). */
 async function openForeignPdf(file) {
-  const tool = findTool('pdf-to-dxf');
+  const tool = findTool('pdf-editor');
   if (tool?.status !== 'ready') return false;
   if (!(await stashFileHandoff(file))) {
     toast('Übergabe blockiert (Browser-Speicher gesperrt)', { kind: 'error', timeout: 8000 });
     return true;
   }
-  location.href = toolUrl('pdf-to-dxf');
+  location.href = toolUrl('pdf-editor');
   return true;
 }
 

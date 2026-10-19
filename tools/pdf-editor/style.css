@@ -1,13 +1,51 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
-/* PDF-Editor: the viewer fills the page below the app bar. */
+/* PDF-Editor: notice row and the EmbedPDF viewer filling the window below the app bar.
+   The viewer draws its own UI in a shadow DOM; its theme tokens (--epdf-*) map to ours here, so it follows
+   Hell / Dunkel with the rest of the page. Colours only via tokens. */
 
-html,
-body {
-  height: 100%;
-  margin: 0;
+.pe-layout {
+  display: grid;
+  grid-template-rows: var(--issue-bar-h) minmax(0, 1fr);
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--gutter) var(--sp-3);
+  height: calc(100dvh - var(--appbar-h));
+  min-height: 360px;
 }
 
-#viewer {
+.pe-issues { min-width: 0; }
+
+.pe-viewer {
   display: block;
-  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--r-panel);
+  --epdf-accent: var(--primary);
+  --epdf-background: var(--surface);
+  --epdf-surface: var(--surface);
+  --epdf-surface-raised: var(--surface);
+  --epdf-text: var(--text);
+  --epdf-text-muted: var(--text-muted);
+  --epdf-border: var(--border);
+  --epdf-hover: var(--surface-hover);
+  --epdf-canvas: var(--surface-sunken);
+  --epdf-radius: var(--r-button);
+  --epdf-font: var(--font-sans);
 }
+
+.pe-empty { display: grid; place-items: center; height: 100%; min-height: 200px; background: var(--surface-sunken); }
+.btn.big { height: 48px; padding: 0 var(--sp-5); font-size: var(--fs-md); gap: var(--sp-2); }
+
+@media (max-width: 640px) {
+  .pe-layout { padding: var(--sp-1) 0 0; gap: var(--sp-1); }
+  .pe-issues { padding: 0 var(--sp-2); }
+  .pe-viewer { border-width: 1px 0 0; border-radius: 0; }
+}
+
+/* own dialogs (document tools, settings): the shared catalogue window look */
+.pe-dialog { width: min(520px, calc(100vw - 2 * var(--gutter))); }
+.pe-dialog .dialog-body { display: grid; gap: var(--sp-4); }
+.pe-dialog .dialog-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--sp-3); }
+.pe-dialog .dialog-actions { display: flex; justify-content: flex-end; gap: var(--sp-2); }
+.pe-dialog .check { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); }
+.menu-list .icon { color: var(--text-muted); }

@@ -105,6 +105,8 @@ Only IBM Plex Sans and IBM Plex Mono (SIL OFL). Sources: `assets/fonts/source/` 
 - PDF → DXF places independent settings above the preset selector and all preset-controlled options below it. While a named preset applies, dim its labels, values and borders together, using the existing tokens without extra selection outlines. Keep the controls editable and restore full visibility on keyboard focus. A changed value switches the preset to `Benutzerdefiniert`.
 - Phone width works (16 px gutter, wide tables scroll inside their panel, never the page).
 
+- The PDF-Editor embeds the EmbedPDF viewer below its notice row. The viewer keeps its own layout and icons in its shadow DOM; its colours, radius and font come from our tokens (`--epdf-*` mapped in `tools/pdf-editor/style.css`), so it follows Hell / Dunkel. Annotation colours are document colours (`--annot-*`, see `dragon-ink.md`), the same in both schemes. Undo / redo, open, save and `→ DXF` stay in the app bar; the editor's own dialogs follow this document.
+
 Patterns of the PDF → DXF tool (reuse them for drawing previews):
 
 - **Preview canvas:** paper in `--surface` on `--surface-sunken`, content in its own colours, black and white content in `--text-strong` (like colour 7 in CAD). Wheel or two fingers zoom about the pointer, dragging pans, "four corners" fits the page. Interaction graphics (snap marker, measured line, selection rectangle) in `--primary` on a separate overlay canvas. A raster of the source can lie underneath at 45 % opacity (image icon toggles it).

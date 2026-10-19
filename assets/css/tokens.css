@@ -91,6 +91,18 @@
   --chart-7: #b66d37;
   --chart-8: #009592;
 
+  /* annotation colours (PDF-Editor): written into the document, so the same in both schemes.
+     Okabe-Ito based; every pair stays apart under protan and deutan simulation (tests/pdf-editor.colors.test.js). */
+  --annot-1: #d42a20; /* red */
+  --annot-2: #0072b2; /* blue */
+  --annot-3: #009e73; /* green */
+  --annot-4: #f0e442; /* yellow, highlight */
+  --annot-5: #000000; /* black */
+  --annot-6: #e69f00; /* orange */
+  --annot-7: #cc79a7; /* magenta */
+  --annot-8: #56b4e9; /* cyan */
+  --annot-9: #ffffff; /* white, whiteout */
+
   --shadow-pop: 0 6px 24px rgb(24 22 22 / 0.16);
   --backdrop: rgb(24 22 22 / 0.45);
 }

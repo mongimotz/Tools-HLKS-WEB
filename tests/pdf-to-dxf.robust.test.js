@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Phase 9: performance and robustness. 300 000 segments in under 15 s, 200 random option sets on every
-// fixture give valid DXF files, error cases, real plans (when present), and MuPDF loads only in the worker.
+// fixture give valid DXF files, error cases, real plans (when present), relative paths only.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -170,28 +170,4 @@ test('no absolute paths in the site (src="/", href="/", fetch("/"), url(/), impo
   }
 });
 
-// ---- loading: MuPDF only in the worker -----------------------------------------------------------------
-
-/** Static imports of a module and everything it imports (relative paths only). */
-async function importGraph(url, seen = new Set()) {
-  if (seen.has(url.href)) return seen;
-  seen.add(url.href);
-  const src = await readFile(url, 'utf8');
-  for (const m of src.matchAll(/^\s*import\s[^'"]*?from\s+['"](\.[^'"]+)['"]/gm)) await importGraph(new URL(m[1], url), seen);
-  for (const m of src.matchAll(/^\s*import\s+['"](\.[^'"]+)['"]/gm)) await importGraph(new URL(m[1], url), seen);
-  return seen;
-}
-
-test('start page and tool pages do not load MuPDF; the PDF → DXF page loads it only in its worker', async () => {
-  const root = new URL('../', import.meta.url);
-  const pages = [new URL('assets/js/home.js', root)];
-  for (const t of await readdir(new URL('tools/', root))) pages.push(new URL(`tools/${t}/app.js`, root));
-  for (const p of pages) {
-    const graph = [...(await importGraph(p))];
-    assert.ok(!graph.some((u) => u.includes('/lib/vendor/mupdf/') || u.endsWith('/backend.js')), `${p.pathname} must not import MuPDF statically`);
-  }
-  const workerGraph = [...(await importGraph(new URL('tools/pdf-to-dxf/worker.js', root)))];
-  assert.ok(workerGraph.some((u) => u.endsWith('/backend.js')));
-  const backendSrc = await readFile(new URL('tools/pdf-to-dxf/backend.js', root), 'utf8');
-  assert.match(backendSrc, /await import\('\.\.\/\.\.\/lib\/vendor\/mupdf\/mupdf\.js'\)/, 'MuPDF is imported lazily');
-});
+// Lazy loading of MuPDF (worker only) is checked for every page in tests/lazy-imports.test.js.

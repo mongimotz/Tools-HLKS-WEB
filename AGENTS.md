@@ -23,6 +23,7 @@ German method documents describe formulas, assumptions and limits. Design rules 
 | Kanalrechner | [tools/duct-sizing/AGENTS.md](tools/duct-sizing/AGENTS.md) | [docs/duct-sizing-method.md](docs/duct-sizing-method.md) |
 | Schalldämpfer | [tools/silencer/AGENTS.md](tools/silencer/AGENTS.md) | [docs/silencer-method.md](docs/silencer-method.md) |
 | PDF → DXF | [tools/pdf-to-dxf/AGENTS.md](tools/pdf-to-dxf/AGENTS.md) | [docs/pdf-to-dxf-method.md](docs/pdf-to-dxf-method.md) |
+| PDF-Editor | [tools/pdf-editor/AGENTS.md](tools/pdf-editor/AGENTS.md) | [docs/pdf-editor-method.md](docs/pdf-editor-method.md) |
 
 ## Structure
 
@@ -34,13 +35,16 @@ assets/fonts/              font subsets with generic names: sans/mono.woff2 (web
 lib/core/                  shared core: envelope, pdf (export/import), files (incl. file hand-over via IndexedDB), store (undo + draft), ui (icons, toasts, theme, source link), combo (number field with standard sizes), format, registry, project-info (project fields), issues (notice panel), air (air properties, friction factor λ)
 lib/vendor/pdf-lib/        pdf-lib 1.17.1 (MIT)
 lib/vendor/fontkit/        @pdf-lib/fontkit 1.1.1 + pako, one ES module (MIT), for Plex in PDFs
-lib/vendor/mupdf/          MuPDF.js 1.28.1 (AGPL-3.0): mupdf.js, mupdf-wasm.js, mupdf-wasm.wasm; used only by tools/pdf-to-dxf in its worker
+lib/vendor/mupdf/          MuPDF.js 1.28.1 (AGPL-3.0): mupdf.js, mupdf-wasm.js, mupdf-wasm.wasm; used only in the workers of tools/pdf-to-dxf and tools/pdf-editor
+lib/vendor/embedpdf/       EmbedPDF viewer 3.0.0-next.15 (Apache-2.0), the files its snippet entry embedpdf.js reaches, PATCHES.md, VERSION; used only by tools/pdf-editor
 tools/<tool-id>/           one folder per tool: AGENTS.md (local contracts), index.html, app.js (UI), calc.js (pure maths), defaults.js, labels.js, report.js (PDF), csv.js, charts.js / drawing.js, style.css
 tools/pdf-to-dxf/          PDF → DXF: app.js, preview.js (DOM); worker.js, convert.js, backend.js (MuPDF), ir.js, pipeline.js, geometry.js, dxf.js, scan.js, defaults.js, labels.js (no DOM)
+tools/pdf-editor/          PDF-Editor: app.js, bridge.js (EmbedPDF), theme.js, library.js, tools-ui.js (DOM); worker.js, engine.js (MuPDF), pages.js, images.js, compress.js, ocr.js, svg.js, zip.js, defaults.js, labels.js (no DOM); symbols/, stamps/
 docs/                      DESIGN.md, dragon-ink.md, <tool-id>-method.md (user-facing calculation docs, German), pdf-to-dxf-nova-test.md
 docs/dev/pdf-to-dxf/       PROGRESS, DECISIONS, TESTREPORT, TODO-OWNER of the PDF → DXF build (English)
-tests/                     node --test, fixtures/ holds reference PDFs, fixtures/pdf-to-dxf/ the PDF → DXF corpus with *.truth.json, helpers/
-scripts/                   serve.mjs (dev server, --base for a sub-path), make-fixtures.mjs, build-fonts.py, make-pdf-to-dxf-fixtures.mjs, pdf-to-dxf.mjs (CLI), check-dxf.py (ezdxf)
+docs/dev/pdf-editor/       PLAN, PROGRESS, DECISIONS, TODO-OWNER of the PDF-Editor build (English)
+tests/                     node --test, fixtures/ holds reference PDFs, fixtures/pdf-to-dxf/ the PDF → DXF corpus with *.truth.json, fixtures/pdf-editor/ the editor's test files, helpers/
+scripts/                   serve.mjs (dev server, --base for a sub-path), make-fixtures.mjs, build-fonts.py, make-pdf-to-dxf-fixtures.mjs, pdf-to-dxf.mjs (CLI), check-dxf.py (ezdxf), npm-package.mjs + vendor-embedpdf.mjs (vendoring), make-pdf-editor-fixtures.mjs
 ```
 
 ## Rules for tools
@@ -54,18 +58,21 @@ scripts/                   serve.mjs (dev server, --base for a sub-path), make-f
 - **Beta (owner decision, 2026-10-13):** the tools are not in productive use yet. Until the owner ends the beta, files from older versions (PDF, JSON, draft) need not open: no migration in `normalizeInputs`, no compatibility code. Bump `INPUT_VERSION` anyway, so the version warning shows. Old fixtures of a tool may be deleted when its schema changes. `normalizeInputs` must still not throw on old or foreign data. Backwards compatibility becomes a feature later.
 - `normalizeInputs` must be idempotent (round-trip test: export → import → export keeps the data identical).
 - Editable catalogues (ζ values, roughness, limits) are part of `inputs` and saved with every file.
-- **Exception PDF → DXF:** this tool saves only the DXF. No PDF report, no JSON, no CSV, no envelope, no ⋯ menu. Its input is the user's PDF, which is never stored; only the settings are kept as a browser draft (`normalizeInputs` in its `defaults.js`, idempotent as everywhere). Reason: the result belongs in CAD, and a plan PDF must not be copied into another file. The start page hands PDFs without `data.json` to this tool (IndexedDB, `stashFileHandoff`).
-- MuPDF (10 MB WebAssembly) is loaded only by `tools/pdf-to-dxf/worker.js` → `backend.js` with `await import()`. No other page may import it; `tests/pdf-to-dxf.robust.test.js` checks the import graph.
+- **Exception PDF → DXF:** this tool saves only the DXF. No PDF report, no JSON, no CSV, no envelope, no ⋯ menu. Its input is the user's PDF, which is never stored; only the settings are kept as a browser draft (`normalizeInputs` in its `defaults.js`, idempotent as everywhere). Reason: the result belongs in CAD, and a plan PDF must not be copied into another file. It receives PDFs from the PDF-Editor's `→ DXF` button (IndexedDB, `stashFileHandoff`).
+- **Exception PDF-Editor (owner decision, 2026-10-19):** the editor saves only the edited PDF. No envelope, no `data.json`, no JSON or CSV. Its ⋯ menu holds the document tools instead of the standard entries. Its settings are a browser draft (`normalizeSettings` in its `defaults.js`, idempotent). Autosave keeps the user's PDF in IndexedDB on this device only. The start page hands PDFs without `data.json` to this tool; its `→ DXF` icon button hands the current file on to PDF → DXF with `stashFileHandoff`.
+- MuPDF (10 MB WebAssembly) is loaded only by `tools/pdf-to-dxf/worker.js` → `backend.js` and `tools/pdf-editor/worker.js` → `engine.js`, always with `await import()`, never by a page module.
+- EmbedPDF (`lib/vendor/embedpdf/`) and tesseract.js (`lib/vendor/tesseract/`) are imported only by `tools/pdf-editor/` and only with `await import()`: EmbedPDF by `bridge.js` when the editor page starts, tesseract by `ocr.js` inside the editor's worker on the first OCR. `tests/lazy-imports.test.js` checks the import graph of every page and the allowed modules.
+- EmbedPDF draws its own UI in a shadow DOM. Its theme tokens (`--epdf-*`) map to `assets/css/tokens.css` in `tools/pdf-editor/style.css`; its layout and icons inside the viewer are accepted. The page around it (app bar, notice row, own dialogs) follows `docs/DESIGN.md` fully.
 
 ## Shared application behavior
 
 - Calculations and conversion run locally in the browser. There is no application backend, sign-in or upload of input files.
 - The folder action `Öffnen` and drag-and-drop accept HLKS-Tools PDF and JSON files. The homepage routes them through the registry.
-- A PDF without HLKS-Tools data opens in PDF → DXF. Preserve this handoff when changing imports.
+- A PDF without HLKS-Tools data opens in the PDF-Editor; its `→ DXF` button hands it on to PDF → DXF. Preserve this handoff when changing imports.
 - Keep the original report PDF. Other software can remove its `data.json` attachment when printing or saving it again.
 - Drafts belong to one browser on one device. The homepage shows the saved calculation name below its tool.
 - The standard ⋯ menu contains `Neue Berechnung`, `Beispiel laden`, `JSON speichern` and `CSV speichern`.
-- JSON contains the calculation data. CSV uses semicolons for Excel. PDF → DXF has no ⋯ menu or these exports.
+- JSON contains the calculation data. CSV uses semicolons for Excel. PDF → DXF has no ⋯ menu or these exports. The PDF-Editor's ⋯ menu holds its document tools instead.
 - Seeded examples and `Beispiel laden` set `project.name` to exactly `Beispiel`. Preserve other editable project names.
 - Recalculate imported results from inputs. A calculation-version warning shows both versions; changed key results show the old and new values.
 - Shared controls: ↶ / ↷ undo and redo, folder opens a file, ↓ PDF exports, and ⋯ opens further actions.
@@ -86,6 +93,7 @@ These rules apply to existing and new tools.
 - Keep the notice area visible without messages. Its empty state keeps a check icon on the left and `0 Hinweise` on the right, without repeating `Keine Hinweise` visibly. Preserve the accessible empty-state label. This state does not certify the calculation.
 - Keep controls keyboard accessible. Escape closes an overlay and returns focus to its trigger. Outside clicks or focus close the overlay. Retain focus when notices update or disappear.
 - PDF → DXF has no project fields. It uses the shared notice row alone above the preview. Its empty, processing, and cancelled states use neutral status messages.
+- The PDF-Editor has no project fields either. Its notice row stands alone above the viewer: no document, opening, password needed, autosave available, document-tool and OCR progress, errors.
 
 ## Calculation tabs and catalogues
 
@@ -97,7 +105,7 @@ These rules apply to existing and new tools.
 - During beta, reject imports with older input versions before normalization. Show the saved and current versions. Do not replace an open project with reset inputs from an unsupported schema.
 - Collect notices from all calculations. Selecting a notice activates its calculation before focusing the affected field, row, or receiver.
 - Tools with catalogue editors use one small book icon beside the calculation tabs. Open the editor with `mountCatalogDialog()` from `lib/core/catalog-dialog.js`. Keep the workspace in place beneath this window.
-- PDF → DXF has no calculation tabs or editable project catalogues. Put independent settings above the preset selector and all preset-controlled options below it. While a named preset applies, visibly dim its controlled labels, values and borders using the existing tokens, without extra selection outlines. Keep them editable and show full keyboard focus. A changed option makes the preset `Benutzerdefiniert`.
+- PDF → DXF and the PDF-Editor have no calculation tabs or editable project catalogues. Put independent settings above the preset selector and all preset-controlled options below it. While a named preset applies, visibly dim its controlled labels, values and borders using the existing tokens, without extra selection outlines. Keep them editable and show full keyboard focus. A changed option makes the preset `Benutzerdefiniert`.
 
 ## Commands
 
@@ -112,6 +120,8 @@ The optional Python helpers have their own prerequisites.
 - `node scripts/pdf-to-dxf.mjs plan.pdf --out dir [--preset nova|geometry|compat] [--scan] [--json]` – convert with the tool's code, prints statistics
 - `node scripts/make-pdf-to-dxf-fixtures.mjs` – rewrite the PDF → DXF test corpus (only when the corpus should change)
 - `python scripts/check-dxf.py file.dxf …` – check DXF files with ezdxf (recover + audit; install with `pip install ezdxf`); not part of `npm test`
+- `node scripts/vendor-embedpdf.mjs [version]` – vendor EmbedPDF from the npm registry (integrity checked) into `lib/vendor/embedpdf/`, apply `PATCHES.md`, regenerate `tools/pdf-editor/viewer-strings.js`
+- `node scripts/make-pdf-editor-fixtures.mjs` – rewrite the PDF-Editor test files in `tests/fixtures/pdf-editor/` (only when they should change)
 - Real plans for local tests go into `tests/fixtures/pdf-to-dxf/real/` (git-ignored); `npm test` converts every PDF there.
 - Full PDF → DXF CLI options and test procedures: [tools/pdf-to-dxf/AGENTS.md](tools/pdf-to-dxf/AGENTS.md#development-helpers).
 
@@ -131,7 +141,7 @@ Open technical items:
 - Excel export as `.xlsx` (CSV exists).
 - Own domain: buy it, add `CNAME`, set the DNS record, enable HTTPS in the Pages settings.
 
-Available: shared core, PDF export/import with embedded data, start page import, calcVersion warning, reference PDFs, Druckverlust Lüftung, Kanalrechner, Schalldämpfer, PDF → DXF (test version; vector and scanned PDFs, R2000 and R12; open: the owner's test in Trimble Nova, `docs/pdf-to-dxf-nova-test.md`).
+Available: shared core, PDF export/import with embedded data, start page import, calcVersion warning, reference PDFs, Druckverlust Lüftung, Kanalrechner, Schalldämpfer, PDF → DXF (test version; vector and scanned PDFs, R2000 and R12; open: the owner's test in Trimble Nova, `docs/pdf-to-dxf-nova-test.md`), PDF-Editor (in progress, `docs/dev/pdf-editor/PROGRESS.md`).
 
 ## License
 
@@ -139,7 +149,9 @@ Available: shared core, PDF export/import with embedded data, start page import,
 - A modified version distributed or offered online must disclose its source under the same license. Keep the source link visible.
 - The repo is AGPL-3.0-or-later (`LICENSE`). Every own source file (`.js`, `.mjs`, `.css`, `.html`, `.py` outside `lib/vendor/`, `assets/fonts/` and `tests/fixtures/`) starts with `// SPDX-License-Identifier: AGPL-3.0-or-later` (`/* … */` in CSS, `#` in Python, `<!-- … -->` on line 2 of HTML, after the doctype). `tests/spdx.test.js` checks it.
 - New third-party code only under an AGPL-compatible license: MIT, BSD, ISC, Zlib, Apache-2.0, BSL-1.0, LGPL-3.0, GPL-3.0, AGPL-3.0; fonts under OFL. Not allowed: GPL-2.0-only, proprietary, unclear.
-- Every vendored library lives in `lib/vendor/<name>/` with its `LICENSE` and is listed in `README.md` (section "Lizenz und Fremdcode").
+- Every vendored library lives in `lib/vendor/<name>/` with its `LICENSE` and is listed in `README.md` (section "Lizenz und Fremdcode"). A vendored file changed by this project starts with a notice comment and is listed in that library's `PATCHES.md` (Apache-2.0 section 4b).
+- EmbedPDF (Apache-2.0) and tesseract.js (Apache-2.0) are vendored with their `LICENSE` and a `VERSION` file. Update them only with their vendoring scripts (`scripts/vendor-embedpdf.mjs`, `scripts/vendor-tesseract.mjs`) and run `npm test`.
+- Logic ported from BentoPDF (AGPL-3.0-only) keeps that license: such a file starts with `// SPDX-License-Identifier: AGPL-3.0-only` and, on the next line, `// Ported from BentoPDF <source path> at <commit>`. `tests/spdx.test.js` accepts this identifier only together with that attribution line. BentoPDF itself, Ghostscript, PyMuPDF and LibreOffice WASM are not vendored.
 - Every page calls `mountSourceLink()` from `lib/core/ui.js`: a code icon (`</>`) in the app bar, before the theme button, linking to the source code (AGPL section 13). There is no footer (owner decision, 2026-10-15).
 - MuPDF.js 1.28.1 is by Artifex Software, vendored unchanged from the npm package `mupdf` under AGPL-3.0-or-later.
 - MuPDF upstream: [source repository](https://cgit.ghostscript.com/mupdf.git/) and [project website](https://mupdf.com).
