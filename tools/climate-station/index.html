@@ -1,0 +1,48 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Klimastation – HLKS-Tools</title>
+  <meta name="description" content="Klimastation nach SIA 2028 für einen Standort wählen." />
+  <script>try { const t = localStorage.getItem('hlks-tools:theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
+  <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="../../assets/css/tokens.css" />
+  <link rel="stylesheet" href="../../assets/css/base.css" />
+  <link rel="stylesheet" href="style.css" />
+  <script type="module" src="app.js"></script>
+</head>
+<body class="cst">
+  <header class="appbar">
+    <a class="brand" href="../../" title="Zur Startseite">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5.2 7.6 18.8 12 5.2 16.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      HLKS-Tools
+    </a>
+    <span class="appbar-title">Klimastation</span>
+    <div class="appbar-actions">
+      <button class="btn ghost icon-only" data-action="undo"></button>
+      <button class="btn ghost icon-only" data-action="redo"></button>
+      <span class="appbar-sep"></span>
+      <button class="btn primary" data-action="copy" disabled></button>
+    </div>
+  </header>
+
+  <main class="cst-layout">
+    <div class="cst-issues" id="issues"></div>
+    <div class="cst-search" id="search-box">
+      <div class="search-field">
+        <span class="search-icon" id="search-icon"></span>
+        <input class="input" id="search" type="search" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="search-list" />
+      </div>
+      <ul class="search-list" id="search-list" role="listbox" hidden></ul>
+    </div>
+    <section class="cst-map panel" aria-label="Karte">
+      <div class="map-host" id="map"></div>
+      <div class="map-tools" id="map-tools"></div>
+      <div class="map-attribution" id="attribution"></div>
+    </section>
+    <aside class="cst-panel panel" id="panel" aria-label="Standort und Station"></aside>
+  </main>
+</body>
+</html>

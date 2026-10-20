@@ -24,6 +24,7 @@ German method documents describe formulas, assumptions and limits. Design rules 
 | Schalldämpfer | [tools/silencer/AGENTS.md](tools/silencer/AGENTS.md) | [docs/silencer-method.md](docs/silencer-method.md) |
 | PDF → DXF | [tools/pdf-to-dxf/AGENTS.md](tools/pdf-to-dxf/AGENTS.md) | [docs/pdf-to-dxf-method.md](docs/pdf-to-dxf-method.md) |
 | PDF-Editor | [tools/pdf-editor/AGENTS.md](tools/pdf-editor/AGENTS.md) | [docs/pdf-editor-method.md](docs/pdf-editor-method.md) |
+| Klimastation | [tools/climate-station/AGENTS.md](tools/climate-station/AGENTS.md) | [docs/climate-station-method.md](docs/climate-station-method.md) |
 
 ## Structure
 
@@ -41,11 +42,12 @@ lib/vendor/tesseract/      tesseract.js 7.0.0 + core 7.0.0 (LSTM, SIMD and plain
 tools/<tool-id>/           one folder per tool: AGENTS.md (local contracts), index.html, app.js (UI), calc.js (pure maths), defaults.js, labels.js, report.js (PDF), csv.js, charts.js / drawing.js, style.css
 tools/pdf-to-dxf/          PDF → DXF: app.js, preview.js (DOM); worker.js, convert.js, backend.js (MuPDF), ir.js, pipeline.js, geometry.js, dxf.js, scan.js, defaults.js, labels.js (no DOM)
 tools/pdf-editor/          PDF-Editor: app.js, bridge.js (EmbedPDF), theme.js, library.js, tools-ui.js, client.js (DOM); worker.js, engine.js (MuPDF), pages.js, images.js, compress.js, ocr.js, autosave.js, svg.js, svg-render.js, stamps.js, zip.js, defaults.js, labels.js (no DOM); symbols/ (SVG + library PDFs), stamps/ (templates)
+tools/climate-station/     Klimastation: app.js, map.js (DOM); calc.js, defaults.js, labels.js (no DOM); data/ stations.json (SIA 2028 table 1, no climate values), regions.json (traced region map), places.json (swisstopo localities)
 docs/                      DESIGN.md, dragon-ink.md, <tool-id>-method.md (user-facing calculation docs, German), pdf-to-dxf-nova-test.md
 docs/dev/pdf-to-dxf/       PROGRESS, DECISIONS, TESTREPORT, TODO-OWNER of the PDF → DXF build (English)
 docs/dev/pdf-editor/       PLAN, PROGRESS, DECISIONS, TODO-OWNER of the PDF-Editor build (English)
 tests/                     node --test, fixtures/ holds reference PDFs, fixtures/pdf-to-dxf/ the PDF → DXF corpus with *.truth.json, fixtures/pdf-editor/ the editor's test files, helpers/
-scripts/                   serve.mjs (dev server, --base for a sub-path), make-fixtures.mjs, build-fonts.py, make-pdf-to-dxf-fixtures.mjs, pdf-to-dxf.mjs (CLI), check-dxf.py (ezdxf), npm-package.mjs + vendor-embedpdf.mjs + vendor-tesseract.mjs (vendoring), make-pdf-editor-fixtures.mjs
+scripts/                   serve.mjs (dev server, --base for a sub-path), make-fixtures.mjs, build-fonts.py, make-pdf-to-dxf-fixtures.mjs, pdf-to-dxf.mjs (CLI), check-dxf.py (ezdxf), npm-package.mjs + vendor-embedpdf.mjs + vendor-tesseract.mjs (vendoring), make-pdf-editor-fixtures.mjs, build-climate-regions.py + build-places.mjs (Klimastation data)
 ```
 
 ## Rules for tools
@@ -61,13 +63,14 @@ scripts/                   serve.mjs (dev server, --base for a sub-path), make-f
 - Editable catalogues (ζ values, roughness, limits) are part of `inputs` and saved with every file.
 - **Exception PDF → DXF:** this tool saves only the DXF. No PDF report, no JSON, no CSV, no envelope, no ⋯ menu. Its input is the user's PDF, which is never stored; only the settings are kept as a browser draft (`normalizeInputs` in its `defaults.js`, idempotent as everywhere). Reason: the result belongs in CAD, and a plan PDF must not be copied into another file. It receives PDFs from the PDF-Editor's `→ DXF` button (IndexedDB, `stashFileHandoff`).
 - **Exception PDF-Editor (owner decision, 2026-10-19):** the editor saves only the edited PDF. No envelope, no `data.json`, no JSON or CSV. Its ⋯ menu holds the document tools instead of the standard entries. Its settings are a browser draft (`normalizeSettings` in its `defaults.js`, idempotent). Autosave keeps the user's PDF in IndexedDB on this device only. The start page hands PDFs without `data.json` to this tool; its `→ DXF` icon button hands the current file on to PDF → DXF with `stashFileHandoff`.
+- **Exception Klimastation (owner decision, 2026-10-20):** the tool saves nothing but a browser draft and the page URL (`normalizeInputs` in its `defaults.js`, idempotent). No envelope, no PDF, JSON or CSV, no ⋯ menu; its primary action copies one tab-separated row for Excel. It contains no SIA 2028 climate values (copyright): only station names, positions, heights, regions and the traced region map. Its address search and height query call swisstopo (`api3.geo.admin.ch`); place search and ranking run locally.
 - MuPDF (10 MB WebAssembly) is loaded only by `tools/pdf-to-dxf/worker.js` → `backend.js` and `tools/pdf-editor/worker.js` → `engine.js`, always with `await import()`, never by a page module.
 - EmbedPDF (`lib/vendor/embedpdf/`) and tesseract.js (`lib/vendor/tesseract/`) are imported only by `tools/pdf-editor/` and only with `await import()`: EmbedPDF by `bridge.js` when the editor page starts, tesseract by `ocr.js` inside the editor's worker on the first OCR. `tests/lazy-imports.test.js` checks the import graph of every page and the allowed modules.
 - EmbedPDF draws its own UI in a shadow DOM. Its theme tokens (`--epdf-*`) map to `assets/css/tokens.css` in `tools/pdf-editor/style.css`; its layout and icons inside the viewer are accepted. The page around it (app bar, notice row, own dialogs) follows `docs/DESIGN.md` fully.
 
 ## Shared application behavior
 
-- Calculations and conversion run locally in the browser. There is no application backend, sign-in or upload of input files.
+- Calculations and conversion run locally in the browser. There is no application backend, sign-in or upload of input files. Exception: the Klimastation sends a typed address search text or a site coordinate to swisstopo.
 - The folder action `Öffnen` and drag-and-drop accept HLKS-Tools PDF and JSON files. The homepage routes them through the registry.
 - A PDF without HLKS-Tools data opens in the PDF-Editor; its `→ DXF` button hands it on to PDF → DXF. Preserve this handoff when changing imports.
 - Keep the original report PDF. Other software can remove its `data.json` attachment when printing or saving it again.
@@ -95,6 +98,7 @@ These rules apply to existing and new tools.
 - Keep controls keyboard accessible. Escape closes an overlay and returns focus to its trigger. Outside clicks or focus close the overlay. Retain focus when notices update or disappear.
 - PDF → DXF has no project fields. It uses the shared notice row alone above the preview. Its empty, processing, and cancelled states use neutral status messages.
 - The PDF-Editor has no project fields either. Its notice row stands alone above the viewer: no document, opening, password needed, autosave available, document-tool and OCR progress, errors.
+- The Klimastation has no project fields either. Its notice row stands alone above the search and map: height, site outside the regions, border proximity, station chosen by hand.
 
 ## Calculation tabs and catalogues
 
@@ -106,6 +110,7 @@ These rules apply to existing and new tools.
 - During beta, reject imports with older input versions before normalization. Show the saved and current versions. Do not replace an open project with reset inputs from an unsupported schema.
 - Collect notices from all calculations. Selecting a notice activates its calculation before focusing the affected field, row, or receiver.
 - Tools with catalogue editors use one small book icon beside the calculation tabs. Open the editor with `mountCatalogDialog()` from `lib/core/catalog-dialog.js`. Keep the workspace in place beneath this window.
+- The Klimastation has no calculation tabs or editable project catalogues.
 - PDF → DXF and the PDF-Editor have no calculation tabs or editable project catalogues. Put independent settings above the preset selector and all preset-controlled options below it. While a named preset applies, visibly dim its controlled labels, values and borders using the existing tokens, without extra selection outlines. Keep them editable and show full keyboard focus. A changed option makes the preset `Benutzerdefiniert`.
 
 ## Commands
@@ -124,13 +129,15 @@ The optional Python helpers have their own prerequisites.
 - `node scripts/vendor-embedpdf.mjs [version]` – vendor EmbedPDF from the npm registry (integrity checked) into `lib/vendor/embedpdf/`, apply `PATCHES.md`, regenerate `tools/pdf-editor/viewer-strings.js`
 - `node scripts/vendor-tesseract.mjs` – vendor tesseract.js and its core from the npm registry (integrity checked) and the deu + eng models from tessdata_fast (pinned commit, SHA-256 checked) into `lib/vendor/tesseract/`; versions are constants in the script
 - `node scripts/make-pdf-editor-fixtures.mjs` – rewrite the PDF-Editor test files in `tests/fixtures/pdf-editor/` (only when they should change)
+- `python scripts/build-climate-regions.py map.png` – trace the Klimastation regions from an image of SIA 2028 figure 1 (not in the repository; needs numpy + Pillow); see [tools/climate-station/AGENTS.md](tools/climate-station/AGENTS.md#rebuilding-the-data)
+- `node scripts/build-places.mjs AMTOVZ_CSV_LV95.csv` – rebuild the Klimastation localities from swisstopo's directory of localities
 - `node scripts/build-symbol-library.mjs` – rebuild the PDF-Editor's symbol library PDFs from `tools/pdf-editor/symbols/*.svg` (commit the result; `npm test` fails when they are out of date)
 - Real plans for local tests go into `tests/fixtures/pdf-to-dxf/real/` (git-ignored); `npm test` converts every PDF there.
 - Full PDF → DXF CLI options and test procedures: [tools/pdf-to-dxf/AGENTS.md](tools/pdf-to-dxf/AGENTS.md#development-helpers).
 
 ## Tool inventory (owner decision, 2026-10-13)
 
-The start page shows three entries per discipline. Lüftung has three ready tools. Heizung, Klima and Sanitär use `Platzhalter 1` to `Platzhalter 3`, with status `placeholder` and no path. These slots do not name or promise future tools. The registry generates them from a count, so more entries can be added later.
+The start page shows three entries per discipline. Lüftung has three ready tools. Klima has the Klimastation and `Platzhalter 1` to `Platzhalter 2`. Heizung and Sanitär use `Platzhalter 1` to `Platzhalter 3`, with status `placeholder` and no path. These slots do not name or promise future tools. The registry generates them from a count, so more entries can be added later.
 
 Current implementation notes:
 
@@ -144,7 +151,7 @@ Open technical items:
 - Excel export as `.xlsx` (CSV exists).
 - Own domain: buy it, add `CNAME`, set the DNS record, enable HTTPS in the Pages settings.
 
-Available: shared core, PDF export/import with embedded data, start page import, calcVersion warning, reference PDFs, Druckverlust Lüftung, Kanalrechner, Schalldämpfer, PDF → DXF (test version; vector and scanned PDFs, R2000 and R12; open: the owner's test in Trimble Nova, `docs/pdf-to-dxf-nova-test.md`), PDF-Editor (test version; open: the owner's checks in `docs/dev/pdf-editor/TODO-OWNER.md`).
+Available: shared core, PDF export/import with embedded data, start page import, calcVersion warning, reference PDFs, Druckverlust Lüftung, Kanalrechner, Schalldämpfer, PDF → DXF (test version; vector and scanned PDFs, R2000 and R12; open: the owner's test in Trimble Nova, `docs/pdf-to-dxf-nova-test.md`), PDF-Editor (test version; open: the owner's checks in `docs/dev/pdf-editor/TODO-OWNER.md`), Klimastation (test version; station choice for SIA 2028, copy to Excel).
 
 ## License
 
