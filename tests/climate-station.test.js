@@ -12,7 +12,7 @@ import { normalizeInputs, defaultInputs, toUrlParams, fromUrlParams } from '../t
 
 const load = async (name) => JSON.parse(await readFile(new URL(`../tools/climate-station/data/${name}`, import.meta.url), 'utf8'));
 const { stations, regions: regionNames } = await load('stations.json');
-const { regions, country, lakes } = await load('regions.json');
+const { regions, outline, borders, lakes, rivers } = await load('regions.json');
 const { places } = await load('places.json');
 const byId = new Map(stations.map((s) => [s.id, s]));
 
@@ -60,14 +60,13 @@ test('coordinates typed into the search', () => {
 
 test('regions: traced map has 12 regions, outline and lakes; every station lies in its region', () => {
   assert.deepEqual(regions.map((r) => r.id), [...Array(12).keys()].map((i) => i + 1));
-  assert.ok(country.length >= 1 && lakes.length > 10);
+  assert.ok(outline.length === 1 && borders.length > 20 && lakes.length > 10 && rivers.length > 20);
+  for (const line of [...outline, ...borders, ...lakes, ...rivers]) for (const [e, n] of line) assert.ok(e > 2470000 && e < 2850000 && n > 1060000 && n < 1310000);
   for (const r of regions) assert.ok(inRegion(r, ...r.label), `label of region ${r.id} inside`);
-  // Grand-St-Bernard (region 12 in table 1b) sits on the pass, which the map draws inside region 10.
-  const EXCEPTIONS = { GSB: 10 };
   for (const s of stations) {
     const at = regionAt(regions, s.e, s.n);
-    if (EXCEPTIONS[s.id]) assert.equal(at.id, EXCEPTIONS[s.id], s.id);
-    else assert.equal(at.id, s.region, `${s.id}: region ${s.region}, found ${at.id} (${Math.round(at.distance)} m outside)`);
+    assert.equal(at.id, s.region, `${s.id}: region ${s.region}, found ${at.id} (${Math.round(at.distance)} m outside)`);
+    assert.ok(at.inside, `${s.id}: inside`);
   }
 });
 

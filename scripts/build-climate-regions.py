@@ -1,24 +1,32 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Builds tools/climate-station/data/regions.json from a raster of the SIA 2028 climate region map (Figur 1).
+# Builds tools/climate-station/data/regions.json from a vector redraw of the SIA 2028 climate region map (Figur 1).
 #
-#   python scripts/build-climate-regions.py map.png
+#   python scripts/build-climate-regions.py map.svg
 #
-# The map image is not part of the repository (it is a figure of the norm). Only the traced outlines are.
+# The SVG is not part of the repository (it redraws a figure of the norm). Only the derived data is.
 # Needs numpy and Pillow.
 #
+# Expected SVG (absolute M / C / Z paths, no transforms), groups by id:
+#   umriss               country outline (one closed path)
+#   klimazonen-grenzen   region borders (open paths)
+#   seen, fluesse        lakes (closed) and rivers (open)
+#   klimazonen-nummern   one <text> per region number, placed inside its region
+#   stationen            one <circle> per station
+#
 # Steps:
-#   1. Georeference: the 40 station dots are the control points. Their LV95 position comes from
-#      tools/climate-station/data/stations.json. Affine fit by least squares; points with a residual
-#      above MAX_RESIDUAL_KM are drawing errors in the source map (Bern-Liebefeld, Magadino) and are left out.
-#   2. Segment: dark lines (country and region borders) are barriers, every closed area gets the region of the
-#      station dots in it (or of a manual seed). Line pixels and small areas go to the nearest region.
-#   3. Vectorize: the borders between labels are traced on the pixel grid as shared arcs, simplified
-#      (Douglas-Peucker) and joined into rings, so neighbouring regions share their border exactly.
-#      Lakes (flat grey fills) are traced the same way.
+#   1. Georeference: the 40 station circles are the control points, their LV95 position comes from
+#      tools/climate-station/data/stations.json. Affine fit by least squares; points with a residual above
+#      MAX_RESIDUAL_KM are drawing errors in the source map (Bern-Liebefeld, Magadino) and are left out.
+#   2. Drawing data: outline, borders, lakes and rivers are flattened from the Bézier curves and simplified to
+#      DRAW_KM (rivers RIVER_KM), so they stay smooth at every zoom.
+#   3. Region areas for the point lookup: outline and borders are rasterised at SCALE, every closed area takes
+#      the region of the station or number inside it (or of a SEEDS entry); line pixels go to the nearest region.
+#      The borders between labels are traced as shared arcs, simplified (Douglas-Peucker) and joined into rings,
+#      so neighbouring regions share their border exactly.
 
 import json
+import re
 import sys
-from collections import deque
 from pathlib import Path
 
 import numpy as np
@@ -27,21 +35,99 @@ from PIL import Image, ImageDraw
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / 'tools' / 'climate-station' / 'data'
 
-DARK = 110             # grey value below which a pixel belongs to a border line
-DILATE = 3             # px; closes small gaps in the anti-aliased lines
-MIN_AREA = 300         # px; smaller closed areas (letters, slivers) take the nearest region
+SCALE = 3              # raster px per SVG unit for the region areas
+LINE_PX = 7            # raster line width of outline and borders
+MIN_AREA = 2000        # raster px; smaller closed areas take the nearest region
 MAX_RESIDUAL_KM = 3.0  # control points with a larger residual are drawing errors
-SIMPLIFY_PX = 1.2      # Douglas-Peucker tolerance; above 1 px it removes the pixel stairs
-LAKE = (150, 225)      # grey range of lake fills
-LAKE_MIN_AREA = 25     # px
+SIMPLIFY_PX = 1.5      # Douglas-Peucker tolerance of the region areas, raster px
+DRAW_KM = 0.03         # tolerance of outline, borders and lakes
+RIVER_KM = 0.08        # tolerance of rivers
+MIN_RIVER = 60         # SVG units; shorter river pieces are left out
+NUMBER_DY = -12        # SVG units from the baseline of a region number to its centre
 
-# Start guesses (px) for four stations; the fit then finds every dot.
-GUESS = {'GVE': (78, 600), 'SHA': (718, 54), 'ROB': (1098, 553), 'BAS': (456, 112)}
-# Gaps in the source lines (px polylines added to the barrier).
-PATCHES = [[(540, 507), (600, 506)]]
-# Areas without a station dot: (x, y) px → region.
-SEEDS = [((988, 553), 12), ((1098, 575), 12), ((883, 506), 12), ((590, 625), 12), ((360, 386), 5)]
+# Start guesses (SVG units) for four stations; the fit then finds every circle.
+GUESS = {'GVE': (86, 1016), 'SHA': (1168.8, 99.6), 'ROB': (1808, 937), 'BAS': (725.7, 197.1)}
+# Areas without a station or number: (x, y) in SVG units → region.
+SEEDS = []
 
+OUTSIDE = 200
+BARRIER = 255
+
+
+# ---- SVG ----------------------------------------------------------------------
+
+def parse_path(d):
+    """Absolute M / C / Z path → list of (points, closed); points = start point + 3 per cubic segment."""
+    tokens = re.findall(r'[A-Za-z]|-?\d*\.?\d+(?:e-?\d+)?', d)
+    subs, pts, cmd, i = [], None, None, 0
+    while i < len(tokens):
+        t = tokens[i]
+        if t.isalpha():
+            if t not in 'MCZ':
+                sys.exit(f'path command {t} is not supported (only absolute M, C, Z)')
+            cmd = t
+            i += 1
+            if t == 'Z':
+                subs.append((pts, True))
+                pts = None
+            continue
+        if cmd == 'M':
+            if pts:
+                subs.append((pts, False))
+            pts = [(float(tokens[i]), float(tokens[i + 1]))]
+            i += 2
+        elif cmd == 'C':
+            pts += [(float(tokens[i + k]), float(tokens[i + k + 1])) for k in (0, 2, 4)]
+            i += 6
+        else:
+            sys.exit(f'unexpected path data near {t}')
+    if pts:
+        subs.append((pts, False))
+    return subs
+
+
+def read_svg(path):
+    s = Path(path).read_text(encoding='utf8')
+    if 'transform' in s:
+        sys.exit('transforms are not supported')
+    m = re.search(r'viewBox="0 0 ([\d.]+) ([\d.]+)"', s)
+
+    def group(name):
+        g = re.search(rf'<g id="{name}"[^>]*>(.*?)</g>', s, re.S)
+        if not g:
+            sys.exit(f'group {name} missing')
+        return g.group(1)
+
+    def paths(name):
+        return [sub for d in re.findall(r' d="([^"]*)"', group(name)) for sub in parse_path(d)]
+
+    return {
+        'size': (float(m.group(1)), float(m.group(2))),
+        'outline': paths('umriss'),
+        'borders': paths('klimazonen-grenzen'),
+        'lakes': paths('seen'),
+        'rivers': paths('fluesse'),
+        'numbers': [(float(x), float(y), int(t)) for x, y, t in re.findall(r'<text x="([\d.]+)" y="([\d.]+)"[^>]*>\s*(\d+)\s*</text>', group('klimazonen-nummern'))],
+        'circles': [(float(x), float(y)) for x, y in re.findall(r'<circle cx="([\d.]+)" cy="([\d.]+)"', group('stationen'))],
+    }
+
+
+def flatten(pts, steps=12):
+    out = [pts[0]]
+    for k in range(1, len(pts), 3):
+        p0, p1, p2, p3 = (np.array(p) for p in (pts[k - 1], pts[k], pts[k + 1], pts[k + 2]))
+        for t in np.linspace(0, 1, steps + 1)[1:]:
+            u = 1 - t
+            out.append(tuple(u ** 3 * p0 + 3 * u * u * t * p1 + 3 * u * t * t * p2 + t ** 3 * p3))
+    return out
+
+
+def length(pts):
+    f = np.array(flatten(pts, 4))
+    return float(np.hypot(*np.diff(f, axis=0).T).sum())
+
+
+# ---- georeference -------------------------------------------------------------
 
 def lv_to_px(M, e, n):
     return np.array([e / 1000, n / 1000, 1]) @ M
@@ -54,121 +140,77 @@ def fit(pairs):
     return M
 
 
-def shifts(mask, op):
-    out = mask.copy()
-    for dy in (-1, 0, 1):
-        for dx in (-1, 0, 1):
-            if dy == 0 and dx == 0:
-                continue
-            s = np.zeros_like(mask)
-            ys = slice(max(dy, 0), mask.shape[0] + min(dy, 0))
-            yd = slice(max(-dy, 0), mask.shape[0] + min(-dy, 0))
-            xs = slice(max(dx, 0), mask.shape[1] + min(dx, 0))
-            xd = slice(max(-dx, 0), mask.shape[1] + min(-dx, 0))
-            s[yd, xd] = mask[ys, xs]
-            out = op(out, s)
-    return out
-
-
-def dilate(mask):
-    return shifts(mask, np.logical_or)
-
-
-def erode(mask):
-    return shifts(mask, np.logical_and)
-
-
-def components(mask, conn8=False):
-    H, W = mask.shape
-    lab = np.zeros(mask.shape, np.int32)
-    nb = [(1, 0), (-1, 0), (0, 1), (0, -1)] + ([(1, 1), (1, -1), (-1, 1), (-1, -1)] if conn8 else [])
-    n = 0
-    for y0, x0 in zip(*np.nonzero(mask)):
-        if lab[y0, x0]:
-            continue
-        n += 1
-        lab[y0, x0] = n
-        q = deque([(y0, x0)])
-        while q:
-            y, x = q.popleft()
-            for dy, dx in nb:
-                yy, xx = y + dy, x + dx
-                if 0 <= yy < H and 0 <= xx < W and mask[yy, xx] and not lab[yy, xx]:
-                    lab[yy, xx] = n
-                    q.append((yy, xx))
-    return lab, n
-
-
-def georeference(gray, stations):
-    core = erode(erode(gray < DARK))
-    lab, n = components(core, conn8=True)
-    dots = np.array([[np.nonzero(lab == i)[1].mean(), np.nonzero(lab == i)[0].mean()] for i in range(1, n + 1)])
+def georeference(circles, stations):
+    dots = np.array(circles)
     pts = {s['id']: (s['e'], s['n']) for s in stations}
     M = fit([(pts[k], v) for k, v in GUESS.items()])
-    px_per_km = None
     for _ in range(5):
-        match = {}
-        for k, (e, nn) in pts.items():
-            d = np.hypot(*(dots - lv_to_px(M, e, nn)).T)
-            if d.min() < 25:
-                match[k] = dots[d.argmin()]
         px_per_km = np.sqrt(abs(np.linalg.det(M[:2, :2])))
+        match = {}
+        for k, (e, n) in pts.items():
+            d = np.hypot(*(dots - lv_to_px(M, e, n)).T)
+            if d.min() < 8 * px_per_km:
+                match[k] = dots[d.argmin()]
         used = {k: v for k, v in match.items() if np.hypot(*(lv_to_px(M, *pts[k]) - v)) / px_per_km <= MAX_RESIDUAL_KM}
         M = fit([(pts[k], v) for k, v in used.items()])
+    px_per_km = np.sqrt(abs(np.linalg.det(M[:2, :2])))
     res = {k: float(np.hypot(*(lv_to_px(M, *pts[k]) - v)) / px_per_km) for k, v in match.items()}
     inl = [r for k, r in res.items() if k in used]
     print(f'control points: {len(used)} of {len(pts)}, rms {np.sqrt(np.mean(np.square(inl))):.2f} km, '
           f'left out: {", ".join(f"{k} {r:.1f} km" for k, r in res.items() if k not in used) or "none"}')
-    missing = set(pts) - set(match)
-    if missing:
-        sys.exit(f'station dots not found: {sorted(missing)}')
+    if set(pts) - set(match) or len({tuple(v) for v in match.values()}) != len(match):
+        sys.exit(f'station circles not matched one to one, missing: {sorted(set(pts) - set(match))}')
     return M, match
 
 
-def segment(gray, stations, dots):
-    H, W = gray.shape
-    bar_img = Image.fromarray((gray < DARK).astype(np.uint8) * 255)
-    draw = ImageDraw.Draw(bar_img)
-    for line in PATCHES:
-        draw.line(line, fill=255, width=2)
-    bar = np.array(bar_img) > 0
-    for _ in range(DILATE):
-        bar = dilate(bar)
-    lab, n = components(~bar)
-    sizes = np.bincount(lab.ravel(), minlength=n + 1)
-    outside = lab[0, 0]
-    votes = {}
-    ring = [(int(round(12 * np.cos(a))), int(round(12 * np.sin(a)))) for a in np.linspace(0, 2 * np.pi, 48, endpoint=False)]
-    for s in stations:
-        x, y = dots[s['id']]
-        for dx, dy in ring:
-            yy, xx = int(round(y)) + dy, int(round(x)) + dx
-            c = lab[yy, xx]
-            if c and c != outside and sizes[c] >= MIN_AREA:
-                votes.setdefault(c, {}).setdefault(s['region'], 0)
-                votes[c][s['region']] += 1
-    for (x, y), region in SEEDS:
-        c = lab[y, x]
-        if not c or c == outside or sizes[c] < MIN_AREA:
-            sys.exit(f'seed {(x, y)} is not inside a closed area')
-        votes.setdefault(c, {}).setdefault(region, 0)
-        votes[c][region] += 1000
-    region_of = {}
-    for c, v in votes.items():
-        best = max(v, key=v.get)
-        if len(v) > 1 and sorted(v.values())[-2] * 4 > v[best]:
-            sys.exit(f'area {c} has dots of regions {v}: a border line has a gap, add a patch')
-        region_of[c] = best
-    out = np.full((H, W), -1, np.int16)
-    out[lab == outside] = 0
-    for c in range(1, n + 1):
-        if c == outside or sizes[c] < MIN_AREA:
-            continue
-        if c not in region_of:
-            ys, xs = np.nonzero(lab == c)
-            sys.exit(f'closed area without region at ({int(xs.mean())}, {int(ys.mean())}), {sizes[c]} px: add a seed')
-        out[lab == c] = region_of[c]
-    # Line pixels and small areas: grow the labels into them.
+# ---- region areas -------------------------------------------------------------
+
+def segment(svg, stations, dots):
+    W, H = (int(v * SCALE) for v in svg['size'])
+    img = Image.new('L', (W, H), 0)
+    draw = ImageDraw.Draw(img)
+    r = LINE_PX / 2
+    for pts, closed in svg['outline'] + svg['borders']:
+        line = [(x * SCALE, y * SCALE) for x, y in flatten(pts)]
+        if closed:
+            line.append(line[0])
+        draw.line(line, fill=BARRIER, width=LINE_PX, joint='curve')
+        for x, y in (line[0], line[-1]):
+            draw.ellipse([x - r, y - r, x + r, y + r], fill=BARRIER)
+    ImageDraw.floodfill(img, (0, 0), OUTSIDE, thresh=0)
+    seeds = [(dots[s['id']], s['region'], s['id']) for s in stations]
+    seeds += [((x, y + NUMBER_DY), region, f'number {region}') for x, y, region in svg['numbers']]
+    seeds += [(xy, region, f'seed {xy}') for xy, region in SEEDS]
+    for (x, y), region, name in seeds:
+        px = (int(round(x * SCALE)), int(round(y * SCALE)))
+        v = img.getpixel(px)
+        if v in (BARRIER, OUTSIDE):
+            print(f'  {name}: {"on a line" if v == BARRIER else "outside the outline"}, not used')
+        elif v not in (0, region):
+            sys.exit(f'{name}: its area already has region {v}, expected {region}: a border line has a gap')
+        elif v == 0:
+            ImageDraw.floodfill(img, px, region, thresh=0)
+    a = np.array(img)
+    # Areas no seed reached: slivers at line joints are fine, a large one needs a SEEDS entry.
+    # Checked on blocks of 8 × 8 px, where slivers vanish.
+    k = 8
+    h, w = a.shape[0] // k * k, a.shape[1] // k * k
+    empty = (a[:h, :w] == 0).reshape(h // k, k, w // k, k).all(axis=(1, 3))
+    if empty.any():
+        lab = Image.fromarray(empty.astype(np.uint8) * 255)
+        for y, x in zip(*np.nonzero(empty)):
+            if lab.getpixel((int(x), int(y))) != 255:
+                continue
+            ImageDraw.floodfill(lab, (int(x), int(y)), 1, thresh=0)
+            arr = np.array(lab)
+            area = int((arr == 1).sum()) * k * k
+            if area >= MIN_AREA:
+                sys.exit(f'closed area without region at SVG ({x * k / SCALE:.0f}, {y * k / SCALE:.0f}), {area} px: add a SEEDS entry')
+            arr[arr == 1] = 2
+            lab = Image.fromarray(arr)
+    out = a.astype(np.int16)
+    out[(a == BARRIER) | (a == 0)] = -1
+    out[a == OUTSIDE] = 0
     while (out < 0).any():
         grown = out.copy()
         for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
@@ -178,6 +220,8 @@ def segment(gray, stations, dots):
         out = grown
     return out
 
+
+# ---- tracing ------------------------------------------------------------------
 
 def trace(labels):
     """Shared border arcs of a label raster on the pixel-corner grid. Returns [(points, left, right)].
@@ -313,69 +357,65 @@ def rings_of(arcs, label):
     return rings
 
 
-def to_lv95(Minv, ring):
-    out = []
-    for x, y in ring:
-        # Padded corner (x, y) → image coordinates with pixel centres on integers (as the fitted dots).
-        e, n = np.array([x - 1.5, y - 1.5, 1]) @ Minv
-        out.append([int(round(e * 100)) * 10, int(round(n * 100)) * 10])
-    # drop repeated points after rounding
+def to_lv95(Minv, x, y):
+    e, n = np.array([x, y, 1]) @ Minv
+    return [int(round(e * 100)) * 10, int(round(n * 100)) * 10]
+
+
+def ring_to_lv95(Minv, ring):
+    # Padded raster corner (x, y) → SVG units.
+    out = [to_lv95(Minv, (x - 1) / SCALE, (y - 1) / SCALE) for x, y in ring]
     return [p for i, p in enumerate(out) if i == 0 or p != out[i - 1]]
 
 
-def pole(mask):
-    """Pixel deepest inside a mask (label anchor)."""
-    depth = np.zeros(mask.shape, np.int32)
-    m = mask.copy()
-    while m.any():
-        depth += m
-        m = erode(m)
-    y, x = np.unravel_index(np.argmax(depth), depth.shape)
-    return x, y
+def line_to_lv95(Minv, pts, closed, tol):
+    flat = flatten(pts)
+    if closed:
+        flat.append(flat[0])
+    out = [to_lv95(Minv, x, y) for x, y in simplify(flat, tol)]
+    out = [p for i, p in enumerate(out) if i == 0 or p != out[i - 1]]
+    return out[:-1] if closed and out[0] == out[-1] else out
 
 
 def main():
     if len(sys.argv) != 2:
-        sys.exit('usage: python scripts/build-climate-regions.py map.png')
-    gray = np.array(Image.open(sys.argv[1]).convert('L')).astype(np.int16)
+        sys.exit('usage: python scripts/build-climate-regions.py map.svg')
+    svg = read_svg(sys.argv[1])
     meta = json.loads((DATA / 'stations.json').read_text(encoding='utf8'))
     stations = meta['stations']
-    M, dots = georeference(gray, stations)
-    # px = [e_km, n_km, 1] @ M  →  [e_km, n_km] = (px - M[2]) @ inv(M[:2])
+    M, dots = georeference(svg['circles'], stations)
     A = np.linalg.inv(M[:2])
     Minv = np.vstack([A, -M[2] @ A])  # [x, y, 1] @ Minv = [e_km, n_km]
 
-    labels = segment(gray, stations, dots)
+    labels = segment(svg, stations, dots)
     arcs = [(simplify(p, SIMPLIFY_PX), l, r) for p, l, r in trace(labels)]
+    numbers = {region: (x, y + NUMBER_DY) for x, y, region in svg['numbers']}
     regions = []
     for reg in meta['regions']:
         rid = reg['id']
-        rings = [to_lv95(Minv, r) for r in rings_of(arcs, rid)]
-        lx, ly = pole(labels == rid)
-        le, ln = np.array([lx, ly, 1]) @ Minv
-        regions.append({'id': rid, 'label': [int(round(le * 100)) * 10, int(round(ln * 100)) * 10], 'rings': [r for r in rings if len(r) >= 3]})
-    country = labels > 0
-    country_arcs = [(simplify(p, SIMPLIFY_PX), l, r) for p, l, r in trace(country.astype(np.int16))]
-    outline = [to_lv95(Minv, r) for r in rings_of(country_arcs, 1)]
+        rings = [r for r in (ring_to_lv95(Minv, r) for r in rings_of(arcs, rid)) if len(r) >= 3]
+        regions.append({'id': rid, 'label': to_lv95(Minv, *numbers[rid]), 'rings': rings})
 
-    lake = (gray >= LAKE[0]) & (gray <= LAKE[1])
-    lake = dilate(erode(lake))
-    lab, n = components(lake)
-    sizes = np.bincount(lab.ravel(), minlength=n + 1)
-    keep = np.isin(lab, [i for i in range(1, n + 1) if sizes[i] >= LAKE_MIN_AREA])
-    lake_arcs = [(simplify(p, SIMPLIFY_PX), l, r) for p, l, r in trace(keep.astype(np.int16))]
-    lakes = [r for r in (to_lv95(Minv, r) for r in rings_of(lake_arcs, 1)) if len(r) >= 3]
+    px_per_km = np.sqrt(abs(np.linalg.det(M[:2, :2])))
+
+    def lines(items, km):
+        return [line_to_lv95(Minv, pts, closed, km * px_per_km) for pts, closed in items]
 
     out = {
-        'source': 'Klimaregionen nach SIA 2028:2010, Figur 1, nachgezeichnet (schematisch). LV95 in m.',
+        'source': 'Klimaregionen nach SIA 2028:2010, Figur 1, als Vektorgrafik nachgezeichnet (schematisch). LV95 in m. '
+                  'regions: Flächen für die Abfrage. outline, lakes: geschlossene Linien, borders, rivers: offene Linien, zum Zeichnen.',
         'regions': regions,
-        'country': [r for r in outline if len(r) >= 3],
-        'lakes': lakes,
+        'outline': lines(svg['outline'], DRAW_KM),
+        'borders': lines(svg['borders'], DRAW_KM),
+        'lakes': lines(svg['lakes'], DRAW_KM),
+        'rivers': lines([r for r in svg['rivers'] if length(r[0]) >= MIN_RIVER], RIVER_KM),
     }
     text = '{\n' + ',\n'.join(f'  {json.dumps(k)}: {json.dumps(v, ensure_ascii=False, separators=(",", ":"))}' for k, v in out.items()) + '\n}\n'
     (DATA / 'regions.json').write_text(text, encoding='utf8', newline='\n')
     n_pts = sum(len(r) for reg in regions for r in reg['rings'])
-    print(f'regions: {n_pts} points, country {sum(map(len, out["country"]))}, lakes {len(lakes)}, {len(text) / 1024:.0f} KB')
+    count = lambda key: sum(map(len, out[key]))
+    print(f'points: regions {n_pts}, outline {count("outline")}, borders {count("borders")}, lakes {count("lakes")}, '
+          f'rivers {count("rivers")} ({len(out["rivers"])} lines); {len(text) / 1024:.0f} KB')
 
 
 if __name__ == '__main__':

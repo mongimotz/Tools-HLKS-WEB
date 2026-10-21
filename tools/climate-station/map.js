@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Map of the Klimastation tool: own SVG in LV95 (regions, lakes, stations, site), no tiles.
+// Map of the Klimastation tool: own SVG in LV95 (regions, borders, lakes, rivers, stations, site), no tiles.
 // Wheel or two fingers zoom about the pointer, dragging pans, a click sets the site, a click on a station picks it.
 
 import { esc } from '../../lib/core/ui.js';
@@ -13,8 +13,8 @@ const NS = 'http://www.w3.org/2000/svg';
 const MAX_SCALE = 30; // px per km; the source map has about 3.4 px per km
 const CLICK_SLOP = 5; // px
 
-function pathOf(rings) {
-  return rings.map((ring) => `M${ring.map(([e, n]) => `${toX(e).toFixed(2)} ${toY(n).toFixed(2)}`).join('L')}Z`).join('');
+function pathOf(lines, closed = true) {
+  return lines.map((line) => `M${line.map(([e, n]) => `${toX(e).toFixed(2)} ${toY(n).toFixed(2)}`).join('L')}${closed ? 'Z' : ''}`).join('');
 }
 
 export class RegionMap {
@@ -29,7 +29,7 @@ export class RegionMap {
     this.svg.setAttribute('class', 'map-svg');
     this.svg.setAttribute('role', 'application');
     this.svg.setAttribute('aria-label', 'Karte der Klimaregionen');
-    this.svg.innerHTML = '<g class="world"><g class="regions"></g><path class="active-region"/><g class="lakes"></g><path class="country"/></g><g class="overlay"></g>';
+    this.svg.innerHTML = '<g class="world"><g class="regions"></g><path class="active-region"/><path class="river"/><path class="lake"/><path class="border"/><path class="outline"/></g><g class="overlay"></g>';
     host.append(this.svg);
     this.world = this.svg.querySelector('.world');
     this.overlay = this.svg.querySelector('.overlay');
@@ -46,16 +46,20 @@ export class RegionMap {
     }).observe(host);
   }
 
-  setData({ regions, country, lakes, stations }) {
+  /** Region rings for the fills; outline, borders, lakes and rivers as drawn lines (data/regions.json). */
+  setData({ regions, outline, borders, lakes, rivers, stations }) {
     this.regions = regions;
     this.stations = stations;
     this.world.querySelector('.regions').innerHTML = regions
       .map((r) => `<path class="region" data-region="${r.id}" d="${pathOf(r.rings)}"/>`)
       .join('');
-    this.world.querySelector('.lakes').innerHTML = `<path class="lake" d="${pathOf(lakes)}"/>`;
-    this.world.querySelector('.country').setAttribute('d', pathOf(country));
-    const xs = country.flat().map(([e]) => toX(e));
-    const ys = country.flat().map(([, n]) => toY(n));
+    const set = (cls, d) => this.world.querySelector(`.${cls}`).setAttribute('d', d);
+    set('river', pathOf(rivers, false));
+    set('lake', pathOf(lakes));
+    set('border', pathOf(borders, false));
+    set('outline', pathOf(outline));
+    const xs = outline.flat().map(([e]) => toX(e));
+    const ys = outline.flat().map(([, n]) => toY(n));
     this.extent = { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
     for (const p of this.world.querySelectorAll('path')) p.setAttribute('vector-effect', 'non-scaling-stroke');
     this.fit();

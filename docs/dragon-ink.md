@@ -50,6 +50,10 @@ Use the series colours in this order. Never skip or repeat a slot.
 - Sequential (low → high), light: `#d9ebf7` `#b0d3eb` `#84b9dc` `#569ac6` `#317ca8` `#1a5e84` `#10425d`
 - Sequential (low → high), dark: `#1e394a` `#27526c` `#337094` `#498eb9` `#70add4` `#9dc7e4` `#c6dff0`
 
+## Map
+
+Water on maps (Klimastation) uses two steps of the sequential blue: `water` (lake fill) light `#d9ebf7`, dark `#1e394a`; `water-line` (rivers, lake shores) light `#84b9dc`, dark `#337094`.
+
 ## Annotations
 
 Colours the PDF-Editor writes into documents (markup, shapes, measurements, highlight). They are document colours: the same in light and dark, and print-safe on white paper. Based on the Okabe-Ito set, with a stronger red for revision marks. Every pair keeps CIEDE2000 ΔE ≥ 10 under protanopia and deuteranopia simulation (Machado 2009, full severity); `tests/pdf-editor.colors.test.js` checks it.

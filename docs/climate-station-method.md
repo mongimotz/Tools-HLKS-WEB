@@ -5,7 +5,7 @@ Das Werkzeug hilft bei der Wahl der Klimastation nach SIA 2028:2010 für einen S
 ## 1. Grundlagen
 
 - **Stationen:** SIA 2028, Tabelle 1a (Name, Kürzel, geografische Breite und Länge auf Bogenminuten, Höhe) und Tabelle 1b (Klimaregion). Rünenberg steht in Tabelle 1a mit 46° 26′. Richtig ist 47° 26′.
-- **Klimaregionen:** SIA 2028, Figur 1, von Hand nachgezeichnet (siehe Abschnitt 3). Die Karte der Norm ist schematisch.
+- **Klimaregionen:** SIA 2028, Figur 1, als Vektorgrafik nachgezeichnet (siehe Abschnitt 3). Die Karte der Norm ist schematisch.
 - **Ortschaften:** Amtliches Ortschaftenverzeichnis von swisstopo (PLZ, Ortschaft, Gemeinde, Kanton, Koordinate LV95). Je Ortschaft gilt die Gemeinde mit dem grössten Adressanteil.
 - **Adressen und Höhe:** Dienste von swisstopo (api3.geo.admin.ch). Für die Adresssuche geht der eingegebene Text an swisstopo, für die Höhe die Koordinate. PLZ-Suche, Ortssuche, Region und Rangliste laufen im Browser.
 
@@ -28,15 +28,13 @@ In der Suche kannst du Koordinaten eingeben: LV95 (`2'635'345 1'244'330`), LV03 
 
 Die Karte der Norm wurde so nachgezeichnet:
 
-1. **Georeferenzierung:** Die 40 Stationspunkte der Karte sind Passpunkte. Eine affine Transformation (kleinste Quadrate) bildet die Karte auf LV95 ab. Restfehler 0.65 km (quadratisches Mittel). Bern-Liebefeld (7 km) und Magadino (4 km) sind in der Karte versetzt gezeichnet und zählen nicht als Passpunkte.
-2. **Flächen:** Die schwarzen Grenzlinien trennen die Flächen. Jede Fläche erhält die Region der Stationen darin.
-3. **Umriss:** Die Grenzen werden als gemeinsame Linien vereinfacht (Toleranz etwa 0.35 km). Benachbarte Regionen haben dieselbe Grenzlinie, ohne Lücken.
+1. **Georeferenzierung:** Die 40 Stationspunkte der Karte sind Passpunkte. Eine affine Transformation (kleinste Quadrate) bildet die Karte auf LV95 ab. Restfehler 0.6 km (quadratisches Mittel). Bern-Liebefeld (7 km) und Magadino (4 km) sind in der Karte versetzt gezeichnet und zählen nicht als Passpunkte.
+2. **Linien:** Landesgrenze, Regionsgrenzen, Seen und Flüsse übernimmt das Werkzeug aus der Vektorgrafik. Abweichung durch die Vereinfachung höchstens 30 m (Flüsse 80 m).
+3. **Flächen:** Die Grenzlinien trennen die Flächen. Jede Fläche erhält die Region der Stationen und der Regionsnummer darin. Für die Abfrage sind die Flächen auf etwa 0.1 km genau. Benachbarte Regionen haben dieselbe Grenze, ohne Lücken.
 
 Die Region eines Standorts ist die Fläche, in der er liegt. Liegt der Standort ausserhalb aller Flächen (z. B. knapp an der Landesgrenze oder in Liechtenstein), gilt die nächste Region. Das Werkzeug zeigt dann den Abstand. Ist der Standort mehr als 15 km von jeder Region entfernt, gilt er als ausserhalb der Schweiz. Die Rangliste rechnet dann ohne Regionszuschlag.
 
 Liegt eine andere Region näher als 5 km, zeigt das Werkzeug eine Warnung „Grenznähe“. Die Grenzen der Norm sind schematisch, prüfe die Wahl in diesem Fall von Hand.
-
-Bekannte Abweichung: Die Station Grand-St-Bernard (Region 12) liegt auf der Passhöhe. Die Karte zeichnet diesen Punkt in Region 10.
 
 ## 4. Rangliste der Stationen
 

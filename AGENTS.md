@@ -131,7 +131,7 @@ The optional Python helpers have their own prerequisites.
 - `node scripts/vendor-embedpdf.mjs [version]` – vendor EmbedPDF from the npm registry (integrity checked) into `lib/vendor/embedpdf/`, apply `PATCHES.md`, regenerate `tools/pdf-editor/viewer-strings.js`
 - `node scripts/vendor-tesseract.mjs` – vendor tesseract.js and its core from the npm registry (integrity checked) and the deu + eng models from tessdata_fast (pinned commit, SHA-256 checked) into `lib/vendor/tesseract/`; versions are constants in the script
 - `node scripts/make-pdf-editor-fixtures.mjs` – rewrite the PDF-Editor test files in `tests/fixtures/pdf-editor/` (only when they should change)
-- `python scripts/build-climate-regions.py map.png` – trace the Klimastation regions from an image of SIA 2028 figure 1 (not in the repository; needs numpy + Pillow); see [tools/climate-station/AGENTS.md](tools/climate-station/AGENTS.md#rebuilding-the-data)
+- `python scripts/build-climate-regions.py map.svg` – build the Klimastation regions and map lines from the owner's vector redraw of SIA 2028 figure 1 (not in the repository; needs numpy + Pillow); see [tools/climate-station/AGENTS.md](tools/climate-station/AGENTS.md#rebuilding-the-data)
 - `node scripts/build-places.mjs AMTOVZ_CSV_LV95.csv` – rebuild the Klimastation localities from swisstopo's directory of localities
 - `node scripts/build-symbol-library.mjs` – rebuild the PDF-Editor's symbol library PDFs from `tools/pdf-editor/symbols/*.svg` (commit the result; `npm test` fails when they are out of date)
 - Real plans for local tests go into `tests/fixtures/pdf-to-dxf/real/` (git-ignored); `npm test` converts every PDF there.

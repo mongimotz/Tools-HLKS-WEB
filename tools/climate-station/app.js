@@ -20,7 +20,7 @@ const $ = (sel, root = document) => root.querySelector(sel);
 
 const app = {
   store: null,
-  data: null, // { stations, regions, regionById, places, country, lakes }
+  data: null, // { stations, regions, regionById, places, outline, borders, lakes, rivers }
   map: null,
   issues: null,
   height: { seq: 0, pending: false, failed: false },
@@ -47,8 +47,10 @@ async function loadData() {
     stations: st.stations,
     regions,
     regionById: new Map(regions.map((r) => [r.id, r])),
-    country: rg.country,
+    outline: rg.outline,
+    borders: rg.borders,
     lakes: rg.lakes,
+    rivers: rg.rivers,
     places: pl.places,
   };
 }

@@ -59,10 +59,12 @@
 .map-svg:focus { outline: none; }
 .map-svg:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
 .map-svg.is-panning { cursor: grabbing; }
-.map-svg .region { fill: var(--surface); stroke: var(--border-strong); stroke-width: 1; }
-.map-svg .active-region { fill: var(--accent-subtle); stroke: var(--accent); stroke-width: 1.5; }
-.map-svg .lake { fill: var(--primary-subtle); stroke: none; }
-.map-svg .country { fill: none; stroke: var(--text-muted); stroke-width: 1.5; }
+.map-svg .region { fill: var(--surface); stroke: none; }
+.map-svg .active-region { fill: var(--accent-subtle); stroke: none; }
+.map-svg .river { fill: none; stroke: var(--water-line); stroke-width: 1; stroke-linejoin: round; }
+.map-svg .lake { fill: var(--water); stroke: var(--water-line); stroke-width: 0.75; stroke-linejoin: round; }
+.map-svg .border { fill: none; stroke: var(--border-strong); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+.map-svg .outline { fill: none; stroke: var(--text-muted); stroke-width: 1.5; stroke-linejoin: round; }
 .map-svg .region-no { font-size: var(--fs-sm); font-weight: 600; fill: var(--text-muted); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
 .map-svg .region-no.is-active { fill: var(--accent-text); }
 .map-svg .station { cursor: pointer; }

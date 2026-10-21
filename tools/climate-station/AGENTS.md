@@ -13,14 +13,14 @@ The tool helps to choose the SIA 2028 climate station for a building site. The u
 ## References
 
 - [Method](../../docs/climate-station-method.md): coordinates, region lookup, ranking formula, limits.
-- `scripts/build-climate-regions.py`: traces `data/regions.json` from an image of SIA 2028 figure 1 (the image is not in the repository).
+- `scripts/build-climate-regions.py`: builds `data/regions.json` from the owner's vector redraw of SIA 2028 figure 1 (`Klimaregionen_SIA2028_neu.svg`, not in the repository).
 - `scripts/build-places.mjs`: builds `data/places.json` from swisstopo's official directory of localities (AMTOVZ, CSV LV95).
 
 ## Files and saved state
 
 - `app.js` and `map.js` control the DOM. `calc.js`, `defaults.js` and `labels.js` have no DOM.
 - `data/stations.json`: table 1a / 1b of SIA 2028 (name, abbreviation, degrees and minutes, height, region) and LV95 computed from the degrees. Rünenberg is corrected to 47° 26′ (table 1a misprints 46° 26′).
-- `data/regions.json`: 12 regions as rings in LV95 (m), the country outline and lakes, plus a label point per region. Neighbouring regions share their border points exactly.
+- `data/regions.json`, all in LV95 (m): `regions` (12 areas as rings for the point lookup, label point = position of the region number in the SVG; neighbouring regions share their border points exactly) and the drawn lines `outline`, `borders`, `lakes`, `rivers` (polylines simplified from the SVG's Bézier curves, 30 m for outline, borders and lakes, 80 m for rivers).
 - `data/places.json`: one row per locality `[plz, name, municipality (empty = name), canton, e, n]`. Liechtenstein has canton `FL`.
 - Saved state is a browser draft `{ inputs: { site, station, weights } }` (`normalizeInputs`, idempotent) and the page URL. There is no envelope, no PDF, JSON or CSV export and no ⋯ menu (owner decision: the result goes to Excel by copy).
 - URL parameters: `e`, `n` (LV95), `h` (height, only when typed by hand), `st` (station chosen by hand), `q` (site label). A link restores the site; weights come from the draft.
@@ -49,12 +49,12 @@ Notices: height pending (info), height missing or not available (warning, → he
 
 ## Map
 
-Own SVG in LV95, no tiles. Regions in `--surface` with `--border-strong` borders, the site's region in `--accent-subtle` / `--accent` (the screen's one accent), lakes in `--primary-subtle`, stations as dots with their abbreviation, the best three and their links to the site in `--primary` (chosen: solid, others dashed), the site as a ring in `--text-strong`.
+Own SVG in LV95, no tiles. Region areas in `--surface` without stroke, the site's region in `--accent-subtle` (the screen's one accent; its number in `--accent-text`), rivers and lake shores in `--water-line`, lakes in `--water`, region borders in `--border-strong`, the outline in `--text-muted`, stations as dots with their abbreviation, the best three and their links to the site in `--primary` (chosen: solid, others dashed), the site as a ring in `--text-strong`.
 
-Wheel or two fingers zoom about the pointer, dragging pans, a click sets the site, a click on a station chooses it. + / − / four corners in the map corner; with focus on the map: arrows pan, + / − zoom, 0 shows all. Zoom stops at 30 px per km, as the source map is coarse. A new site from the search zooms to the site and its best three stations.
+Wheel or two fingers zoom about the pointer, dragging pans, a click sets the site, a click on a station chooses it. + / − / four corners in the map corner; with focus on the map: arrows pan, + / − zoom, 0 shows all. Zoom stops at 30 px per km, as the source map is schematic. A new site from the search zooms to the site and its best three stations.
 
 ## Rebuilding the data
 
-- Regions: `python scripts/build-climate-regions.py map.png` (numpy, Pillow). It prints the fit (38 control points, rms about 0.65 km; Bern-Liebefeld and Magadino are drawn 7 and 4 km off in the source and left out). It stops with a message when a border line has a gap (add a `PATCHES` line) or a closed area has no station (add a `SEEDS` entry). Check the result against the source map before committing.
+- Regions: `python scripts/build-climate-regions.py map.svg` (numpy, Pillow; about 3 minutes). The SVG needs the groups `umriss`, `klimazonen-grenzen`, `seen`, `fluesse`, `klimazonen-nummern`, `stationen` with absolute M / C / Z paths. The script prints the fit (38 control points, rms about 0.6 km; Bern-Liebefeld and Magadino are drawn 7 and 4 km off in the source and left out). It stops when two seeds of different regions share an area (a border line has a gap) or when a closed area has no station or number (add a `SEEDS` entry). Check the result in the browser before committing.
 - Places: `node scripts/build-places.mjs AMTOVZ_CSV_LV95.csv` with the current file from swisstopo.
-- `tests/climate-station.test.js` checks table 1b, every station in its region (exception: Grand-St-Bernard, which the map draws inside region 10), every locality near a region, the Olten ranking and the state.
+- `tests/climate-station.test.js` checks table 1b, every station inside its region, every locality near a region, the Olten ranking and the state.
