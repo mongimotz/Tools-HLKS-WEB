@@ -16,6 +16,9 @@ import { buildReport as sizingReport } from '../tools/duct-sizing/report.js';
 import * as silencerCalc from '../tools/silencer/calc.js';
 import * as silencerDefaults from '../tools/silencer/defaults.js';
 import { buildReport as silencerReport } from '../tools/silencer/report.js';
+import * as hxCalc from '../tools/hx-diagram/calc.js';
+import * as hxDefaults from '../tools/hx-diagram/defaults.js';
+import { buildReport as hxReport } from '../tools/hx-diagram/report.js';
 
 const dir = new URL('../tests/fixtures/', import.meta.url);
 await mkdir(dir, { recursive: true });
@@ -75,7 +78,42 @@ const tools = [
       paths: { project: { name: 'Drei Wege, Datenbank, LSV', number: 'FX-6', author: 'Fixture', date: '2026-10-13' }, inputs: silencerPaths() },
     },
   },
+  {
+    calc: hxCalc,
+    defaults: hxDefaults,
+    report: hxReport,
+    cases: {
+      example: { project: { name: 'Beispiel', number: 'FX-9', author: 'Fixture', date: '2026-10-21' }, inputs: hxDefaults.exampleInputs() },
+      processes: { project: { name: 'Alle Prozesse, 1200 m', number: 'FX-10', author: 'Fixture', date: '2026-10-21' }, inputs: hxProcesses() },
+    },
+  },
 ];
+
+/** h,x diagram: every process type, mixing by flows, an enthalpy wheel and a room line. */
+function hxProcesses() {
+  return hxDefaults.normalizeInputs({
+    site: { altitude: 1200 },
+    calculations: [{
+      id: 'c1',
+      name: 'Prozesse',
+      flow: 4000,
+      blocks: [
+        { id: 'b1', type: 'point', label: 'AU', given: [{ key: 't', value: -12 }, { key: 'phi', value: 90 }], flow: 1500 },
+        { id: 'b2', type: 'point', label: 'AB', given: [{ key: 't', value: 21 }, { key: 'x', value: 5 }] },
+        { id: 'b3', type: 'hrv', label: 'WRG', label2: 'FO', from: 'b1', to: 'b2', mode: 'enthalpy', eta: 78, etaX: 60 },
+        { id: 'b4', type: 'point', label: 'UL', given: [{ key: 'h', value: 38 }, { key: 'td', value: 6 }], flow: 2500 },
+        { id: 'b5', type: 'mix', label: 'MI', from: 'b3', to: 'b4', mode: 'flows' },
+        { id: 'b6', type: 'heater', label: 'VE', from: 'b5', mode: 'q', q: 12 },
+        { id: 'b7', type: 'adiabatic', label: 'BE', from: 'b6', mode: 'phi', phi: 45 },
+        { id: 'b8', type: 'fan', label: 'VT', from: 'b7', dt: 0.8 },
+        { id: 'b9', type: 'cooler', label: 'KÜ', from: 'b8', mode: 'q', q: 5, ts: 12 },
+        { id: 'b10', type: 'steam', label: 'ZU', from: 'b9', mode: 'm', m: 6, ts: 110 },
+        { id: 'b11', type: 'point', label: 'RA', given: [{ key: 't', value: 22 }, { key: 'tw', value: 13 }] },
+        { id: 'b12', type: 'line', from: 'b10', to: 'b11' },
+      ],
+    }],
+  });
+}
 
 function pressureCalculations() {
   const inputs = ductDefaults.exampleInputs();

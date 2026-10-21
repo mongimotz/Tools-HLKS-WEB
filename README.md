@@ -12,6 +12,7 @@ Browser-basierte Tools für Gebäudetechniker.
 | Lüftung      | Kanalrechner  | Rohre und Kanäle auslegen nach SIA 382/1      | BETA     |
 | Lüftung      | Schalldämpfer | Schallpegel bis zum Empfänger, Schalldämpfer  | BETA     |
 | Klima        | Klimastation  | Klimastation nach SIA 2028 für einen Standort | BETA     |
+| Klima        | h,x-Diagramm  | Luftzustände und Prozesse mit Leistungen      | BETA     |
 | –            | PDF-Editor    | PDF-Pläne ansehen, markieren und bearbeiten   | BETA     |
 | –            | PDF → DXF     | PDF-Pläne als massstäbliche DXF für CAD       | Released |
 
@@ -19,7 +20,7 @@ Browser-basierte Tools für Gebäudetechniker.
 
 Agentenregeln und Werkzeugdetails: [AGENTS.md](AGENTS.md).
 
-Rechenwege: [Druckverlust Lüftung](docs/duct-pressure-loss-method.md) | [Kanalrechner](docs/duct-sizing-method.md) | [Schalldämpfer](docs/silencer-method.md) | [Klimastation](docs/climate-station-method.md) | [PDF-Editor](docs/pdf-editor-method.md) | [PDF → DXF](docs/pdf-to-dxf-method.md)
+Rechenwege: [Druckverlust Lüftung](docs/duct-pressure-loss-method.md) | [Kanalrechner](docs/duct-sizing-method.md) | [Schalldämpfer](docs/silencer-method.md) | [Klimastation](docs/climate-station-method.md) | [h,x-Diagramm](docs/hx-diagram-method.md) | [PDF-Editor](docs/pdf-editor-method.md) | [PDF → DXF](docs/pdf-to-dxf-method.md)
 
 ## Entwicklung
 

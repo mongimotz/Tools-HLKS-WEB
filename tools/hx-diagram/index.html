@@ -1,0 +1,84 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>h,x-Diagramm – HLKS-Tools</title>
+  <meta name="description" content="Zustandsänderungen feuchter Luft im h,x-Diagramm: Punkte, Erhitzer, Kühler, Befeuchter, WRG, Mischung und Leistungen." />
+  <script>try { const t = localStorage.getItem('hlks-tools:theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch {}</script>
+  <link rel="icon" href="../../assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="../../assets/css/tokens.css" />
+  <link rel="stylesheet" href="../../assets/css/base.css" />
+  <link rel="stylesheet" href="style.css" />
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <header class="appbar">
+    <a class="brand" href="../../" title="Zur Startseite">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5.2 7.6 18.8 12 5.2 16.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+      HLKS-Tools
+    </a>
+    <span class="appbar-title">h,x-Diagramm</span>
+    <div class="appbar-actions">
+      <button class="btn ghost icon-only" data-action="undo" title="Rückgängig (Strg+Z)" aria-label="Rückgängig"></button>
+      <button class="btn ghost icon-only" data-action="redo" title="Wiederholen (Strg+Y)" aria-label="Wiederholen"></button>
+      <span class="appbar-sep"></span>
+      <button class="btn ghost icon-only" data-action="open" title="Öffnen (Strg+O)" aria-label="Öffnen"></button>
+      <button class="btn primary" data-action="export-pdf" title="PDF speichern (Strg+S)"></button>
+      <div class="menu" id="more-menu">
+        <button class="btn ghost icon-only" data-action="menu" aria-haspopup="true" aria-expanded="false" aria-label="Weitere Aktionen"></button>
+        <ul class="menu-list" role="menu">
+          <li><button data-action="new" role="menuitem">Neue Berechnung</button></li>
+          <li><button data-action="example" role="menuitem">Beispiel laden</button></li>
+          <li><hr /></li>
+          <li><button data-action="export-json" role="menuitem">JSON speichern</button></li>
+          <li><button data-action="export-csv" role="menuitem">CSV speichern</button></li>
+          <li><button data-action="export-blank" role="menuitem">Leeres Diagramm</button></li>
+        </ul>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="workspace-head">
+      <div id="project"></div>
+      <div id="issue-panel"></div>
+    </div>
+
+    <div class="calculation-bar">
+      <div id="calculation-tabs"></div>
+    </div>
+
+    <div class="hx-layout" role="tabpanel" id="calc-layout">
+      <section class="panel hx-stage" aria-label="Diagramm">
+        <div class="hx-toolbar">
+          <button class="btn ghost icon-only" data-action="point-tool" aria-pressed="false" title="Punkt setzen" aria-label="Punkt setzen"></button>
+          <button class="btn ghost icon-only" data-action="fit" title="Standardbereich" aria-label="Standardbereich"></button>
+          <button class="btn ghost icon-only" data-action="fit-points" title="Auf Punkte zoomen" aria-label="Auf Punkte zoomen"></button>
+          <span class="appbar-sep"></span>
+          <span class="hx-range" role="group" aria-label="Bereich Temperatur"><i>t</i><input class="input num" data-range="tMin" inputmode="decimal" aria-label="t min" /><span>…</span><input class="input num" data-range="tMax" inputmode="decimal" aria-label="t max" /><small>°C</small></span>
+          <span class="hx-range" role="group" aria-label="Bereich Wassergehalt"><i>x</i><input class="input num" data-range="xMin" inputmode="decimal" aria-label="x min" /><span>…</span><input class="input num" data-range="xMax" inputmode="decimal" aria-label="x max" /><small>g/kg</small></span>
+          <span class="hx-readout num" id="readout" aria-live="off"></span>
+        </div>
+        <div class="hx-canvas" id="diagram"></div>
+      </section>
+
+      <section class="panel hx-blocks" aria-label="Bausteine">
+        <div class="hx-site">
+          <label class="field"><span class="field-label">Höhe <span class="unit">m ü. M.</span></span><input class="input num" data-site="altitude" inputmode="decimal" /></label>
+          <div class="field"><span class="field-label">p <span class="unit">mbar</span></span><output class="hx-out num" id="pressure"></output></div>
+          <label class="field"><span class="field-label">V̇ <span class="unit">m³/h</span></span><input class="input num" data-calc="flow" inputmode="decimal" /></label>
+        </div>
+        <ol class="hx-list" id="blocks"></ol>
+        <div class="menu hx-add" id="add-menu">
+          <button class="btn icon-only" data-action="add-menu" aria-haspopup="true" aria-expanded="false" title="Baustein hinzufügen" aria-label="Baustein hinzufügen"></button>
+          <ul class="menu-list" role="menu" id="add-list"></ul>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div class="drop-overlay" aria-hidden="true"><span>PDF / JSON öffnen</span></div>
+</body>
+</html>

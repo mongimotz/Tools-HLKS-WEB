@@ -27,6 +27,7 @@ German method documents describe formulas, assumptions and limits. Design rules 
 | PDF → DXF | [tools/pdf-to-dxf/AGENTS.md](tools/pdf-to-dxf/AGENTS.md) | [docs/pdf-to-dxf-method.md](docs/pdf-to-dxf-method.md) |
 | PDF-Editor | [tools/pdf-editor/AGENTS.md](tools/pdf-editor/AGENTS.md) | [docs/pdf-editor-method.md](docs/pdf-editor-method.md) |
 | Klimastation | [tools/climate-station/AGENTS.md](tools/climate-station/AGENTS.md) | [docs/climate-station-method.md](docs/climate-station-method.md) |
+| h,x-Diagramm | [tools/hx-diagram/AGENTS.md](tools/hx-diagram/AGENTS.md) | [docs/hx-diagram-method.md](docs/hx-diagram-method.md) |
 
 ## Structure
 
@@ -45,9 +46,11 @@ tools/<tool-id>/           one folder per tool: AGENTS.md (local contracts), ind
 tools/pdf-to-dxf/          PDF → DXF: app.js, preview.js (DOM); worker.js, convert.js, backend.js (MuPDF), ir.js, pipeline.js, geometry.js, dxf.js, scan.js, defaults.js, labels.js (no DOM)
 tools/pdf-editor/          PDF-Editor: app.js, bridge.js (EmbedPDF), theme.js, library.js, tools-ui.js, client.js (DOM); worker.js, engine.js (MuPDF), pages.js, images.js, compress.js, ocr.js, autosave.js, svg.js, svg-render.js, stamps.js, zip.js, defaults.js, labels.js (no DOM); symbols/ (SVG + library PDFs), stamps/ (templates)
 tools/climate-station/     Klimastation: app.js, map.js (DOM); calc.js, defaults.js, labels.js (no DOM); data/ stations.json (SIA 2028 table 1, no climate values), regions.json (traced region map), places.json (swisstopo localities)
+tools/hx-diagram/          h,x-Diagramm: app.js (DOM); psychro.js (moist air), chart.js (diagram geometry, dynamic size and range), svg.js (SVG strings, overlay), calc.js, defaults.js, labels.js, report.js, csv.js (no DOM)
 docs/                      DESIGN.md, dragon-ink.md, <tool-id>-method.md (user-facing calculation docs, German), pdf-to-dxf-nova-test.md
 docs/dev/pdf-to-dxf/       PROGRESS, DECISIONS, TESTREPORT, TODO-OWNER of the PDF → DXF build (English)
 docs/dev/pdf-editor/       PLAN, PROGRESS, DECISIONS, TODO-OWNER of the PDF-Editor build (English)
+docs/dev/hx-diagram/       PLAN of the h,x diagram build (English)
 tests/                     node --test, fixtures/ holds reference PDFs, fixtures/pdf-to-dxf/ the PDF → DXF corpus with *.truth.json, fixtures/pdf-editor/ the editor's test files, helpers/
 scripts/                   serve.mjs (dev server, --base for a sub-path), make-fixtures.mjs, build-fonts.py, make-pdf-to-dxf-fixtures.mjs, pdf-to-dxf.mjs (CLI), check-dxf.py (ezdxf), npm-package.mjs + vendor-embedpdf.mjs + vendor-tesseract.mjs (vendoring), make-pdf-editor-fixtures.mjs, build-climate-regions.py + build-places.mjs (Klimastation data)
 ```
@@ -139,7 +142,7 @@ The optional Python helpers have their own prerequisites.
 
 ## Tool inventory (owner decision, 2026-10-13)
 
-The start page shows three entries per discipline. Lüftung has three ready tools. Klima has the Klimastation and `Platzhalter 1` to `Platzhalter 2`. Heizung and Sanitär use `Platzhalter 1` to `Platzhalter 3`, with status `placeholder` and no path. These slots do not name or promise future tools. The registry generates them from a count, so more entries can be added later.
+The start page shows three entries per discipline. Lüftung has three ready tools. Klima has the Klimastation, the h,x-Diagramm and `Platzhalter 1`. Heizung and Sanitär use `Platzhalter 1` to `Platzhalter 3`, with status `placeholder` and no path. These slots do not name or promise future tools. The registry generates them from a count, so more entries can be added later.
 
 Current implementation notes:
 
@@ -152,7 +155,7 @@ Open technical items:
 - Permanent storage beyond the browser draft, e.g. a Google Drive integration (undecided).
 - Excel export as `.xlsx` (CSV exists).
 
-Available: shared core, PDF export/import with embedded data, start page import, calcVersion warning, reference PDFs, Druckverlust Lüftung, Kanalrechner, Schalldämpfer, PDF → DXF (test version; vector and scanned PDFs, R2000 and R12; open: the owner's test in Trimble Nova, `docs/pdf-to-dxf-nova-test.md`), PDF-Editor (test version; open: the owner's checks in `docs/dev/pdf-editor/TODO-OWNER.md`), Klimastation (test version; station choice for SIA 2028, copy to Excel).
+Available: shared core, PDF export/import with embedded data, start page import, calcVersion warning, reference PDFs, Druckverlust Lüftung, Kanalrechner, Schalldämpfer, PDF → DXF (test version; vector and scanned PDFs, R2000 and R12; open: the owner's test in Trimble Nova, `docs/pdf-to-dxf-nova-test.md`), PDF-Editor (test version; open: the owner's checks in `docs/dev/pdf-editor/TODO-OWNER.md`), Klimastation (test version; station choice for SIA 2028, copy to Excel), h,x-Diagramm (test version since 2026-10-21; states, processes, powers, A4 print).
 
 ## License
 
