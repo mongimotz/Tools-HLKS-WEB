@@ -1,5 +1,7 @@
 In-Chat responses should be kept concise and to the point.
 
+End every task with an 80/20 summary, max 10 lines: the 20% I have to read, what to check, what you were unsure about, what's next. No recap of your reasoning, no restating what I asked.
+
 ## Project conventions
 
 - **Language:** code, identifiers, comments, file and folder names in English. Everything the user sees (UI, PDF, error messages, `README.md`, `docs/*-method.md`) in German (Swiss spelling, no ß). Agent/developer docs (`AGENTS.md`, `docs/DESIGN.md`) in English.
@@ -11,7 +13,7 @@ In-Chat responses should be kept concise and to the point.
 
 ## Documentation (owner decision, 2026-10-13)
 
-`README.md` is edited only by the project owner. Agents must not edit it or add notes, work logs, implementation details, or development instructions there. Tell the owner when a README update is needed.
+`README.md` is edited by the project owner. Exception (owner decision, 2026-10-21): agents keep its changing lists current without asking: the tool table (`## Werkzeuge`), the calculation links (`Rechenwege`) and the third-party table (`## Lizenz und Fremdcode`). Add, remove or update entries only; tool descriptions stay one short line, a summary, no detail. The README must stay short: agents must not add sections, notes, work logs, implementation details, or development instructions. Tell the owner when another part of the README is outdated or no longer relevant.
 The README covers the project introduction, available tools, calculation links, and brief development, publishing and license information.
 Shared contracts and development rules belong in this file. Tool-specific behavior belongs in `tools/<tool-id>/AGENTS.md`.
 Read the relevant tool file before changing that tool. Preserve its documented behavior unless the owner requests a change.
@@ -54,8 +56,8 @@ scripts/                   serve.mjs (dev server, --base for a sub-path), make-f
 
 - `calc.js`, `defaults.js`, `labels.js`, `report.js` and `csv.js` must not touch the DOM, so Node tests can run them.
 - Import `report.js` / `lib/core/pdf.js` lazily (`await import()`): pdf-lib and fontkit are large and only needed for PDF work.
-- Register every tool in `lib/core/registry.js` with its discipline (`group`: heating, ventilation, cooling, plumbing, or `general` for tools without a discipline). Tell the owner when its entry in the README tool table needs an update; do not edit the README.
-- Every tool gets a German `docs/<tool-id>-method.md` (formulas, assumptions, limits). The owner maintains its link in `README.md`. Keep detailed behavior and usage contracts in its English `tools/<tool-id>/AGENTS.md`, not in the page or the README.
+- Register every tool in `lib/core/registry.js` with its discipline (`group`: heating, ventilation, cooling, plumbing, or `general` for tools without a discipline). Keep its row in the README tool table current (see Documentation).
+- Every tool gets a German `docs/<tool-id>-method.md` (formulas, assumptions, limits). Keep its link under `Rechenwege` in `README.md` current. Keep detailed behavior and usage contracts in its English `tools/<tool-id>/AGENTS.md`, not in the page or the README.
 - Saved data is the envelope from `lib/core/envelope.js`: `{ format, envelopeVersion, tool, version, calcVersion, savedAt, project, inputs, snapshot }`. Only `inputs` and `project` are authoritative; results are always recalculated. `snapshot` holds key results for regression checks. The PDF report embeds the envelope as `data.json`; the start page opens any tool's PDF via the registry.
 - Bump `INPUT_VERSION` when the input schema changes (and migrate in `normalizeInputs`). Bump `CALC_VERSION` when results can change, then run `npm run fixtures` to add new reference PDFs. Never delete old fixtures.
 - **Beta (owner decision, 2026-10-13):** the tools are not in productive use yet. Until the owner ends the beta, files from older versions (PDF, JSON, draft) need not open: no migration in `normalizeInputs`, no compatibility code. Bump `INPUT_VERSION` anyway, so the version warning shows. Old fixtures of a tool may be deleted when its schema changes. `normalizeInputs` must still not throw on old or foreign data. Backwards compatibility becomes a feature later.
