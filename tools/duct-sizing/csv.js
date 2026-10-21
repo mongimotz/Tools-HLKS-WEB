@@ -9,7 +9,7 @@ export function buildCsv(doc) {
   const { inputs } = doc;
   const n = (v, d) => (v == null || !Number.isFinite(v) ? '' : v.toFixed(d));
   const q = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
-  const head = ['Berechnung', 'Nr.', 'V [m3/h]', 'Form', 'Vorgabe', 'D [mm]', 'B [mm]', 'H [mm]', 'erforderlich D [mm]', 'erforderlich B [mm]', 'erforderlich H [mm]', 'Seitenverhältnis 1/n', 'A [m2]', 'dh [mm]', 'v [m/s]', 'v max rund [m/s]', 'f', 'v max [m/s]', 'Ausnutzung [%]', 'R [Pa/m]'];
+  const head = ['Berechnung', 'Nr.', 'V [m3/h]', 'Form', 'Vorgabe', 'D [mm]', 'B [mm]', 'H [mm]', 'erforderlich D [mm]', 'erforderlich B [mm]', 'erforderlich H [mm]', 'Seitenverhältnis 1/n', 'frei [%]', 'A [m2]', 'A frei [m2]', 'dh [mm]', 'v [m/s]', 'v max rund [m/s]', 'f', 'v max [m/s]', 'Ausnutzung [%]', 'R [Pa/m]'];
   const lines = [head.map(q).join(';')];
   inputs.calculations.forEach((calculation, index) => {
     const view = calculationInputs(inputs, calculation.id);
@@ -32,14 +32,16 @@ export function buildCsv(doc) {
           !round ? n(r?.required?.width, 1) : '',
           !round ? n(r?.required?.height, 1) : '',
           ok ? n(r.ratio, 2) : '',
+          n(p.free, 1),
           ok ? n(r.area, 5) : '',
+          ok ? n(r.freeArea, 5) : '',
           ok ? n(r.dh * 1000, 1) : '',
           ok ? n(r.velocity, 3) : '',
           n(r?.vmaxRound, 3),
           ok ? n(r.factor, 3) : '',
           ok ? n(r.vmax, 3) : '',
           ok ? n(r.utilization * 100, 1) : '',
-          ok ? n(r.gradient, 4) : '',
+          ok && r.free >= 100 ? n(r.gradient, 4) : '',
         ].join(';'),
       );
     });

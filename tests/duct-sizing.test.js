@@ -278,6 +278,19 @@ test('drawing grows with the duct, keeps the aspect ratio and inverts for draggi
   close(sizeForDrawn('rect', 'width', { width: 5000 }, { width: 650, height: 375 }).width, (FULL_SIZE * FRAME.maxW) / FRAME.maxH, 1, 'stops at the frame');
 });
 
+test('free cross-section: v in the free area, sizes grow to match', () => {
+  const full = one({ shape: 'rect', mode: 'check', flow: 3600, width: 1000, height: 500 });
+  const half = one({ shape: 'rect', mode: 'check', flow: 3600, width: 1000, height: 500, free: 50 });
+  close(full.velocity, 2, 1e-9);
+  close(half.velocity, 4, 1e-9, 'half the area, double the velocity');
+  close(half.freeArea, 0.25, 1e-12);
+  close(half.gradient, full.gradient, 1e-12, 'R stays the duct friction');
+  const d100 = one({ flow: 3000, mode: 'size' }).diameter;
+  const d50 = one({ flow: 3000, mode: 'size', free: 50 }).diameter;
+  assert.ok(d50 > d100, `Ø ${d50} > ${d100}`);
+  assert.equal(normalizeInputs({ calculations: [{ current: { free: 250 } }] }).calculations[0].current.free, 100);
+});
+
 test('PDF round trip keeps project and inputs identical', async () => {
   const inputs = exampleInputs();
   const view = calculationInputs(inputs);

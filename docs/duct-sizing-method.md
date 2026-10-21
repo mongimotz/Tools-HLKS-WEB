@@ -78,8 +78,10 @@ rund:      A = π · d² / 4                 d_h = d
 eckig:     A = B · H                      d_h = 2 · B · H / (B + H)
 flachoval: A = π · H² / 4 + H · (B − H)   d_h = 4 · A / U,  U = π · H + 2 · (B − H)
 
-v = V̇ / A
+v = V̇ / (A · φ)        φ = freier Querschnitt / 100 %
 ```
+
+**Freier Querschnitt φ** (Standard 100 %): Für Wetterschutzgitter, Gitter und Ähnliches. v ist dann die Geschwindigkeit im freien Querschnitt A · φ, und beim Auslegen wächst A mit 1 / φ. v_max kommt unverändert aus den Tabellen 49 und 50 (Seitenverhältnis der Aussenmasse). Ob diese Grenzwerte für das Bauteil passen, beurteilst du selbst; Herstellerangaben gehen vor. Mit φ < 100 % zeigt das Werkzeug statt R den freien Querschnitt A_frei.
 
 Ein flachovaler Kanal hat zwei Halbkreise mit dem Durchmesser H und gerade Seiten dazwischen. B ist die ganze Breite, deshalb gilt B ≥ H.
 
@@ -124,7 +126,7 @@ Die erste Version rundete Breite und Höhe unabhängig auf. Das ergab oft einen 
 Das Druckgefälle R ist ein Richtwert für gerade Strecken ohne Formstücke:
 
 ```
-R  = λ / d_h · ρ · v² / 2
+R  = λ / d_h · ρ · v² / 2          v = V̇ / A (ganzer Querschnitt)
 Re = v · d_h / ν
 1/√λ = −2 · log₁₀(k / (3.71 · d_h) + 2.51 / (Re · √λ))     (Colebrook-White, iterativ)
 ```

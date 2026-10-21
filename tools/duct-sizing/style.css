@@ -98,6 +98,16 @@ svg [data-handle='both'], svg [data-handle='diameter'], .canvas[data-drag='both'
 .tile.big > div { flex: 1; min-width: 0; }
 .tile.big .v { font-size: var(--fs-2xl); line-height: 1.1; letter-spacing: -0.02em; }
 .tile.big .v small { font-size: var(--fs-md); letter-spacing: 0; }
+/* the dimension is also the input: large fields that read like the result */
+.size-fields { align-items: center; flex-wrap: nowrap; }
+.size-input {
+  min-width: 0; max-width: 8ch; box-sizing: content-box; padding: 2px 8px; margin: 0;
+  border: 1px solid var(--border); border-radius: var(--r-input); background: var(--surface-sunken);
+  font: inherit; letter-spacing: inherit; color: inherit; text-align: right;
+}
+.size-input:hover { border-color: var(--border-strong); }
+.size-input:focus { outline: 2px solid var(--primary); outline-offset: -1px; background: var(--surface); }
+.size-sym { color: var(--text-muted); font-weight: 400; }
 
 .bar { height: 6px; background: var(--surface-sunken); margin-top: 8px; border-radius: 3px; overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--success); transition: width 0.25s ease; }
@@ -158,4 +168,4 @@ table.mini { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
 }
 .cell-input:hover { border-color: var(--border-strong); }
 .cell-input:focus { outline: 2px solid var(--primary); outline-offset: -1px; background: var(--surface); }
-.cell-input[aria-invalid='true'], .input[aria-invalid='true'] { background: var(--danger-subtle); border-color: var(--danger); }
+.cell-input[aria-invalid='true'], .input[aria-invalid='true'], .size-input[aria-invalid='true'] { background: var(--danger-subtle); border-color: var(--danger); }

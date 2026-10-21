@@ -54,19 +54,19 @@ export async function buildReport(doc, _result, envelope) {
       return [
         nr.get(p.id),
         fmt(p.flow, 0),
-        SHAPE_LABELS[p.shape],
+        p.free < 100 ? `${SHAPE_LABELS[p.shape]} ${fmt(p.free, 0)} %` : SHAPE_LABELS[p.shape],
         modeLabel(p.shape, p.mode),
         ok ? { text: sizeText(p.shape, dimsOf(r)), bold: true } : '–',
         req,
         ok && p.shape !== 'round' ? ratioText(r.ratio) : '',
-        ok ? fmt(r.area, 4) : '',
+        ok ? fmt(r.freeArea, 4) : '',
         ok ? fmt(r.dh * 1000, 0) : '',
         ok ? { text: over ? `${fmt(r.velocity, 2)} ↑` : fmt(r.velocity, 2), color: over ? INK.danger : undefined, bold: over } : '',
         r?.vmaxRound != null ? fmt(r.vmaxRound, 2) : '',
         ok && r.factor != null ? fmt(r.factor, 3) : '',
         ok ? fmt(r.vmax, 2) : '',
         ok ? fmt(r.utilization * 100, 0) : '',
-        ok ? fmt(r.gradient, 2) : '',
+        ok && r.free >= 100 ? fmt(r.gradient, 2) : '',
       ];
     });
     w.table({

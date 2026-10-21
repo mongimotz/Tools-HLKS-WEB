@@ -170,6 +170,7 @@ export function context(inputs) {
  * - height: non-round, height H given: width B
  * - check:  sizes given: velocity against the limit
  * Calculated sides are rounded up to the grid and widened until v ≤ v_max holds with the final aspect ratio.
+ * p.free < 100 (louvre, grille): v is the velocity in the free area A × free / 100, the sizes grow accordingly.
  */
 export function sizePosition(p, ctx) {
   const r = { id: p.id, status: 'ok', shape: p.shape, mode: p.mode, issues: [] };
@@ -185,6 +186,8 @@ export function sizePosition(p, ctx) {
   if (!vRound) return fail('error', 'limit-missing');
   r.vmaxRound = vRound;
   const q = p.flow / 3600;
+  const free = (p.free > 0 ? Math.min(p.free, 100) : 100) / 100; // free share of the gross area
+  const qf = q / free; // flow per m² gross area, as if the whole section were free
   const nonRound = p.shape !== 'round';
 
   /** Limit and factor for an aspect ratio. */
@@ -195,7 +198,7 @@ export function sizePosition(p, ctx) {
   };
   const evaluate = (dims) => {
     const g = crossSection(p.shape, dims);
-    return { ...g, ...limit(g.ratio), velocity: q / g.area };
+    return { ...g, ...limit(g.ratio), velocity: qf / g.area };
   };
   const ok = (e) => e.velocity <= e.vmax + EPS;
   const step = ctx.step > 0 ? ctx.step : 1;
@@ -215,7 +218,7 @@ export function sizePosition(p, ctx) {
     let B = H;
     let round = false;
     for (let i = 0; i < 60; i++) {
-      const A = (q / v) * 1e6; // mm²
+      const A = (qf / v) * 1e6; // gross mm²
       if (p.shape === 'oval') {
         const rest = A - (Math.PI * H * H) / 4;
         round = rest <= 0;
@@ -232,7 +235,7 @@ export function sizePosition(p, ctx) {
 
   let dims;
   if (!nonRound) {
-    const dReq = Math.sqrt((4 * q) / (Math.PI * vRound)) * 1000;
+    const dReq = Math.sqrt((4 * qf) / (Math.PI * vRound)) * 1000;
     const snapped = snapDiameter(dReq, ctx.catalogs.diameters);
     if (p.mode === 'check') {
       if (!(p.diameter > 0)) return fail('error', 'dims-missing');
@@ -246,7 +249,7 @@ export function sizePosition(p, ctx) {
   } else if (p.mode === 'size') {
     if (!(p.ratio > 0)) return fail('error', 'ratio-missing');
     const n = p.ratio >= 1 ? p.ratio : 1 / p.ratio;
-    const A = (q / limit(n).vmax) * 1e6;
+    const A = (qf / limit(n).vmax) * 1e6;
     const H = p.shape === 'oval' ? Math.sqrt(A / (Math.PI / 4 + n - 1)) : Math.sqrt(A / n);
     r.required = { width: n * H, height: H };
     // Height rounded down and up; for each the smallest width. The variant closer to 1/n wins, but it is
@@ -278,6 +281,8 @@ export function sizePosition(p, ctx) {
   const e = evaluate(dims);
   Object.assign(r, dims, {
     area: e.area,
+    free: free * 100,
+    freeArea: e.area * free,
     dh: e.dh,
     ratio: e.ratio,
     factor: e.factor,
@@ -285,9 +290,11 @@ export function sizePosition(p, ctx) {
     velocity: e.velocity,
     utilization: e.velocity / e.vmax,
   });
+  // R: friction of the duct itself, with the velocity in the gross section; not shown for a reduced free area
   const a = ctx.air;
-  r.dynamicPressure = (a.density * e.velocity ** 2) / 2;
-  r.reynolds = (e.velocity * e.dh) / a.kinematicViscosity;
+  const vDuct = q / e.area;
+  r.dynamicPressure = (a.density * vDuct ** 2) / 2;
+  r.reynolds = (vDuct * e.dh) / a.kinematicViscosity;
   r.lambda = frictionFactor(r.reynolds, ctx.roughness / 1000 / e.dh);
   r.gradient = (r.lambda / e.dh) * r.dynamicPressure;
 

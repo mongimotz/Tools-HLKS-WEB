@@ -33,6 +33,8 @@ The input panel is at the left. The drawing and result are in the center. Pinned
 - `Querschnitt` selects `Rund`, `Eckig`, or `Oval`, and one of the modes below.
 - `Raster` rounds rectangular sides and oval widths upward in increments from 1 to 100 mm.
 - In `Prüfen`, the grid controls drag and arrow-key increments.
+- `Frei` (%) is the free cross-section, default 100 (louvres, grilles). v is the velocity in `A × Frei / 100`; sizing grows the area accordingly. With less than 100 %, the `R` tile is replaced by `A_frei`, and the PDF/CSV leave `R` empty.
+- The panel has no `Ø`, `B` or `H` fields. The dimensions are entered in the large `Abmessung` result (one input per dimension, same combobox and arrow-key steps as before). Typing a dimension switches to `Prüfen`, except `H` in mode `Höhe`, which stays a given height. While a field is typed in, it keeps its caret; the other results update.
 
 | Shape | Mode | Behavior |
 | --- | --- | --- |
@@ -71,7 +73,7 @@ Other messages cover aspect ratios below 1/5 and dimensions above the standard s
 
 | Label | Meaning or display rule |
 | --- | --- |
-| `Abmessung` | Standard size |
+| `Abmessung` | Standard size, editable (see Inputs) |
 | `v` | Velocity and utilization `v / v_max` |
 | Check mark for `v` | Utilization up to 92 % |
 | Warning symbol for `v` | Utilization above 92 % |

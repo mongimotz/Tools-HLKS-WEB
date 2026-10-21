@@ -6,7 +6,7 @@
 // `current` is the position in the input panel, `positions` are the pinned ones (in the PDF and the CSV).
 
 export const TOOL_ID = 'duct-sizing';
-export const INPUT_VERSION = 3;
+export const INPUT_VERSION = 4;
 
 export const SHAPES = ['round', 'rect', 'oval'];
 
@@ -92,7 +92,7 @@ export function defaultSettings() {
 
 /** The input panel of a new calculation (values of the first version). */
 export function defaultCurrent() {
-  return { id: 'current', flow: 1000, shape: 'round', mode: 'size', ratio: 3, width: null, height: null, diameter: null };
+  return { id: 'current', flow: 1000, shape: 'round', mode: 'size', ratio: 3, width: null, height: null, diameter: null, free: 100 };
 }
 
 // ---- positions ------------------------------------------------------------------
@@ -114,6 +114,12 @@ export function modeFor(shape, mode) {
   return MODES[shape].includes(mode) ? mode : 'size';
 }
 
+/** Free cross-section in % of the gross area (louvres, grilles), 1 to 100; 100 without a value. */
+function freeArea(v) {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? Math.min(100, Math.max(1, Math.round(n * 10) / 10)) : 100;
+}
+
 export function normalizePosition(p = {}) {
   p = object(p);
   const shape = SHAPES.includes(p.shape) ? p.shape : 'round';
@@ -126,6 +132,7 @@ export function normalizePosition(p = {}) {
     width: num(p.width),
     height: num(p.height),
     diameter: num(p.diameter),
+    free: freeArea(p.free),
   };
 }
 

@@ -427,17 +427,11 @@ function ratioOptions(p) {
   return list.sort((a, b) => a - b).map((n) => [n, ratioText(n)]);
 }
 
+/** Only the aspect ratio stays in the panel; Ø, B and H are edited in the result (Abmessung). */
 function modeFields(p) {
-  if (p.shape === 'round') {
-    return p.mode === 'check' ? numField('Ø', 'mm', 'data-cur="diameter"', p.diameter, { combo: 'diameters' }) : '';
-  }
-  if (p.mode === 'size') {
-    return html`<label class="field"><span class="field-label">Seitenverhältnis</span>
-      <select class="select" data-cur="ratio">${options(ratioOptions(p), p.ratio)}</select></label>`;
-  }
-  const height = numField('H', 'mm', 'data-cur="height"', p.height, { combo: p.shape === 'oval' ? 'oval-heights' : '' });
-  if (p.mode === 'height') return height;
-  return html`<div class="two">${numField('B', 'mm', 'data-cur="width"', p.width)}${height}</div>`;
+  if (p.shape === 'round' || p.mode !== 'size') return '';
+  return html`<label class="field"><span class="field-label">Seitenverhältnis</span>
+    <select class="select" data-cur="ratio">${options(ratioOptions(p), p.ratio)}</select></label>`;
 }
 
 function stageRows(stages) {
@@ -490,10 +484,13 @@ function renderInputs() {
         ${MODES[p.shape].map((m) => html`<button type="button" data-mode="${m}" aria-pressed="${m === p.mode}">${modeLabel(p.shape, m)}</button>`)}
       </div>
       ${modeFields(p)}
-      ${p.shape === 'round'
-        ? ''
-        : html`<label class="field"><span class="field-label">Raster <span class="unit">mm</span></span>
-            <select class="select" data-sys="rectStep">${options(RECT_STEPS.map((v) => [v, v || 1]), s.rectStep)}</select></label>`}
+      <div class="two">
+        ${numField('Frei', '%', 'data-cur="free"', p.free)}
+        ${p.shape === 'round'
+          ? ''
+          : html`<label class="field"><span class="field-label">Raster <span class="unit">mm</span></span>
+              <select class="select" data-sys="rectStep">${options(RECT_STEPS.map((v) => [v, v || 1]), s.rectStep)}</select></label>`}
+      </div>
     </fieldset>`);
 }
 
@@ -508,14 +505,52 @@ function tile(k, v, cls = '') {
   return html`<div class="panel tile ${cls}"><div class="k">${raw(k)}</div><div class="v">${v}</div></div>`;
 }
 
+const SIZE_LABELS = { diameter: 'Durchmesser Ø in mm', width: 'Breite B in mm', height: 'Höhe H in mm' };
+const sizeWidth = (text) => `${Math.max(2, String(text).length) + 0.5}ch`;
+
+function sizeInput(key, value, combo) {
+  const v = toInputValue(value);
+  return html`<input class="size-input" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" data-cur="${key}"
+    value="${v}" style="width:${sizeWidth(v)}" aria-label="${SIZE_LABELS[key]}"
+    ${combo ? raw(`data-combo="${combo}" role="combobox" aria-expanded="false" aria-controls="combo-list"`) : ''} />`;
+}
+
+/** The dimension is the result and the input at once: typing a size makes it a given size. */
+function bigTile(p, r) {
+  const ok = r.status === 'ok';
+  const val = (k) => (ok ? r[k] : p[k]);
+  const fields = p.shape === 'round'
+    ? html`<span class="size-sym">Ø</span>${sizeInput('diameter', val('diameter'), 'diameters')}`
+    : html`${sizeInput('width', val('width'))}<span class="size-sym">×</span>${sizeInput('height', val('height'), p.shape === 'oval' ? 'oval-heights' : '')}`;
+  return html`<div class="panel tile big" data-shape="${p.shape}">
+    <div><div class="k">Abmessung</div><div class="v size-fields">${fields}<small>mm</small></div></div>
+    ${ok ? html`<button type="button" class="btn icon-only pin-btn" data-action="pin" title="Pinnen" aria-label="Pinnen">${icon('pin')}</button>` : ''}
+  </div>`;
+}
+
 function renderResults() {
   const r = ui.result.current;
+  const p = current();
   const box = $('#results');
-  if (r.status !== 'ok') {
-    box.innerHTML = String(tile('Abmessung', '–', 'big'));
+  // while a size field is typed in, keep it (and its caret); only the other values change
+  const big = box.querySelector('.tile.big');
+  const editing = big?.dataset.shape === p.shape && big.contains(document.activeElement);
+  const rest = r.status === 'ok' ? String(otherTiles(r)) : '';
+  if (editing) {
+    for (const input of big.querySelectorAll('.size-input')) {
+      if (input === document.activeElement) continue;
+      const v = toInputValue(r.status === 'ok' ? r[input.dataset.cur] : p[input.dataset.cur]);
+      input.value = v;
+      input.style.width = sizeWidth(v);
+    }
+    while (big.nextSibling) big.nextSibling.remove();
+    big.insertAdjacentHTML('afterend', rest);
     return;
   }
-  const size = sizeText(r.shape, r.shape === 'round' ? { diameter: r.diameter } : { width: r.width, height: r.height });
+  box.innerHTML = String(bigTile(p, r)) + rest;
+}
+
+function otherTiles(r) {
   const util = r.utilization * 100;
   const state = util > 100 + 1e-7 ? 'over' : util > 92 ? 'hi' : 'good';
   const utilIcon = state === 'over' ? 'error' : state === 'hi' ? 'warning' : 'check';
@@ -523,18 +558,64 @@ function renderResults() {
   const req = r.required
     ? (r.shape === 'round' ? `Ø ${fmt(r.required.diameter, 0)}` : `${fmt(r.required.width, 0)} × ${fmt(r.required.height, 0)}`)
     : '';
-  box.innerHTML = String(html`
-    <div class="panel tile big">
-      <div><div class="k">Abmessung</div><div class="v">${size}<small>mm</small></div></div>
-      <button type="button" class="btn icon-only pin-btn" data-action="pin" title="Pinnen" aria-label="Pinnen">${icon('pin')}</button>
-    </div>
+  return html`
     ${tile('v', html`<span class="${over ? 'over' : ''}">${fmt(r.velocity, 2)}</span><small>m/s</small>
       <div class="bar ${state === 'good' ? '' : state}" style="flex-basis:100%"><i style="width:${Math.min(util, 100).toFixed(2)}%"></i></div>
       <div class="util is-${state}" style="flex-basis:100%">${icon(utilIcon, { size: 13, label: over ? 'über Grenzwert' : 'eingehalten' })}${fmt(util, 0)} %</div>`)}
     ${tile('v<sub>max</sub>', html`${fmt(r.vmax, 2)}<small>m/s</small>`)}
     ${r.factor != null ? tile('f<sub>va,du</sub>', html`${fmt(r.factor, 3)}<small>${ratioText(r.ratio)}</small>`) : ''}
-    ${tile('R', html`${fmt(r.gradient, 2)}<small>Pa/m</small>`)}
-    ${req ? tile('erforderlich', html`${req}<small>mm</small>`) : ''}`);
+    ${r.free < 100
+      ? tile('A<sub>frei</sub>', html`${fmt(r.freeArea, 3)}<small>m² | ${fmt(r.free, 0)} %</small>`)
+      : tile('R', html`${fmt(r.gradient, 2)}<small>Pa/m</small>`)}
+    ${req ? tile('erforderlich', html`${req}<small>mm</small>`) : ''}`;
+}
+
+function bindSizeFields() {
+  const box = $('#results');
+  const valueFrom = (t) => {
+    const v = parseNum(t.value);
+    t.style.width = sizeWidth(t.value);
+    t.setAttribute('aria-invalid', String(t.value.trim() !== '' && !(v > 0)));
+    return v > 0 ? v : null;
+  };
+  /** The height in mode "Höhe" stays a given height; everything else becomes "Prüfen". */
+  const set = (key, v) => {
+    const p = current();
+    const r = ui.result.current;
+    if (key === 'height' && p.mode === 'height') p.height = v;
+    else if (p.shape === 'round') applySize({ diameter: v });
+    else {
+      const base = r.status === 'ok' ? { width: r.width, height: r.height } : { width: p.width, height: p.height };
+      applySize({ ...base, [key]: v });
+    }
+  };
+  box.addEventListener('input', (e) => {
+    const t = e.target.closest('.size-input');
+    if (!t) return;
+    const v = valueFrom(t);
+    if (v == null) return;
+    set(t.dataset.cur, v);
+    recalc();
+    store.touch();
+  });
+  box.addEventListener('change', (e) => {
+    if (!e.target.closest('.size-input')) return;
+    store.commit();
+    recalc();
+  });
+  // ↑ / ↓ in B and rectangular H: one grid step (Ø and oval H step through their series in the combobox)
+  box.addEventListener('keydown', (e) => {
+    const t = e.target.closest('.size-input');
+    const dir = { ArrowUp: 1, ArrowDown: -1 }[e.key];
+    if (!t || !dir || t.dataset.combo || ui.result.current.status !== 'ok') return;
+    e.preventDefault();
+    const v = stepSide(ui.result.current[t.dataset.cur], dir);
+    t.value = toInputValue(v);
+    t.style.width = sizeWidth(t.value);
+    set(t.dataset.cur, v);
+    store.commit();
+    recalc();
+  });
 }
 
 function renderNotes() {
@@ -728,7 +809,7 @@ function applyShapeMode(shape, mode) {
   if (shapeChanged && !given) p.mode = 'size';
 }
 
-const CUR_NUM = new Set(['flow', 'width', 'height', 'diameter']);
+const CUR_NUM = new Set(['flow', 'width', 'height', 'diameter', 'free']);
 
 function bindInputs() {
   const root = $('#inputs');
@@ -1124,6 +1205,7 @@ async function start() {
   bindToolbar();
   bindInputs();
   bindDrawing();
+  bindSizeFields();
   bindPins();
   bindCatalogs();
   enableCombos($('main.page'), (name) => COMBO_LISTS[name]?.() ?? []);
