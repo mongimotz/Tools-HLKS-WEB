@@ -149,7 +149,6 @@ Open technical items:
 - PWA / service worker so the site works offline and can be installed.
 - Permanent storage beyond the browser draft, e.g. a Google Drive integration (undecided).
 - Excel export as `.xlsx` (CSV exists).
-- Own domain: buy it, add `CNAME`, set the DNS record, enable HTTPS in the Pages settings.
 
 Available: shared core, PDF export/import with embedded data, start page import, calcVersion warning, reference PDFs, Druckverlust Lüftung, Kanalrechner, Schalldämpfer, PDF → DXF (test version; vector and scanned PDFs, R2000 and R12; open: the owner's test in Trimble Nova, `docs/pdf-to-dxf-nova-test.md`), PDF-Editor (test version; open: the owner's checks in `docs/dev/pdf-editor/TODO-OWNER.md`), Klimastation (test version; station choice for SIA 2028, copy to Excel).
 
@@ -169,5 +168,6 @@ Available: shared core, PDF export/import with embedded data, start page import,
 ## Repository
 
 - GitHub: `mongimotz/Tools-HLKS-WEB` (public, branch `main`).
-- Live site (GitHub Pages, deploys from `main` / root on every push): https://mongimotz.github.io/Tools-HLKS-WEB/
+- Live site (GitHub Pages, deploys from `main` / root on every push): https://hlks.org/ (custom domain since 2026-10-21; `CNAME` in the root holds it, DNS at Cloudflare as "DNS only"). The old https://mongimotz.github.io/Tools-HLKS-WEB/ redirects there.
+- Keep `CNAME` in the repository root. Browser drafts and autosave are per origin, so data stored under github.io does not appear on hlks.org.
 - Keep `.nojekyll` in the repository root. GitHub Pages usually publishes a push within one to two minutes.
