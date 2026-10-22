@@ -65,6 +65,7 @@ export function issueText(issue) {
     case 'fog': return `Nebelgebiet, Wasser ${v(2, 'g/kg')}`;
     case 'outside': return 'Ausserhalb des Diagramms';
     case 'frost': return `Fortluft ${v(1, '°C')}, Vereisung`;
+    case 'frost-limit': return `Frostgrenze, Φt wirksam ${v(0, '%')}`;
     default: return issue.code;
   }
 }
@@ -73,6 +74,7 @@ export function issueText(issue) {
 export const ISSUE_SUMMARIES = {
   fog: 'Nebelgebiet',
   frost: 'WRG: Vereisung',
+  'frost-limit': 'WRG: Frostgrenze',
   outside: 'Punkt ausserhalb des Diagramms',
   'flow-missing': 'V̇ fehlt',
 };

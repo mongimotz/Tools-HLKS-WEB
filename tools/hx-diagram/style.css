@@ -15,13 +15,13 @@
 .hx-range i { font-family: var(--font-sans); }
 .hx-range small { color: var(--text-muted); font-size: var(--fs-xs); }
 .hx-range span { color: var(--text-muted); }
-.hx-range .input { width: 6ch; height: 26px; padding: 0 6px; font-size: var(--fs-sm); }
+.hx-range .input { width: 8ch; height: 26px; padding: 0 6px; font-size: var(--fs-sm); }
 .hx-toolbar .btn[aria-pressed='true'] { background: var(--primary-subtle); color: var(--primary); }
 .hx-readout { margin-left: auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: var(--fs-xs); color: var(--text-muted); }
 
 .hx-canvas { background: var(--surface-sunken); height: calc(100dvh - var(--appbar-h) - var(--issue-bar-h) - 140px); min-height: 480px; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
-.hx-canvas.is-zoomed { touch-action: none; cursor: grab; }
-.hx-canvas[data-drag='pan'] { cursor: grabbing; }
+.hx-canvas.is-zoomed:not(.is-locked) { touch-action: none; cursor: grab; }
+.hx-canvas[data-drag='pan']:not(.is-locked) { cursor: grabbing; }
 .hx-canvas.is-placing { cursor: crosshair; }
 @media (max-width: 960px) { .hx-canvas { height: min(78dvh, 900px); min-height: 420px; } }
 .hx-svg { display: block; width: 100%; height: 100%; }
@@ -33,20 +33,35 @@
 .hx-bold { stroke: var(--text); stroke-width: 1.4; }
 .hx-dash { stroke: var(--text-muted); stroke-width: 0.75; stroke-dasharray: 6 4; }
 .hx-labels text, .hx-pt text { font-family: var(--font-sans); fill: var(--text); }
+/* dark: the paper lines step back so the processes stand out and the sheet does not glare */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .hx-fine { stroke-opacity: 0.4; }
+  :root:not([data-theme='light']) .hx-norm, :root:not([data-theme='light']) .hx-dash { stroke-opacity: 0.55; }
+  :root:not([data-theme='light']) .hx-bold { stroke: var(--text-muted); stroke-opacity: 0.8; }
+  :root:not([data-theme='light']) .hx-labels text { fill: var(--text-muted); }
+}
+:root[data-theme='dark'] .hx-fine { stroke-opacity: 0.4; }
+:root[data-theme='dark'] .hx-norm, :root[data-theme='dark'] .hx-dash { stroke-opacity: 0.55; }
+:root[data-theme='dark'] .hx-bold { stroke: var(--text-muted); stroke-opacity: 0.8; }
+:root[data-theme='dark'] .hx-labels text { fill: var(--text-muted); }
 .hx-svg .knock { paint-order: stroke; stroke: var(--surface); stroke-width: 3px; stroke-linejoin: round; }
 
-/* process overlay */
-.hx-seg { stroke: var(--primary); stroke-width: 2; vector-effect: non-scaling-stroke; fill: none; cursor: pointer; }
+/* process overlay: colour by what the process does to the air (report.js uses the same tokens) */
+.hx-svg { --tone: var(--text-muted); }
+.hx-svg .tone-heat { --tone: var(--danger); }
+.hx-svg .tone-cool { --tone: var(--chart-1); }
+.hx-svg .tone-humid { --tone: var(--chart-8); }
+.hx-seg { stroke: var(--tone); stroke-width: 2; vector-effect: non-scaling-stroke; fill: none; cursor: pointer; }
 .hx-seg.hx-mix, .hx-seg.hx-line { stroke-dasharray: 6 4; }
 .hx-seg.is-selected { stroke-width: 3.5; }
-#hx-arrow path { fill: var(--primary); }
+marker path { fill: var(--tone); }
 .hx-pt { cursor: pointer; outline: none; touch-action: none; }
 .hx-pt .hx-hit { fill: transparent; }
-.hx-pt .hx-dot { fill: var(--primary); stroke: var(--surface); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.hx-pt .hx-dot { fill: var(--tone); stroke: var(--surface); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .hx-pt.is-given { cursor: move; }
-.hx-pt.is-given .hx-dot { fill: var(--surface); stroke: var(--primary); stroke-width: 2; }
+.hx-pt.is-given .hx-dot { fill: var(--surface); stroke: var(--text-strong); stroke-width: 2; }
 .hx-pt.is-selected .hx-dot, .hx-pt:focus-visible .hx-dot { stroke: var(--text-strong); stroke-width: 1.5; }
-.hx-pt.is-given.is-selected .hx-dot, .hx-pt.is-given:focus-visible .hx-dot { fill: var(--primary); }
+.hx-pt.is-given.is-selected .hx-dot, .hx-pt.is-given:focus-visible .hx-dot { fill: var(--text-strong); }
 .hx-pt text { font-weight: 600; fill: var(--text-strong); }
 .hx-canvas.is-placing .hx-pt, .hx-canvas.is-placing .hx-seg { cursor: crosshair; }
 
@@ -64,7 +79,7 @@
 
 .hx-block-head { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
 .hx-type { font-size: var(--fs-sm); font-weight: 600; color: var(--text-strong); white-space: nowrap; }
-.hx-label { width: 7ch; height: 26px; padding: 0 6px; font-size: var(--fs-sm); font-weight: 600; }
+.hx-label { flex: 1 1 0; min-width: 6ch; width: auto; height: 26px; padding: 0 6px; font-size: var(--fs-sm); font-weight: 600; }
 .hx-del { margin-left: auto; }
 .hx-del:hover { color: var(--danger); }
 

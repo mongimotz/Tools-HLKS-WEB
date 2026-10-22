@@ -5,7 +5,7 @@
 import * as P from './psychro.js';
 import { pointIds } from './defaults.js';
 
-export const CALC_VERSION = '1.0.0';
+export const CALC_VERSION = '1.1.0';
 
 const FOG_TOLERANCE = 0.05; // g/kg of liquid water before a state counts as fog
 
@@ -151,29 +151,81 @@ function adiabatic(b, a, m, p) {
 
 /**
  * Heat recovery: temperature efficiency Φ_t on the supply side, with moisture recovery (rotor) also Φ_x.
- * The extract side follows from the energy and water balance; condensate leaves it at saturation.
+ * The extract side follows from the energy and water balance. It cools at the transferred water content until
+ * it reaches saturation, then follows the saturation line; the condensate leaves there. With a frost limit
+ * t_FO,min the exhaust stays at or above it: Φ_t and Φ_x are reduced by the same factor.
  */
 function hrv(b, a, e, m, me, p) {
   if (b.eta == null || (b.mode === 'enthalpy' && b.etaX == null)) return fail('value-missing');
-  const t2 = a.t + (b.eta / 100) * (e.t - a.t);
-  const x2 = b.mode === 'enthalpy' ? a.x + (b.etaX / 100) * (e.x - a.x) : a.x;
-  const s = P.stateTX(t2, x2, p);
   const ratio = m > 0 && me > 0 ? m / me : 1;
-  const hOut = e.h - ratio * (s.h - a.h);
-  const xOut = e.x - ratio * (s.x - a.x);
-  let f = stateHX(hOut, xOut, p);
-  let condensate = 0;
-  if (f && f.fog > 0) {
-    const t = P.tSatOfH(hOut, p);
-    if (t != null) {
+  const run = (k) => {
+    const t2 = a.t + k * (b.eta / 100) * (e.t - a.t);
+    const x2 = b.mode === 'enthalpy' ? a.x + k * (b.etaX / 100) * (e.x - a.x) : a.x;
+    const s = P.stateTX(t2, x2, p);
+    const hOut = e.h - ratio * (s.h - a.h);
+    const xOut = e.x - ratio * (s.x - a.x);
+    let f = stateHX(hOut, xOut, p);
+    let condensate = 0;
+    const wet = Boolean(f && f.fog > 0);
+    if (wet) {
+      const t = P.tSatOfH(hOut, p);
+      if (t == null) return null;
       const xs = P.xSat(t, p);
       condensate = me > 0 ? (me * (xOut - xs)) / 1000 : null;
       f = P.stateTX(t, xs, p);
     }
+    return f ? { s, f, condensate, wet, hOut, xOut } : null;
+  };
+  let k = 1;
+  let r = run(1);
+  if (!r) return fail('no-solution');
+  const limited = b.tFrost != null && r.f.t < b.tFrost - 1e-9;
+  if (limited) {
+    const below = (kk) => (run(kk)?.f.t ?? -Infinity) - b.tFrost;
+    k = below(0) < 0 ? 0 : P.bisect(below, 0, 1) ?? 0;
+    r = run(k);
+    if (!r) return fail('no-solution');
   }
-  if (!f) return fail('no-solution');
-  const issues = f.t < 0 && (condensate == null || condensate > 0 || f.phi > 0.95) ? [{ code: 'frost', severity: 'warning', value: f.t }] : [];
-  return { out: [s, f], values: { q: power(m, s.h - a.h), condensate, ratio }, issues };
+  const { s, f, condensate } = r;
+  const issues = [];
+  if (limited) issues.push({ code: 'frost-limit', severity: 'info', value: k * b.eta });
+  else if (f.t < 0 && (condensate == null || condensate > 0 || f.phi > 0.95)) issues.push({ code: 'frost', severity: 'warning', value: f.t });
+  return {
+    out: [s, f],
+    values: {
+      q: power(m, s.h - a.h),
+      condensate,
+      ratio,
+      eta: k * b.eta,
+      etaX: b.mode === 'enthalpy' ? k * b.etaX : null,
+      limited,
+      path: extractPath(e, r, p),
+    },
+    issues,
+  };
+}
+
+/** Extract side as states (x, h): straight towards the exhaust, along the saturation line once condensing. */
+function extractPath(e, r, p) {
+  const end = { x: r.f.x, h: r.f.h };
+  if (!r.wet || r.f.t >= e.t) return [{ x: e.x, h: e.h }, end];
+  // where the straight line from the extract air towards the uncondensed exhaust meets saturation
+  const along = (g) => stateHX(e.h + g * (r.hOut - e.h), e.x + g * (r.xOut - e.x), p);
+  const g = P.bisect((gg) => {
+    const s = along(gg);
+    return s ? s.x - s.xs : 1;
+  }, 0, 1);
+  const c = g == null ? null : along(g);
+  if (!c || c.t <= r.f.t) return [{ x: e.x, h: e.h }, end];
+  const path = [{ x: e.x, h: e.h }, { x: c.x, h: c.h }];
+  const n = Math.max(2, Math.ceil((c.t - r.f.t) / 0.5));
+  for (let i = 1; i < n; i++) {
+    const t = c.t + (i / n) * (r.f.t - c.t);
+    const x = P.xSat(t, p);
+    path.push({ x, h: P.stateTX(t, x, p).h });
+  }
+  path.push(end);
+  return path;
 }
 
 /** Adiabatic mixing of two air flows (mass and enthalpy balance). */

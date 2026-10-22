@@ -10,7 +10,7 @@
 import { DEFAULT_RANGE, cleanRange } from './chart.js';
 
 export const TOOL_ID = 'hx-diagram';
-export const INPUT_VERSION = 2;
+export const INPUT_VERSION = 3;
 
 /** Properties a point can be given by (phi in %). */
 export const GIVEN_KEYS = ['t', 'phi', 'x', 'h', 'td', 'tw'];
@@ -22,7 +22,7 @@ export const BLOCKS = {
   cooler: { modes: ['t', 'q'], params: { mode: 't', t: 16, q: null, ts: 8 } },
   steam: { modes: ['x', 'phi', 'm'], params: { mode: 'x', x: 7, phi: null, m: null, ts: 100 } },
   adiabatic: { modes: ['eta', 'x', 'phi'], params: { mode: 'eta', eta: 85, x: null, phi: null } },
-  hrv: { modes: ['sensible', 'enthalpy'], params: { mode: 'sensible', eta: 75, etaX: 65 } },
+  hrv: { modes: ['sensible', 'enthalpy'], params: { mode: 'sensible', eta: 75, etaX: 65, tFrost: 0 } },
   mix: { modes: ['share', 'flows'], params: { mode: 'share', share: 30 } },
   fan: { params: { dt: 1 } },
   line: { params: {} },
@@ -32,7 +32,7 @@ export const BLOCK_TYPES = Object.keys(BLOCKS);
 /** Blocks with one inlet `from`; mix and line take `from` and `to`, WRG `from` (outdoor) and `to` (extract). */
 export const TWO_INPUTS = new Set(['mix', 'line', 'hrv']);
 
-export const LABEL_MAX = 12;
+export const LABEL_MAX = 24;
 
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const str = (v) => (v == null ? '' : String(v));

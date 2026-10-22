@@ -29,13 +29,18 @@ function textSvg(it) {
 
 // ---- overlay ---------------------------------------------------------------------------------
 
+/** Colour of a process line: heating, cooling, humidifying, or neutral (mixing, connection). */
+const TONES = { heater: 'heat', fan: 'heat', cooler: 'cool', steam: 'humid', adiabatic: 'humid' };
+const warmer = (a, b) => (b.t > a.t ? 'heat' : 'cool');
+
 /**
  * Overlay model of one calculation result, in states (x, h): segments and points.
- * segments: { a, b, kind: 'arrow' | 'mix' | 'line', blockId }; points: { id, blockId, x, h, label, given }.
+ * segments: { path: [{ x, h }…], kind: 'arrow' | 'mix' | 'line', tone, blockId };
+ * points: { id, blockId, x, h, label, given, tone }.
  */
 export function overlayOf(result, blocks) {
   const segments = [];
-  const points = [];
+  const tones = new Map();
   const at = (id) => result.points.get(id)?.state ?? null;
   const xh = (s) => ({ x: s.x, h: s.h });
   for (const b of blocks) {
@@ -45,25 +50,33 @@ export function overlayOf(result, blocks) {
     const a = at(b.from);
     if (b.type === 'line') {
       const c = at(b.to);
-      if (a && c) segments.push({ a: xh(a), b: xh(c), kind: 'line', blockId: b.id });
+      if (a && c) segments.push({ path: [xh(a), xh(c)], kind: 'line', tone: 'neutral', blockId: b.id });
       continue;
     }
     const out = at(b.id);
     if (!a || !out) continue;
     if (b.type === 'mix') {
       const c = at(b.to);
-      if (c) segments.push({ a: xh(a), b: xh(c), kind: 'mix', blockId: b.id });
+      if (c) segments.push({ path: [xh(a), xh(c)], kind: 'mix', tone: 'neutral', blockId: b.id });
+      tones.set(b.id, 'neutral');
       continue;
     }
-    segments.push({ a: xh(a), b: xh(out), kind: 'arrow', blockId: b.id });
+    const tone = TONES[b.type] ?? warmer(a, out);
+    segments.push({ path: [xh(a), xh(out)], kind: 'arrow', tone, blockId: b.id });
+    tones.set(b.id, tone);
     if (b.type === 'hrv') {
       const e = at(b.to);
       const f = at(`${b.id}.b`);
-      if (e && f) segments.push({ a: xh(e), b: xh(f), kind: 'arrow', blockId: b.id });
+      if (e && f) {
+        const back = warmer(e, f);
+        segments.push({ path: r.values.path ?? [xh(e), xh(f)], kind: 'arrow', tone: back, blockId: b.id });
+        tones.set(`${b.id}.b`, back);
+      }
     }
   }
+  const points = [];
   for (const pt of result.points.values()) {
-    if (pt.state) points.push({ id: pt.id, blockId: pt.blockId, x: pt.state.x, h: pt.state.h, label: pt.label, given: pt.given });
+    if (pt.state) points.push({ id: pt.id, blockId: pt.blockId, x: pt.state.x, h: pt.state.h, label: pt.label, given: pt.given, tone: tones.get(pt.id) ?? 'neutral' });
   }
   return { segments, points };
 }
@@ -98,25 +111,27 @@ export function overlaySvg(overlay, map, selected) {
   const sel = (id) => (id === selected ? ' is-selected' : '');
   const pos = (s) => map.ph(s.x, s.h).map((v) => Math.round(v * 100) / 100);
   const segs = overlay.segments.map((s) => {
-    const [x1, y1] = pos(s.a);
-    const [x2, y2] = pos(s.b);
-    const marker = s.kind === 'arrow' ? ' marker-end="url(#hx-arrow)"' : '';
-    return `<line class="hx-seg hx-${s.kind}${sel(s.blockId)}" data-block="${esc(s.blockId)}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"${marker}/>`;
+    const d = `M${s.path.map((q) => pos(q).join(' ')).join('L')}`;
+    const marker = s.kind === 'arrow' ? ` marker-end="url(#hx-arrow-${s.tone})"` : '';
+    return `<path class="hx-seg hx-${s.kind} tone-${s.tone}${sel(s.blockId)}" data-block="${esc(s.blockId)}" d="${d}"${marker}/>`;
   });
   const labels = placeLabels(overlay.points, map);
   const pts = overlay.points.map((q, i) => {
     const [x, y] = pos(q);
     const l = labels[i];
-    return `<g class="hx-pt${q.given ? ' is-given' : ''}${sel(q.blockId)}" data-point="${esc(q.id)}" data-block="${esc(q.blockId)}" tabindex="${q.given ? 0 : -1}">`
+    return `<g class="hx-pt tone-${q.tone}${q.given ? ' is-given' : ''}${sel(q.blockId)}" data-point="${esc(q.id)}" data-block="${esc(q.blockId)}" tabindex="${q.given ? 0 : -1}">`
       + `<circle class="hx-hit" cx="${x}" cy="${y}" r="${(map.font * 1.1).toFixed(2)}"/><circle class="hx-dot" cx="${x}" cy="${y}" r="${(map.font * 0.36).toFixed(2)}"/>`
       + `<text class="knock" x="${l.x.toFixed(2)}" y="${l.y.toFixed(2)}" text-anchor="${l.anchor}" dominant-baseline="${BASELINE[l.base]}" font-size="${(map.font * 1.06).toFixed(2)}">${esc(q.label)}</text></g>`;
   });
   return `<g class="hx-overlay">${segs.join('')}${pts.join('')}</g>`;
 }
 
-/** Arrow head and the clip of the plot frame. */
+export const TONE_NAMES = ['heat', 'cool', 'humid', 'neutral'];
+
+/** Arrow heads (one per tone) and the clip of the plot frame. */
 export function defsSvg(map) {
   const frame = map.frame().map((q) => q.map((v) => Math.round(v * 100) / 100).join(' ')).join(' ');
-  return `<defs><marker id="hx-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse" markerUnits="strokeWidth"><path d="M0 1L10 5L0 9z"/></marker>`
+  const arrows = TONE_NAMES.map((t) => `<marker id="hx-arrow-${t}" class="tone-${t}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse" markerUnits="strokeWidth"><path d="M0 1L10 5L0 9z"/></marker>`);
+  return `<defs>${arrows.join('')}`
     + `<clipPath id="hx-clip"><polygon points="${frame}"/></clipPath></defs>`;
 }

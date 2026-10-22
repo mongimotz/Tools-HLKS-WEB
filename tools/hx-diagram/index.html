@@ -53,12 +53,13 @@
     <div class="hx-layout" role="tabpanel" id="calc-layout">
       <section class="panel hx-stage" aria-label="Diagramm">
         <div class="hx-toolbar">
+          <button class="btn ghost icon-only" data-action="lock" aria-pressed="true" title="Ansicht fixiert" aria-label="Ansicht fixieren"></button>
           <button class="btn ghost icon-only" data-action="point-tool" aria-pressed="false" title="Punkt setzen" aria-label="Punkt setzen"></button>
           <button class="btn ghost icon-only" data-action="fit" title="Standardbereich" aria-label="Standardbereich"></button>
           <button class="btn ghost icon-only" data-action="fit-points" title="Auf Punkte zoomen" aria-label="Auf Punkte zoomen"></button>
           <span class="appbar-sep"></span>
-          <span class="hx-range" role="group" aria-label="Bereich Temperatur"><i>t</i><input class="input num" data-range="tMin" inputmode="decimal" aria-label="t min" /><span>…</span><input class="input num" data-range="tMax" inputmode="decimal" aria-label="t max" /><small>°C</small></span>
-          <span class="hx-range" role="group" aria-label="Bereich Wassergehalt"><i>x</i><input class="input num" data-range="xMin" inputmode="decimal" aria-label="x min" /><span>…</span><input class="input num" data-range="xMax" inputmode="decimal" aria-label="x max" /><small>g/kg</small></span>
+          <span class="hx-range" role="group" aria-label="Bereich Temperatur"><i>t</i><input class="input num" data-range="tMin" inputmode="decimal" aria-label="t min" /><span>–</span><input class="input num" data-range="tMax" inputmode="decimal" aria-label="t max" /><small>°C</small></span>
+          <span class="hx-range" role="group" aria-label="Bereich Wassergehalt"><i>x</i><input class="input num" data-range="xMin" inputmode="decimal" aria-label="x min" /><span>–</span><input class="input num" data-range="xMax" inputmode="decimal" aria-label="x max" /><small>g/kg</small></span>
           <span class="hx-readout num" id="readout" aria-live="off"></span>
         </div>
         <div class="hx-canvas" id="diagram"></div>

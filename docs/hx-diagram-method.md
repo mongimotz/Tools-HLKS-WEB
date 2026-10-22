@@ -67,7 +67,7 @@ Q > 0 heisst Wärmezufuhr, Q < 0 Wärmeentzug. Wasser > 0 heisst Befeuchtung, Wa
 | Luftkühler | Gerade vom Eintritt zum Kühlerpunkt (siehe unten) | Austrittstemperatur t oder Kälteleistung Q_K |
 | Dampfbefeuchter | Dampf mit t_D: Δh = Δx (r₀ + c_D t_D), Standard t_D = 100 °C | x, φ oder Dampfmenge ṁ_D |
 | Adiabatbefeuchter | Wasser mit der Feuchtkugeltemperatur des Eintritts: Δh = Δx h_W(t_f), also fast h = konstant | Befeuchtungsgrad η, x oder φ |
-| WRG | Rückwärmzahl Φ_t, beim Rotor zusätzlich Rückfeuchtzahl Φ_x | Φ_t, Φ_x |
+| WRG | Rückwärmzahl Φ_t, beim Rotor zusätzlich Rückfeuchtzahl Φ_x, Frostgrenze der Fortluft | Φ_t, Φ_x, t_FO,min (Standard 0 °C, leer = ohne) |
 | Mischung | Massen- und Enthalpiebilanz | Anteil des ersten Eintritts in % oder die Volumenströme beider Eintritte |
 | Verbindung | Gerade zwischen zwei Punkten, kein Prozess | – |
 
@@ -83,7 +83,9 @@ Ohne Feuchteübertragung (Platte, KVS) gilt x₂ = x₁. Die Fortluft folgt aus 
 
 $$h_{FO} = h_{AB} - r\,(h_2 - h_1),\qquad x_{FO} = x_{AB} - r\,(x_2 - x_1)$$
 
-Liegt die Fortluft im Nebelgebiet, fällt Kondensat aus. Die Fortluft ist dann gesättigt bei derselben Enthalpie. Liegt sie unter 0 °C, warnt das Werkzeug vor Vereisung.
+Liegt die Fortluft im Nebelgebiet, fällt Kondensat aus. Die Fortluft ist dann gesättigt bei derselben Enthalpie. Im Diagramm kühlt die Abluft zuerst bei gleichem x (Platte) bis zum Taupunkt ab und folgt dann der Sättigungslinie bis zur Fortluft. Beim Rotor verläuft der trockene Teil als Gerade zur Fortluft ohne Kondensation.
+
+**Frostgrenze.** Mit t_FO,min bleibt die Fortluft mindestens auf dieser Temperatur. Liegt sie mit den eingegebenen Werten tiefer, überträgt die WRG nur den Teil der Energie, der bis zur Frostgrenze möglich ist: Φ_t und Φ_x sinken um denselben Faktor k (wie Bypass oder kleinere Rotordrehzahl), bis t_FO = t_FO,min gilt. Das Werkzeug zeigt die wirksamen Werte und einen Hinweis. Ohne Frostgrenze warnt es vor Vereisung, wenn die Fortluft unter 0 °C feucht ist.
 
 **Mischung.**
 
@@ -97,6 +99,6 @@ Mit Vorgabe `Anteil` gilt der Massenanteil des ersten Eintritts. Der Massenstrom
 
 - Der Kühler ist ein vereinfachtes Modell. Bypassfaktor, Reifbildung und Wasserabscheidung im Kühler sind nicht abgebildet.
 - Dampf über 100 °C gilt als überhitzt. Wasser im Adiabatbefeuchter hat die Feuchtkugeltemperatur des Eintritts.
-- Die WRG rechnet mit konstanten Rückwärmzahlen. Vereisungsgrenzen der Hersteller und Abtauen sind nicht abgebildet.
+- Die WRG rechnet mit konstanten Rückwärmzahlen. Die Frostgrenze gilt für die Temperatur der Fortluft, unabhängig von ihrer Feuchte. Herstellerkurven und Abtauen sind nicht abgebildet.
 - Zustände über 85 °C und Höhen über 4000 m sind nicht vorgesehen.
 - Das Diagramm zeigt −20 bis 50 °C und 0 bis 20 g/kg. Die Rechnung gilt auch ausserhalb.

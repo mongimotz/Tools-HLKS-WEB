@@ -121,20 +121,25 @@ function clip(a, b, poly) {
   return [[a[0] + t0 * d[0], a[1] + t0 * d[1]], [a[0] + t1 * d[0], a[1] + t1 * d[1]], t1 === 1];
 }
 
+/** Process colours (light tokens), the same mapping as the page (style.css). */
+const toneColor = (tone) => ({ heat: INK.danger, cool: INK.chart1, humid: INK.chart8 })[tone] ?? INK.muted;
+
 function drawOverlay(w, map, overlay, P) {
-  const color = INK.primary;
   const frame = map.frame();
   const inside = (q) => clip(q, q, frame) !== null;
   for (const s of overlay.segments) {
-    const c = clip(map.ph(s.a.x, s.a.h), map.ph(s.b.x, s.b.h), frame);
-    if (!c) continue;
-    const a = P(c[0]);
-    const b = P(c[1]);
+    const color = toneColor(s.tone);
     const dashed = s.kind !== 'arrow';
-    w.line(a[0], a[1], b[0], b[1], { color, width: 1.1, dash: dashed ? [3, 2] : undefined });
-    if (s.kind === 'arrow' && c[2]) {
+    const pts = s.path.map((q) => map.ph(q.x, q.h));
+    for (let i = 1; i < pts.length; i++) {
+      const c = clip(pts[i - 1], pts[i], frame);
+      if (!c) continue;
+      const a = P(c[0]);
+      const b = P(c[1]);
+      w.line(a[0], a[1], b[0], b[1], { color, width: 1.1, dash: dashed ? [3, 2] : undefined });
+      if (s.kind !== 'arrow' || i < pts.length - 1 || !c[2]) continue;
       const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      if (len < 1) continue;
+      if (len < 1e-3) continue;
       const u = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
       const n = [-u[1], u[0]];
       const back = [b[0] - u[0] * 5, b[1] - u[1] * 5];
@@ -148,6 +153,7 @@ function drawOverlay(w, map, overlay, P) {
     const at = map.ph(q.x, q.h);
     if (!inside(at)) return;
     const [x, y] = P(at);
+    const color = q.given ? INK.strong : toneColor(q.tone);
     w.page.drawCircle({ x, y: w.pageH - y, size: 1.7, color: hexColor(q.given ? INK.surface : color), borderColor: hexColor(color), borderWidth: 0.9 });
     const l = labels[i];
     drawText(w, { at: [l.x, l.y], text: q.label, size: map.font * 1.06, anchor: l.anchor, base: l.base, angle: 0, knock: true }, P, { color: INK.strong, bold: true });
@@ -234,7 +240,7 @@ function keyText(b, v) {
     case 'cooler': return `tO = ${n(b.ts, 1)} °C${v.sensible != null ? ` | Qs = ${n(v.sensible, 1)} kW` : ''}${v.wet ? '' : ' | trocken'}`;
     case 'steam': return `tD = ${n(b.ts, 0)} °C`;
     case 'adiabatic': return `η = ${n(v.eta, 0)} %`;
-    case 'hrv': return `Φt = ${n(b.eta, 0)} %${b.mode === 'enthalpy' ? ` | Φx = ${n(b.etaX, 0)} %` : ''}`;
+    case 'hrv': return `Φt = ${n(b.eta, 0)} %${b.mode === 'enthalpy' ? ` | Φx = ${n(b.etaX, 0)} %` : ''}${b.tFrost == null ? '' : ` | tFO,min = ${n(b.tFrost, 1)} °C`}${v.limited ? ` | wirksam Φt = ${n(v.eta, 0)} %` : ''}`;
     case 'mix': return `Anteil ${n(v.share, 0)} %`;
     case 'fan': return `Δt = ${n(b.dt, 1)} K`;
     case 'line': return v.ratio != null ? `Δh/Δx = ${n(v.ratio, 0)} kJ/kg | Δh = ${n(v.dh, 1)} kJ/kg` : '';

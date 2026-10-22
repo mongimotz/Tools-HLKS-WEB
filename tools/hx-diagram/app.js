@@ -41,6 +41,7 @@ const ui = {
   activeCalculationId: null,
   selected: null, // block id
   pointTool: false,
+  locked: true, // view fixed: no wheel zoom, no panning
   rangeTimer: null, // history step after wheel zooming
   chart: null,
   projectResult: null,
@@ -301,6 +302,7 @@ function paramFields(b) {
     case 'hrv':
       f.push(numField('eta', 'Φ<sub>t</sub>', '%', b.eta));
       if (b.mode === 'enthalpy') f.push(numField('etaX', 'Φ<sub>x</sub>', '%', b.etaX));
+      f.push(numField('tFrost', '<i>t</i><sub>FO,min</sub>', '°C', b.tFrost));
       break;
     case 'mix':
       if (b.mode === 'share') f.push(numField('share', 'Anteil', '%', b.share));
@@ -381,6 +383,10 @@ function resultHtml(b) {
     }
     if ((b.type === 'steam' || b.type === 'adiabatic') && v.water != null) parts.push(html`<span><b>Wasser</b> ${fmt(v.water, 1)}<small> kg/h</small></span>`);
     if (b.type === 'adiabatic' && v.eta != null && b.mode !== 'eta') parts.push(html`<span><b>η</b> ${fmt(v.eta, 0)}<small> %</small></span>`);
+    if (b.type === 'hrv' && v.limited) {
+      parts.push(html`<span><b>Φ<sub>t</sub></b> ${fmt(v.eta, 0)}<small> %</small></span>`);
+      if (b.mode === 'enthalpy') parts.push(html`<span><b>Φ<sub>x</sub></b> ${fmt(v.etaX, 0)}<small> %</small></span>`);
+    }
     if (b.type === 'hrv' && v.condensate) parts.push(html`<span><b>Kondensat</b> ${fmt(v.condensate, 1)}<small> kg/h</small></span>`);
     if (b.type === 'mix' && b.mode === 'flows' && v.share != null) parts.push(html`<span><b>Anteil</b> ${fmt(v.share, 0)}<small> %</small></span>`);
     if (pt?.m && b.type === 'mix') parts.push(html`<span><b>ṁ</b> ${fmt(pt.m, 0)}<small> kg/h</small></span>`);
@@ -657,7 +663,7 @@ function bindDiagram() {
       showReadout(ui.result.points.get(drag.block.id)?.state);
       return;
     }
-    if (drag?.kind === 'pan' && (e.pointerType === 'mouse' || host.classList.contains('is-zoomed'))) {
+    if (drag?.kind === 'pan' && !ui.locked && (e.pointerType === 'mouse' || host.classList.contains('is-zoomed'))) {
       const dx = e.clientX - drag.start[0];
       const dy = e.clientY - drag.start[1];
       if (!drag.moved && Math.hypot(dx, dy) < 4) return;
@@ -691,7 +697,7 @@ function bindDiagram() {
   host.addEventListener('pointerleave', () => !drag && showReadout(null));
 
   host.addEventListener('wheel', (e) => {
-    if (!$('#diagram svg')) return;
+    if (ui.locked || !$('#diagram svg')) return;
     e.preventDefault();
     const { x, h } = ui.chart.map.fromSheet(sheetPoint(e));
     const t = (h - 2.501 * x) / (1.006 + 0.00186 * x); // unsaturated formula, also in the fog region
@@ -731,6 +737,15 @@ function bindDiagram() {
     const ptEl = e.target.closest?.('.hx-pt');
     if (ptEl) select(ptEl.dataset.block, { scroll: true });
   });
+}
+
+function setLocked(on) {
+  ui.locked = on;
+  const button = $('[data-action="lock"]');
+  button.setAttribute('aria-pressed', String(on));
+  button.title = on ? 'Ansicht fixiert' : 'Ansicht frei';
+  button.innerHTML = String(icon(on ? 'lock' : 'unlock'));
+  $('#diagram').classList.toggle('is-locked', on);
 }
 
 function setPointTool(on) {
@@ -924,6 +939,7 @@ function bindToolbar() {
   setIcon('[data-action="point-tool"]', 'crosshair');
   setIcon('[data-action="fit"]', 'fit');
   setIcon('[data-action="fit-points"]', 'crop');
+  setLocked(ui.locked);
   $('#add-list').innerHTML = String(html`${MENU_ORDER.map((type) => html`<li><button data-add="${type}" role="menuitem">${BLOCK_LABELS[type]}</button></li>`)}`);
 
   const menus = [$('#more-menu'), $('#add-menu')];
@@ -966,6 +982,7 @@ function bindToolbar() {
       case 'new': newDocument(); break;
       case 'example': loadExample(); break;
       case 'point-tool': setPointTool(!ui.pointTool); break;
+      case 'lock': setLocked(!ui.locked); break;
       case 'fit': setRange({ ...DEFAULT_RANGE }, { commitLater: false }); commitAndRender(); break;
       case 'fit-points': setRange(pointsRange(), { commitLater: false }); commitAndRender(); break;
     }

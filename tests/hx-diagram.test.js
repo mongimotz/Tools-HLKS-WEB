@@ -48,7 +48,7 @@ test('mixing conserves mass and enthalpy', () => {
 });
 
 test('heat recovery: both sides balance, condensate leaves the extract side at saturation', () => {
-  const r = run([point('b1', -10, 80), point('b2', 22, 40), { id: 'b3', type: 'hrv', from: 'b1', to: 'b2', mode: 'sensible', eta: 80 }]);
+  const r = run([point('b1', -10, 80), point('b2', 22, 40), { id: 'b3', type: 'hrv', from: 'b1', to: 'b2', mode: 'sensible', eta: 80, tFrost: null }]);
   const [au, ab, zu, fo] = ['b1', 'b2', 'b3', 'b3.b'].map((id) => r.points.get(id));
   near(zu.state.t, -10 + 0.8 * 32, 1e-9, 'supply t');
   near(zu.state.x, au.state.x, 1e-12, 'supply x');
@@ -58,6 +58,34 @@ test('heat recovery: both sides balance, condensate leaves the extract side at s
   near(fo.state.x, fo.state.xs, 1e-9, 'saturated');
   near(ab.m * (ab.state.x - fo.state.x) / 1000, v.condensate, 1e-6, 'water');
   assert.ok(r.issues.some((i) => i.code === 'frost') === fo.state.t < 0);
+});
+
+test('heat recovery: the extract side cools at constant x to the dew point, then follows saturation', () => {
+  const r = run([point('b1', -14, 80), point('b2', 20, 40), { id: 'b3', type: 'hrv', from: 'b1', to: 'b2', mode: 'sensible', eta: 80, tFrost: null }]);
+  const [ab, fo] = ['b2', 'b3.b'].map((id) => r.points.get(id).state);
+  const path = r.blocks.get('b3').values.path;
+  near(path[0].x, ab.x, 1e-12, 'starts at the extract air');
+  near(path[1].x, ab.x, 1e-9, 'vertical to the dew point');
+  near(P.tFromHX(path[1].h, path[1].x, p), ab.td, 0.01, 'dew point');
+  for (const q of path.slice(1)) near(q.x, P.xSat(P.tFromHX(q.h, q.x, p), p), 1e-6, 'on saturation');
+  near(path.at(-1).h, fo.h, 1e-9, 'ends at the exhaust');
+});
+
+test('heat recovery: the frost limit keeps the exhaust at t_FO,min and reduces the transferred heat', () => {
+  const free = run([point('b1', -14, 80), point('b2', 20, 40), { id: 'b3', type: 'hrv', from: 'b1', to: 'b2', mode: 'sensible', eta: 80, tFrost: null }]);
+  for (const mode of ['sensible', 'enthalpy']) {
+    const r = run([point('b1', -14, 80), point('b2', 20, 40), { id: 'b3', type: 'hrv', from: 'b1', to: 'b2', mode, eta: 80, etaX: 70, tFrost: 0 }]);
+    const [au, ab, zu, fo] = ['b1', 'b2', 'b3', 'b3.b'].map((id) => r.points.get(id));
+    const v = r.blocks.get('b3').values;
+    near(fo.state.t, 0, 1e-6, `${mode}: exhaust at the limit`);
+    assert.ok(v.limited && v.eta < 80, `${mode}: reduced Φt`);
+    near(zu.state.t, -14 + (v.eta / 100) * 34, 1e-9, `${mode}: supply from the reduced Φt`);
+    near(au.m * (zu.state.h - au.state.h), ab.m * (ab.state.h - fo.state.h), 1e-4 * ab.m * ab.state.h, `${mode}: energy (saturation over ice and water meet at 0 °C)`);
+    assert.ok(v.q < free.blocks.get('b3').values.q, `${mode}: less heat`);
+    assert.ok(r.issues.some((i) => i.code === 'frost-limit') && !r.issues.some((i) => i.code === 'frost'));
+  }
+  const warm = run([point('b1', 5, 80), point('b2', 20, 40), { id: 'b3', type: 'hrv', from: 'b1', to: 'b2', mode: 'sensible', eta: 80, tFrost: 0 }]);
+  assert.equal(warm.blocks.get('b3').values.limited, false, 'no limit when the exhaust stays warm');
 });
 
 test('cooler: dry above the dew point, wet towards the coil point with condensate', () => {
