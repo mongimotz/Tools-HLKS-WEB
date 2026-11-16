@@ -47,12 +47,12 @@ tools/pdf-to-dxf/          PDF → DXF: app.js, preview.js (DOM); worker.js, con
 tools/pdf-editor/          PDF-Editor: app.js, bridge.js (EmbedPDF), theme.js, library.js, tools-ui.js, client.js (DOM); worker.js, engine.js (MuPDF), pages.js, images.js, compress.js, ocr.js, autosave.js, svg.js, svg-render.js, stamps.js, zip.js, defaults.js, labels.js (no DOM); symbols/ (SVG + library PDFs), stamps/ (templates)
 tools/climate-station/     Klimastation: app.js, map.js (DOM); calc.js, defaults.js, labels.js (no DOM); data/ stations.json (SIA 2028 table 1, no climate values), regions.json (traced region map), places.json (swisstopo localities)
 tools/hx-diagram/          h,x-Diagramm: app.js (DOM); psychro.js (moist air), chart.js (diagram geometry, dynamic size and range), svg.js (SVG strings, overlay), calc.js, defaults.js, labels.js, report.js, csv.js (no DOM)
-docs/                      DESIGN.md, dragon-ink.md, <tool-id>-method.md (user-facing calculation docs, German), pdf-to-dxf-nova-test.md
+docs/                      DESIGN.md, dragon-ink.md, palettes/ (dragon.json, wave.json), <tool-id>-method.md (user-facing calculation docs, German), pdf-to-dxf-nova-test.md
 docs/dev/pdf-to-dxf/       PROGRESS, DECISIONS, TESTREPORT, TODO-OWNER of the PDF → DXF build (English)
 docs/dev/pdf-editor/       PLAN, PROGRESS, DECISIONS, TODO-OWNER of the PDF-Editor build (English)
 docs/dev/hx-diagram/       PLAN of the h,x diagram build (English)
 tests/                     node --test, fixtures/ holds reference PDFs, fixtures/pdf-to-dxf/ the PDF → DXF corpus with *.truth.json, fixtures/pdf-editor/ the editor's test files, helpers/
-scripts/                   serve.mjs (dev server, --base for a sub-path), make-fixtures.mjs, build-fonts.py, make-pdf-to-dxf-fixtures.mjs, pdf-to-dxf.mjs (CLI), check-dxf.py (ezdxf), npm-package.mjs + vendor-embedpdf.mjs + vendor-tesseract.mjs (vendoring), make-pdf-editor-fixtures.mjs, build-climate-regions.py + build-places.mjs (Klimastation data)
+scripts/                   serve.mjs (dev server, --base for a sub-path), palette.mjs (owner switch of the site palette), make-fixtures.mjs, build-fonts.py, make-pdf-to-dxf-fixtures.mjs, pdf-to-dxf.mjs (CLI), check-dxf.py (ezdxf), npm-package.mjs + vendor-embedpdf.mjs + vendor-tesseract.mjs (vendoring), make-pdf-editor-fixtures.mjs, build-climate-regions.py + build-places.mjs (Klimastation data)
 ```
 
 ## Rules for tools
@@ -125,6 +125,7 @@ The optional Python helpers have their own prerequisites.
 
 - `npm run serve` – dev server on http://localhost:8080
 - `npm test` – all tests (calculation, envelope, PDF save/open/resave round trip, reference PDFs in `tests/fixtures/`)
+- `node scripts/palette.mjs [dragon|wave]` – switch the colour palette site-wide (tokens.css block + favicon); without an argument it shows the active one. Owner decision, not a user setting
 - `npm run fixtures` – write reference PDFs for the current calculation version (cases per tool in `scripts/make-fixtures.mjs`)
 - `python scripts/build-fonts.py` – rebuild font subsets from `assets/fonts/source/` (needs fonttools + brotli; output is byte-different each run, only commit when the subset really changes)
 - `node scripts/serve.mjs 8080 --base Tools-HLKS-WEB` – dev server at http://localhost:8080/Tools-HLKS-WEB/; checks relative paths under a sub-path like GitHub Pages

@@ -1,0 +1,28 @@
+{
+  "name": "Dragon Ink",
+  "base": "Kanagawa Dragon",
+  "light": {
+    "bg": "#faf9f7", "surface": "#ffffff", "surface-sunken": "#f2f1ee", "surface-hover": "#e9e8e4", "surface-inverse": "#181616",
+    "border": "#d6d3ce", "border-strong": "#7a756f",
+    "text-strong": "#181616", "text": "#232222", "text-muted": "#57534e", "text-inverse": "#faf9f7",
+    "primary": "#356177", "primary-hover": "#245065", "on-primary": "#ffffff", "primary-subtle": "#e4eff5",
+    "accent": "#c3a76b", "accent-text": "#76602d", "on-accent": "#181616", "accent-subtle": "#f5eedc",
+    "success": "#456f46", "success-subtle": "#e7f2e6", "warning": "#8f5310", "warning-subtle": "#faecdd", "danger": "#b33736", "danger-subtle": "#fceae8",
+    "inverse-success": "#87a987", "inverse-warning": "#e3a165", "inverse-danger": "#dd766f",
+    "chart-1": "#2578a6", "chart-2": "#973f3a", "chart-3": "#9a772a", "chart-4": "#9b6196", "chart-5": "#4a844c", "chart-6": "#5a5a9f", "chart-7": "#b66d37", "chart-8": "#008a87",
+    "water": "#d9ebf7", "water-line": "#84b9dc",
+    "shadow-pop": "0 6px 24px rgb(24 22 22 / 0.16)", "backdrop": "rgb(24 22 22 / 0.45)"
+  },
+  "dark": {
+    "bg": "#181616", "surface": "#1d1c19", "surface-sunken": "#0d0c0c", "surface-hover": "#282727", "surface-inverse": "#e9e8e4",
+    "border": "#393836", "border-strong": "#847f7a",
+    "text-strong": "#e3e5e1", "text": "#c5c9c5", "text-muted": "#9e9b93", "text-inverse": "#181616",
+    "primary": "#8ba4b0", "primary-hover": "#a1bcc9", "on-primary": "#181616", "primary-subtle": "#212d35",
+    "accent": "#c4b28a", "accent-text": "#c4b28a", "on-accent": "#181616", "accent-subtle": "#332d1f",
+    "success": "#87a987", "success-subtle": "#242f24", "warning": "#e3a165", "warning-subtle": "#3b2a1b", "danger": "#dd766f", "danger-subtle": "#3d2321",
+    "inverse-success": "#456f46", "inverse-warning": "#9a5a12", "inverse-danger": "#b33736",
+    "chart-1": "#4998c8", "chart-2": "#a64c46", "chart-3": "#b18c3b", "chart-4": "#b074aa", "chart-5": "#64a066", "chart-6": "#797ac2", "chart-7": "#c57b45", "chart-8": "#24a39f",
+    "water": "#1e394a", "water-line": "#337094",
+    "shadow-pop": "0 6px 24px rgb(0 0 0 / 0.5)", "backdrop": "rgb(13 12 12 / 0.6)"
+  }
+}

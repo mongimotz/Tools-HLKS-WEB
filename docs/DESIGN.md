@@ -6,7 +6,7 @@ Applies to every page and to the PDF reports. Tools may differ in layout where i
 
 | What | Where | Reaches |
 |---|---|---|
-| Colours (light and dark) | `assets/css/tokens.css` | all pages, charts (CSS classes), PDF reports (light column, read at runtime by `lib/core/pdf.js`) |
+| Colours (light and dark) | `docs/palettes/<id>.json`, written into `assets/css/tokens.css` by `node scripts/palette.mjs <id>` (owner switch Dragon / Wave, see `dragon-ink.md`) | all pages, charts (CSS classes), PDF reports (light column, read at runtime by `lib/core/pdf.js`) |
 | Favicon colours | `assets/favicon.svg` | a copy of `--primary` / `--on-primary`; `npm test` fails if it drifts |
 | Font family | replace the two variable fonts in `assets/fonts/source/`, set their names at the top of `scripts/build-fonts.py`, run it | web (`sans.woff2`, `mono.woff2`) and PDF (`pdf/*.ttf`); file names stay generic, so no CSS or JS change. The family names `HLKS Sans` / `HLKS Mono` in `tokens.css` are internal aliases |
 | Type scale, spacing, radius | `assets/css/tokens.css` (`--fs-*`, `--sp-*`, `--r-*`, `--stretch-brand`) | all pages |
@@ -55,7 +55,7 @@ Tools without a discipline (registry group `general`) sit below the networks as 
 
 ## Colour
 
-**Source of truth: [`dragon-ink.md`](dragon-ink.md)** (Kanagawa Dragon based). `assets/css/tokens.css` uses exactly its token names (`--bg`, `--surface`, `--text-muted`, `--primary`, `--chart-1` …) for light and dark.
+**Source of truth: [`dragon-ink.md`](dragon-ink.md)** (Kanagawa based: Dragon Ink and Wave Ink, one active site-wide, chosen by the owner). `assets/css/tokens.css` uses exactly its token names (`--bg`, `--surface`, `--text-muted`, `--primary`, `--chart-1` …) for light and dark.
 
 - Mostly neutrals. `--primary` is the only brand colour (actions, links, critical path, air in the ducts).
 - `--accent` (gold) is currently unused. Dragon Ink allows it once per screen at most; only use it if it carries meaning.
