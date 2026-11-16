@@ -176,6 +176,20 @@
       "category": "Allgemein",
       "file": "revisionsdreieck.svg",
       "norm": "SIA 400"
+    },
+    {
+      "id": "haekchen",
+      "name": "Häkchen",
+      "category": "Markierung",
+      "file": "haekchen.svg",
+      "norm": "keine Norm"
+    },
+    {
+      "id": "kreuz",
+      "name": "Kreuz",
+      "category": "Markierung",
+      "file": "kreuz.svg",
+      "norm": "keine Norm"
     }
   ]
 }

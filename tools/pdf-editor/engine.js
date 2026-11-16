@@ -10,13 +10,14 @@ import { renderPages, imagesToPdf, blankPdf } from './images.js';
 import { flatten, compressPdf, COMPACT } from './compress.js';
 import { zip } from './zip.js';
 import { ocrPages, pagesWithoutText } from './ocr.js';
+import { cropPages, deskewPages } from './adjust.js';
 
 /** Permission bits of the PDF /P entry (ISO 32000-1, table 22); the reserved bits are set. */
 export const PERMISSION_BITS = { print: 4 | 2048, modify: 8 | 1024, copy: 16 | 512, annotate: 32, forms: 256 };
 const P_NONE = -3904;
 
 export class EngineError extends Error {
-  /** code: 'damaged' | 'password' | 'empty' | 'range' | 'image' | 'not-svg' | 'ocr' | 'cancelled' | 'input' | 'internal' */
+  /** code: 'damaged' | 'password' | 'empty' | 'range' | 'image' | 'not-svg' | 'ocr' | 'crop' | 'cancelled' | 'input' | 'internal' */
   constructor(code, message = code) {
     super(message);
     this.name = 'EngineError';
@@ -134,6 +135,34 @@ export async function createEngine({ readAsset, recognizer = null }) {
       } catch (e) {
         throw new EngineError('image', String(e?.message ?? e));
       }
+    },
+
+    /** Crop pages (adjust.js): margins in mm, to the content, or reset. Resolves { bytes (null: nothing changed), pages }. */
+    async crop({ bytes, password, pages, ...options }, ctx) {
+      const doc = open(bytes, password);
+      let n;
+      try {
+        n = cropPages(mupdf, doc, { ...options, pages: select(doc, pages) }, ctx);
+      } catch (e) {
+        throw new EngineError(e.code === 'cancelled' ? 'cancelled' : 'crop', String(e.page ?? e.message));
+      }
+      if (!n) return { value: { bytes: null, pages: 0 } };
+      const out = save(doc);
+      return { value: { bytes: out, pages: n }, transfer: [out.buffer] };
+    },
+
+    /** Straighten pages (adjust.js): detected per page (`angle` null) or a fixed angle. Resolves { bytes (null: none), pages }. */
+    async deskew({ bytes, password, pages, angle = null }, ctx) {
+      const doc = open(bytes, password);
+      let r;
+      try {
+        r = deskewPages(mupdf, doc, { pages: select(doc, pages), angle }, ctx);
+      } catch (e) {
+        throw e.code === 'cancelled' ? new EngineError('cancelled') : e;
+      }
+      if (!r.pages) return { value: { bytes: null, pages: 0, angles: [] } };
+      const out = save(doc);
+      return { value: { bytes: out, ...r }, transfer: [out.buffer] };
     },
 
     async flatten({ bytes, password, annotations, fields }) {

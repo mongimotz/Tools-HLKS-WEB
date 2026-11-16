@@ -91,6 +91,21 @@ Ein vergessenes Kennwort zum Öffnen lässt sich nicht wiederherstellen.
 
 Kommentare, Markierungen und Formularfelder werden fester Seiteninhalt: Sie sehen gleich aus, lassen sich aber nicht mehr bearbeiten oder ausfüllen. Sinnvoll vor dem Versand an Programme, die Anmerkungen nicht oder falsch zeigen.
 
+## Seiten zuschneiden
+
+Zuschneiden setzt den sichtbaren Bereich der Seite (CropBox). Der Inhalt ausserhalb bleibt in der Datei und kommt mit `Zurücksetzen` wieder.
+
+- **Ränder:** oben, unten, links und rechts in mm, so wie die Seite angezeigt wird (gedrehte Seiten eingeschlossen). Bleibt eine Seite unter 36 pt (12.7 mm) breit oder hoch, bricht das Werkzeug ab.
+- **Auf Inhalt:** Die Seite wird mit 150 dpi in Graustufen gerechnet (höchstens 1600 Pixel auf der langen Seite). Alles dunkler als 240 von 255 zählt als Inhalt, Zeilen und Spalten mit nur einem dunklen Pixel nicht. Dazu kommt der gewählte Abstand. Leere Seiten bleiben, wie sie sind. Kommentare zählen mit.
+
+## Seiten begradigen
+
+Für schief eingescannte Seiten. Der Inhalt der Seite wird um ihre Mitte gedreht; die Seite selbst behält Grösse und Lage.
+
+- **Automatisch:** Die Seite (ohne Kommentare) wird in Graustufen gerechnet, höchstens 2000 Pixel auf der langen Seite. Alle Pixel dunkler als 128 werden für Winkel von −10° bis +10° quer zur Zeilenrichtung aufsummiert (Projektionsprofil). Der Winkel mit dem schärfsten Profil (grösste Summe der Quadrate) gilt als Schräglage: zuerst in Schritten von 0.2°, dann von 0.02°. Unter 0.05° bleibt die Seite unverändert. Seiten fast ohne Tinte oder mit über 60 % dunkler Fläche (Fotos) werden übersprungen.
+- **Fest:** ein Winkel von −45° bis +45°, positiv gegen den Uhrzeigersinn.
+- Grenzen: Kommentare drehen nicht mit, darum vor dem Kommentieren begradigen. Die Ecken, die nach dem Drehen frei werden, bleiben weiss. Seiten ohne Textzeilen (zum Beispiel reine Zeichnungen) können einen falschen Winkel ergeben; dann `Fest` verwenden.
+
 ## Seiten als Bilder
 
 PNG oder JPG mit 72 bis 600 dpi. Seiten über 100 Megapixel (zum Beispiel A0 mit 300 dpi) werden kleiner gerechnet, eine Meldung sagt das.

@@ -31,6 +31,14 @@
       "file": "allgemein.pdf",
       "source": "05836a11375d8a0a",
       "count": 3
+    },
+    {
+      "id": "markierung",
+      "libraryId": "hlks-symbole-markierung",
+      "title": "Symbole Markierung",
+      "file": "markierung.pdf",
+      "source": "f7ccac80088eabcb",
+      "count": 2
     }
   ]
 }

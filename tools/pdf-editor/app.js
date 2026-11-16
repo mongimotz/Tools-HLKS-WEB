@@ -184,8 +184,20 @@ function pageCommands() {
     cmd('page-duplicate', 'duplicate', 'copy', () => pages().duplicate()),
     cmd('page-up', 'moveUp', 'pageUp', () => pages().move(-1)),
     cmd('page-down', 'moveDown', 'pageDown', () => pages().move(1)),
+    cmd('page-move-to', 'moveTo', 'pageMoveTo', moveToTool),
+    cmd('page-crop', 'crop', 'crop', cropTool),
+    cmd('page-deskew', 'deskew', 'deskew', deskewTool),
     cmd('page-delete', 'delete', 'trash', deletePage),
+    // a check mark like a form tick: arms the symbol (symbols/haekchen.svg), the next click places it
+    { id: 'hlks:check', labelKey: 'hlks.check', icon: 'check', enabled: hasDoc, run: () => app.bridge.plugin('stamp')?.armAsset(CHECK_ASSET).catch(() => {}) },
   ];
+}
+
+const CHECK_ASSET = 'hlks-symbole-markierung:haekchen';
+
+async function moveToTool() {
+  const v = await ui.askMoveTo(toolContext());
+  if (v) await app.bridge.pages.moveTo(v.to).catch(() => {});
 }
 
 /** Page edits are not in the viewer's history: a deleted page comes back through the toast. */
@@ -207,6 +219,7 @@ function editLayout(layout) {
   l = l.add('tool:whiteout', { to: 'redact', group: 'redact', before: 'tool:redact' });
   l = l.addPanel('symbols', { side: 'end', titleKey: 'hlks.symbols', icon: 'symbols' });
   l = l.add('panel:symbols', { to: 'insert', group: 'stamps', after: 'tool:stamp' });
+  l = l.add('hlks:check', { to: 'insert', group: 'stamps', after: 'panel:symbols' });
   return l.addBar('pages', {
     place: { with: 'main' },
     mode: 'pages',
@@ -214,7 +227,8 @@ function editLayout(layout) {
     center: [
       { id: 'rotate', items: ['hlks:page-rotate-left', 'hlks:page-rotate-right'], importance: 4 },
       { id: 'insert', items: ['hlks:page-blank', 'hlks:page-duplicate'], importance: 3 },
-      { id: 'move', items: ['hlks:page-up', 'hlks:page-down'], importance: 3 },
+      { id: 'move', items: ['hlks:page-up', 'hlks:page-down', 'hlks:page-move-to'], importance: 3 },
+      { id: 'adjust', items: ['hlks:page-crop', 'hlks:page-deskew'], importance: 2 },
       { id: 'delete', items: ['hlks:page-delete'], importance: 4 },
     ],
   });
@@ -231,7 +245,8 @@ function viewerConfig() {
     icons: VIEWER_ICONS,
     engine: { fonts: viewerFonts() },
     commands: [
-      { id: 'document:open', run: () => openPicked() },
+      // the viewer's own drop target runs this command with the dropped files
+      { id: 'document:open', run: (ctx) => (ctx?.args?.files?.[0] ? openFile(ctx.args.files[0]) : openPicked()) },
       { id: 'document:download', run: () => save() },
       ...pageCommands(),
     ],
@@ -539,6 +554,28 @@ async function headerFooterTool() {
   if (v) await withTool(async () => reload(await runOnDocument(TOOLS.headerFooter, 'headerFooter', { ...v, ...values })));
 }
 
+async function cropTool() {
+  const v = await ui.askCrop(toolContext());
+  if (!v) return;
+  await withTool(async () => {
+    const r = await runOnDocument(TOOLS.crop, 'crop', v);
+    if (!r.bytes) return toast(RESULTS.cropNone);
+    await reload(r.bytes);
+    toast(RESULTS.cropped(r.pages), { kind: 'success' });
+  });
+}
+
+async function deskewTool() {
+  const v = await ui.askDeskew(toolContext());
+  if (!v) return;
+  await withTool(async () => {
+    const r = await runOnDocument(TOOLS.deskew, 'deskew', v);
+    if (!r.bytes) return toast(RESULTS.deskewNone);
+    await reload(r.bytes);
+    toast(RESULTS.deskewed(r.pages), { kind: 'success' });
+  });
+}
+
 async function toImagesTool() {
   const v = await ui.askToImages(toolContext());
   if (!v) return;
@@ -672,6 +709,8 @@ const MENU = [
   { action: 'watermark', icon: 'stamp', doc: true, run: watermarkTool },
   { action: 'pageNumbers', icon: 'number', doc: true, run: pageNumbersTool },
   { action: 'headerFooter', icon: 'pages', doc: true, run: headerFooterTool },
+  { action: 'crop', icon: 'crop', doc: true, run: cropTool },
+  { action: 'deskew', icon: 'deskew', doc: true, run: deskewTool },
   { action: 'toImages', icon: 'image', doc: true, run: toImagesTool },
   { action: 'fromImages', icon: 'upload', run: fromImagesTool },
   { action: 'flatten', icon: 'layers', doc: true, run: flattenTool },

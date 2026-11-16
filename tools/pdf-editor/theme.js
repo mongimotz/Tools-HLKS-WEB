@@ -28,6 +28,10 @@ export const VIEWER_ICONS = {
   pageUp: ['M12 19V5', 'M6 11l6-6 6 6'],
   pageDown: ['M12 5v14', 'M6 13l6 6 6-6'],
   pageBlank: ['M6 3h8l4 4v14H6z', 'M14 3v4h4', 'M12 11v6M9 14h6'],
+  pageMoveTo: ['M6 3h8l4 4v14H6z', 'M14 3v4h4', 'M9 15h6', 'M12.5 12l3 3-3 3'],
+  crop: ['M7 2v15h15', 'M2 7h15v15'],
+  deskew: ['M8.5 3l10 1.8-2.7 14.8-10-1.8z', 'M2.5 21.5h19'],
+  check: ['M5 12.5l4.5 4.5L19 7.5'],
 };
 
 /** Annotation colours from tokens.css: [annot-1, …, annot-9]. */

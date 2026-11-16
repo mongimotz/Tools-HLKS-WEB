@@ -175,11 +175,12 @@ class ViewerBridge {
         await edit().insertFromBytes(bytes, { placement: index === 0 ? 'start' : { after: index - 1 } });
         this.goToPage(index);
       },
-      move: async (step) => {
+      move: (step) => this.pages.moveTo(at() + step),
+      /** Move the current page to index `j` (0-based). */
+      moveTo: async (j) => {
         const i = at();
-        const j = i + step;
-        if (j < 0 || j >= this.pageCount()) return;
-        await edit().reorder([i], step < 0 ? { before: j } : { after: j });
+        if (j === i || j < 0 || j >= this.pageCount()) return;
+        await edit().reorder([i], j < i ? { before: j } : { after: j });
         this.goToPage(j);
       },
       insertBytes: (bytes, placement = 'end') => edit().insertFromBytes(bytes, { placement }),

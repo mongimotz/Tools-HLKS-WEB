@@ -59,7 +59,11 @@ export const VIEWER_STRINGS = {
       delete: 'Seite löschen',
       moveUp: 'Seite nach vorne',
       moveDown: 'Seite nach hinten',
+      moveTo: 'Seite verschieben nach',
+      crop: 'Seiten zuschneiden',
+      deskew: 'Seiten begradigen',
     },
+    check: 'Häkchen',
     symbols: 'Symbole',
     stamps: 'Stempel',
   },
@@ -107,6 +111,8 @@ export const TOOLS = {
   watermark: 'Wasserzeichen',
   pageNumbers: 'Seitenzahlen',
   headerFooter: 'Kopf- und Fusszeile',
+  crop: 'Seiten zuschneiden',
+  deskew: 'Seiten begradigen',
   toImages: 'Seiten als Bilder',
   fromImages: 'Bilder als Seiten',
   flatten: 'Reduzieren',
@@ -195,6 +201,17 @@ export const F = {
   addFiles: 'Dateien hinzufügen',
   up: 'Nach oben',
   down: 'Nach unten',
+  cropMode: 'Zuschneiden',
+  margins: 'Ränder',
+  toContent: 'Auf Inhalt',
+  reset: 'Zurücksetzen',
+  top: 'Oben',
+  right: 'Rechts',
+  bottom: 'Unten',
+  left: 'Links',
+  padding: 'Abstand',
+  fixed: 'Fest',
+  moveTo: 'Nach Seite',
 };
 
 export const POSITION_LABELS = {
@@ -220,6 +237,7 @@ export const ENGINE_ERRORS = {
   image: 'Bild nicht lesbar',
   'not-svg': 'SVG nicht lesbar',
   ocr: 'Texterkennung nicht geladen',
+  crop: 'Seite zu klein nach dem Zuschneiden',
   cancelled: 'Abgebrochen',
   input: 'Angaben fehlen',
   worker: 'Dieser Browser unterstützt keine Module-Worker',
@@ -237,6 +255,10 @@ export const RESULTS = {
   ocr: (pages, words) => `${words} ${words === 1 ? 'Wort' : 'Wörter'} auf ${pages} ${pages === 1 ? 'Seite' : 'Seiten'} erkannt`,
   ocrNone: 'Alle Seiten enthalten Text',
   ocrEmpty: 'Kein Text erkannt',
+  cropped: (n) => (n === 1 ? '1 Seite zugeschnitten' : `${n} Seiten zugeschnitten`),
+  cropNone: 'Nichts zuzuschneiden',
+  deskewed: (n) => (n === 1 ? '1 Seite begradigt' : `${n} Seiten begradigt`),
+  deskewNone: 'Keine schiefe Seite gefunden',
 };
 
 /** Progress text of a running document tool. */

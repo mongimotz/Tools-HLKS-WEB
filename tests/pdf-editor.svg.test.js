@@ -88,7 +88,7 @@ test('svgToPdf: vector page of the SVG size, Plex text is searchable, empty inpu
 test('every built-in symbol draws a non-empty page; the library PDFs are current with their sources', async () => {
   const index = JSON.parse(await readFile(new URL('tools/pdf-editor/symbols/libraries.json', ROOT), 'utf8'));
   const cats = await symbolCategories();
-  assert.equal(cats.reduce((n, c) => n + c.symbols.length, 0), 25);
+  assert.equal(cats.reduce((n, c) => n + c.symbols.length, 0), 27);
   for (const cat of cats) {
     const lib = await readFile(new URL(`tools/pdf-editor/symbols/${cat.file}`, ROOT));
     const info = readLibrary(mupdf, lib);
@@ -99,7 +99,8 @@ test('every built-in symbol draws a non-empty page; the library PDFs are current
     assert.equal(index.libraries.find((l) => l.file === cat.file)?.source, cat.source, 'libraries.json is current');
     for (let i = 0; i < info.pages; i++) assert.ok(pageHasInk(mupdf, lib, i), `${cat.symbols[i].id} draws something`);
     const pageSize = mupdf.Document.openDocument(lib, 'application/pdf').loadPage(0).getBounds();
-    assert.equal(Math.round(pageSize[2] - pageSize[0]), 34, '12 mm');
+    // schema symbols 12 mm, marks (check, cross) 5 mm like a form box
+    assert.equal(Math.round(pageSize[2] - pageSize[0]), cat.id === 'markierung' ? 14 : 34, cat.id === 'markierung' ? '5 mm' : '12 mm');
   }
   // the build is deterministic enough to reproduce the same registry
   assert.deepEqual(readLibrary(mupdf, buildCategory(cats[0])).entries, readLibrary(mupdf, await readFile(new URL(`tools/pdf-editor/symbols/${cats[0].file}`, ROOT))).entries);

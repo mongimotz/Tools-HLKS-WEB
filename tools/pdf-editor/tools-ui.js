@@ -5,7 +5,7 @@
 import { html, raw, icon, toast } from '../../lib/core/ui.js';
 import { pickFile, download } from '../../lib/core/files.js';
 import { DATE_FORMATS, STAMP_FRAMES, COLOR_ROLES, normalizeSettings } from './defaults.js';
-import { ACTIONS, COLOR_NAMES, ROLE_LABELS, FRAME_LABELS, DATE_LABELS, SETTINGS, SYMBOLS, TOOLS, F, POSITION_LABELS, NUMBER_FORMATS } from './labels.js';
+import { ACTIONS, COLOR_NAMES, ROLE_LABELS, FRAME_LABELS, DATE_LABELS, SETTINGS, SYMBOLS, TOOLS, F, POSITION_LABELS, NUMBER_FORMATS, VIEWER_STRINGS } from './labels.js';
 import { SYMBOL_KIND, OWN_LIBRARY_ID, addOwnSymbols, exportOwn, importOwn, ownLibrary } from './library.js';
 import { parseRanges, POSITIONS } from './pages.js';
 import { DPI_MIN, DPI_MAX } from './images.js';
@@ -128,7 +128,7 @@ export function openSettingsDialog(settings, colors, onSave) {
 // ---- Symbole panel --------------------------------------------------------------------------------------
 
 /** Categories in HLKS order (symbols/libraries.json ids). */
-const SYMBOL_ORDER = ['heizung', 'lueftung', 'klima', 'sanitaer', 'allgemein'];
+const SYMBOL_ORDER = ['heizung', 'lueftung', 'klima', 'sanitaer', 'allgemein', 'markierung'];
 
 /**
  * The Symbole panel: built-in symbol libraries by category, the own library (add SVG files by button or drop,
@@ -803,5 +803,73 @@ export function askBlank() {
       ${selectField('orientation', F.orientation, [['portrait', F.portrait], ['landscape', F.landscape]], p.orientation)}
     </div>`,
     read: (form) => ({ size: val(form, 'size'), orientation: val(form, 'orientation') }),
+  });
+}
+
+/** Move the current page: target page number (1-based in the dialog, 0-based in the result). */
+export function askMoveTo(ctx) {
+  return ask({
+    title: VIEWER_STRINGS.hlks.pages.moveTo,
+    body: html`<div class="dialog-row">${numField('to', F.moveTo, ctx.current + 1, { min: 1, max: ctx.pageCount })}</div>`,
+    onOpen: (form) => setTimeout(() => form.elements.to.select()),
+    read: (form) => {
+      const to = num(form, 'to', 1, ctx.pageCount);
+      return to === undefined ? undefined : { to: Math.round(to) - 1 };
+    },
+  });
+}
+
+/** Crop: margins in mm (as the page is shown), to the content plus a gap, or back to the full page. */
+export function askCrop(ctx) {
+  const p = { mode: 'margins', top: 10, right: 10, bottom: 10, left: 10, padding: 3, pages: {}, ...last.get('crop') };
+  return ask({
+    id: 'crop',
+    title: TOOLS.crop,
+    body: html`
+      <div class="dialog-row">${selectField('mode', F.cropMode, [['margins', F.margins], ['auto', F.toContent], ['reset', F.reset]], p.mode)}
+        ${numField('padding', F.padding, p.padding, { min: 0, max: 50, step: 0.5, unit: 'mm', when: 'mode=auto' })}</div>
+      <div class="dialog-row" data-when="mode=margins">
+        ${numField('top', F.top, p.top, { min: 0, max: 500, step: 0.5, unit: 'mm' })}
+        ${numField('bottom', F.bottom, p.bottom, { min: 0, max: 500, step: 0.5, unit: 'mm' })}
+      </div>
+      <div class="dialog-row" data-when="mode=margins">
+        ${numField('left', F.left, p.left, { min: 0, max: 500, step: 0.5, unit: 'mm' })}
+        ${numField('right', F.right, p.right, { min: 0, max: 500, step: 0.5, unit: 'mm' })}
+      </div>
+      ${pageChoice(p.pages)}`,
+    read: (form) => {
+      const mode = val(form, 'mode');
+      const pages = readPages(form, ctx);
+      if (pages === undefined) return undefined;
+      if (mode === 'reset') return { mode, pages };
+      if (mode === 'auto') {
+        const padding = num(form, 'padding', 0, 50);
+        return padding === undefined ? undefined : { mode, padding, pages };
+      }
+      const m = ['top', 'right', 'bottom', 'left'].map((k) => num(form, k, 0, 500));
+      if (m.includes(undefined)) return undefined;
+      const [top, right, bottom, left] = m;
+      return { mode, top, right, bottom, left, pages };
+    },
+  });
+}
+
+/** Deskew: angle found per page (scans) or a fixed angle in degrees, counter-clockwise. */
+export function askDeskew(ctx) {
+  const p = { mode: 'auto', angle: 1, pages: {}, ...last.get('deskew') };
+  return ask({
+    id: 'deskew',
+    title: TOOLS.deskew,
+    body: html`
+      <div class="dialog-row">${selectField('mode', F.angle, [['auto', F.auto], ['fixed', F.fixed]], p.mode)}
+        ${numField('angle', F.angle, p.angle, { min: -45, max: 45, step: 0.1, unit: '°', when: 'mode=fixed' })}</div>
+      ${pageChoice(p.pages)}`,
+    read: (form) => {
+      const mode = val(form, 'mode');
+      const pages = readPages(form, ctx);
+      const angle = mode === 'fixed' ? num(form, 'angle', -45, 45) : null;
+      if (pages === undefined || angle === undefined) return undefined;
+      return { mode, angle, pages };
+    },
   });
 }
