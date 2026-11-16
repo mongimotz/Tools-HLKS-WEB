@@ -99,5 +99,5 @@ Colours the PDF-Editor writes into documents (markup, shapes, measurements, high
 - Mostly neutrals. `primary` is the only brand colour; `accent` (gold) appears once per screen or slide.
 - Body text on `bg`, `surface` or `surface-sunken`. Text on a coloured fill uses the matching `on-*` colour.
 - Status colours (`success`, `warning`, `danger`) always come with an icon or a word.
-- Documents and anything printed use the light column only.
+- Documents and anything printed use the light column only, on white paper: PDF reports always use `#ffffff` for the page and `surface`, and neutral `#f0f0f0` for `surface-sunken` fills (`PAPER` in `lib/core/pdf.js`), whatever the palette.
 - Fonts: IBM Plex Sans for text, IBM Plex Mono for code and numbers.

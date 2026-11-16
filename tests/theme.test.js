@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 
-import { parseLightTokens, loadInk, INK } from '../lib/core/pdf.js';
+import { parseLightTokens, loadInk, INK, PAPER } from '../lib/core/pdf.js';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -22,6 +22,8 @@ test('PDF colours come from the light tokens', async () => {
   assert.equal(INK.primary, light.primary);
   assert.equal(INK.strong, light['text-strong']);
   assert.equal(INK.chart1, light['chart-1']);
+  assert.equal(INK.surface, '#ffffff', 'reports are printed: white paper');
+  assert.deepEqual({ surface: INK.surface, sunken: INK.sunken }, PAPER);
 });
 
 test('favicon uses --primary and --on-primary (light and dark)', async () => {
@@ -101,4 +103,18 @@ test('docs/dragon-ink.md lists every palette value', async () => {
       assert.ok(row?.includes(`\`${v}\``) && row.includes(`\`${p.dark[k]}\``), `${id}: ${k} missing in dragon-ink.md`);
     }
   }
+});
+
+test('every page uses the same brand mark', async () => {
+  const tools = await readdir(new URL('../tools/', import.meta.url));
+  const marks = new Set();
+  for (const t of tools) {
+    const html = await read(`tools/${t}/index.html`).catch(() => '');
+    const m = html.match(/<svg class="brand-mark".*?<\/svg>/);
+    if (m) marks.add(m[0]);
+  }
+  assert.equal(marks.size, 1, 'brand mark differs between pages');
+  const svg = await read('assets/favicon.svg');
+  const d = [...marks][0].match(/<path d="([^"]+)"/)[1];
+  assert.ok(svg.includes(`d="${d}"`), 'favicon and page mark differ');
 });

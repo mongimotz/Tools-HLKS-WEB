@@ -62,7 +62,7 @@ Tools without a discipline (registry group `general`) sit below the networks as 
 - Editable cells sit in `--surface-sunken` wells; results are plain on `--surface`.
 - Status (`--success`, `--warning`, `--danger`) always with an icon or a word. Toasts use `--surface-inverse` with the `--inverse-*` status colours.
 - Charts take `--chart-1`, `--chart-2`, `--chart-3` … in this order, never skipping a slot.
-- PDF reports use the light column only: `loadInk()` in `lib/core/pdf.js` reads it from `tokens.css`, so there is no second copy.
+- PDF reports use the light column only, on white paper (`surface` and `surface-sunken` are fixed neutral values, `PAPER` in `lib/core/pdf.js`): `loadInk()` in `lib/core/pdf.js` reads it from `tokens.css`, so there is no second copy.
 - Dark mode follows the OS until the user picks a scheme; the theme button switches Hell ↔ Dunkel (sun / moon, icon shows the current scheme). No separate `System` state.
 
 ## Type
