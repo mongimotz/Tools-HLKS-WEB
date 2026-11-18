@@ -1,0 +1,33 @@
+{
+  "format": "hlks-schema",
+  "version": 1,
+  "meta": {
+    "title": "Lüftungsanlage",
+    "project": "",
+    "author": "",
+    "date": "2026-11-18",
+    "revision": "A"
+  },
+  "sheet": {
+    "size": "A3",
+    "orientation": "landscape",
+    "grid": 2.5,
+    "titleBlock": "default",
+    "legend": true
+  },
+  "style": "default",
+  "components": [
+    { "id": "KL01", "type": "air.damper.motor", "label": "KL01", "props": {}, "pos": [80, 150], "rot": 0, "flip": false, "pinned": false },
+    { "id": "FI01", "type": "air.filter", "label": "FI01", "props": { "Klasse": "ePM1 55%" }, "pos": [100, 150], "rot": 0, "flip": false, "pinned": false },
+    { "id": "ER01", "type": "air.heater", "label": "ER01", "props": {}, "pos": [120, 150], "rot": 0, "flip": false, "pinned": false },
+    { "id": "VE01", "type": "air.fan", "label": "VE01", "props": { "V": "3000 m³/h" }, "pos": [140, 150], "rot": 0, "flip": false, "pinned": false }
+  ],
+  "connections": [
+    { "id": "c1", "from": ["KL01", "out"], "to": ["FI01", "in"], "medium": "air.outdoor", "waypoints": [], "pinned": false },
+    { "id": "c2", "from": ["FI01", "out"], "to": ["ER01", "in"], "medium": "air.outdoor", "waypoints": [], "pinned": false },
+    { "id": "c3", "from": ["ER01", "out"], "to": ["VE01", "in"], "medium": "air.supply", "waypoints": [], "pinned": false }
+  ],
+  "groups": [],
+  "texts": [],
+  "notes": []
+}

@@ -1,0 +1,12 @@
+{
+  "id": "junction", "name": "Abzweig (T-Stück)", "category": "common", "norm": "", "checked": true,
+  "size": [0, 0], "prefix": "J",
+  "ports": [
+    { "id": "n", "at": [0, 0], "dir": "N", "media": ["*"], "optional": true },
+    { "id": "e", "at": [0, 0], "dir": "E", "media": ["*"], "optional": true },
+    { "id": "s", "at": [0, 0], "dir": "S", "media": ["*"], "optional": true },
+    { "id": "w", "at": [0, 0], "dir": "W", "media": ["*"], "optional": true }
+  ],
+  "labelAnchor": [1.5, -1.5], "labelAlign": "start", "props": [], "keywords": ["T-Stück", "Abzweig", "Verzweigung"],
+  "svg": "<circle cx='0' cy='0' r='0.7' fill='currentColor' stroke='none'/>"
+}

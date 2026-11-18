@@ -17,7 +17,11 @@ const EXCLUDE = ['.git', '.github', '.claude', '_site', 'node_modules', 'schema-
 
 function excluded(rel) {
   const parts = rel.split('/');
-  return EXCLUDE.some((e) => rel === e || rel.startsWith(`${e}/`)) || parts.includes('node_modules') || parts.at(-1) === '.DS_Store';
+  return (
+    EXCLUDE.some((e) => rel === e || rel.startsWith(`${e}/`)) ||
+    parts.includes('node_modules') ||
+    parts.at(-1) === '.DS_Store'
+  );
 }
 
 if (!existsSync(join(DIST, 'index.html'))) {
@@ -37,7 +41,14 @@ await cp(ROOT, OUT, {
 await cp(DIST, join(OUT, 'schema'), { recursive: true });
 
 // Checks: existing pages are still there, CNAME and .nojekyll survive, the editor is reachable.
-const required = ['index.html', 'CNAME', '.nojekyll', 'assets/css/tokens.css', 'lib/core/registry.js', 'schema/index.html'];
+const required = [
+  'index.html',
+  'CNAME',
+  '.nojekyll',
+  'assets/css/tokens.css',
+  'lib/core/registry.js',
+  'schema/index.html',
+];
 for (const t of await readdir(join(ROOT, 'tools'), { withFileTypes: true })) {
   if (t.isDirectory() && existsSync(join(ROOT, 'tools', t.name, 'index.html')))
     required.push(`tools/${t.name}/index.html`);
