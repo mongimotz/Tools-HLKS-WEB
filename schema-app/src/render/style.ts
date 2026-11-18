@@ -37,3 +37,53 @@ export const DEFAULT_STYLE: Style = {
   legend: true,
   titleBlock: null,
 };
+
+let active: Style = DEFAULT_STYLE;
+
+/** Style used when a render call passes none (editor: the loaded style template, CLI: --style). */
+export function getActiveStyle(): Style {
+  return active;
+}
+export function setActiveStyle(s: Style | null): void {
+  active = s ?? DEFAULT_STYLE;
+}
+
+const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : d);
+const str = (v: unknown, d: string) => (typeof v === 'string' && v ? v : d);
+function nums<T extends Record<string, number>>(src: unknown, d: T): T {
+  const o = (src && typeof src === 'object' ? src : {}) as Record<string, unknown>;
+  return Object.fromEntries(Object.entries(d).map(([k, v]) => [k, num(o[k], v)])) as T;
+}
+
+/**
+ * External style template (JSON): any part of Style; unknown or invalid values fall back to the default.
+ * `titleBlock` is an SVG fragment in title-block mm (180 × 30) with {{meta.*}} / {{sheet.*}} placeholders.
+ */
+export function parseStyle(raw: unknown): Style {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Stilvorlage: JSON-Objekt erwartet.');
+  const r = raw as Record<string, unknown>;
+  const d = DEFAULT_STYLE;
+  const font = (r.font && typeof r.font === 'object' ? r.font : {}) as Record<string, unknown>;
+  const colors = (r.colors && typeof r.colors === 'object' ? r.colors : {}) as Record<string, unknown>;
+  const media = (colors.media && typeof colors.media === 'object' ? colors.media : {}) as Record<string, unknown>;
+  return {
+    id: str(r.id, 'custom'),
+    font: {
+      ...nums(font, { label: d.font.label, small: d.font.small, normal: d.font.normal, large: d.font.large }),
+      family: str(font.family, d.font.family),
+    },
+    stroke: nums(r.stroke, d.stroke),
+    colors: {
+      ink: str(colors.ink, d.colors.ink),
+      paper: str(colors.paper, d.colors.paper),
+      grid: str(colors.grid, d.colors.grid),
+      frame: str(colors.frame, d.colors.frame),
+      group: str(colors.group, d.colors.group),
+      media: Object.fromEntries(Object.entries(d.colors.media).map(([k, v]) => [k, str(media[k], v)])),
+    },
+    layout: nums(r.layout, d.layout),
+    crossings: r.crossings === 'gap' ? 'gap' : d.crossings,
+    legend: typeof r.legend === 'boolean' ? r.legend : d.legend,
+    titleBlock: typeof r.titleBlock === 'string' && r.titleBlock.trim() ? r.titleBlock : d.titleBlock,
+  };
+}

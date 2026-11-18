@@ -880,3 +880,17 @@ kbd {
 .canvas.proposal .overlay .hit-group {
   pointer-events: none;
 }
+
+/* Export menu: options (phase 7) */
+.menu-list hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 4px 0;
+}
+.menu-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}

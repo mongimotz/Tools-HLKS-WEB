@@ -7,6 +7,7 @@ import { SchemaError } from '../src/model/schema.ts';
 import { serialize } from '../src/model/serialize.ts';
 import { validate } from '../src/model/validate.ts';
 import { renderSchema } from '../src/render/render.ts';
+import { parseStyle, setActiveStyle } from '../src/render/style.ts';
 import { TEMPLATES } from '../src/model/templates.ts';
 import { svgToPng } from './png.ts';
 import { checkDrawing } from '../src/layout/check.ts';
@@ -15,7 +16,7 @@ import type { Issue } from '../src/model/types.ts';
 
 const USAGE = `schema-cli <command>
   validate <file>                       check file and topology (exit 1 on errors)
-  render <file> -o <out.png|.svg> [--mono] [--grid] [--dpi 150] [--crop x,y,w,h (mm)]
+  render <file> -o <out.png|.svg> [--mono] [--grid] [--style style.json] [--dpi 150] [--crop x,y,w,h (mm)]
   ops <file> <ops.json> [--dry-run]     apply operations (atomic), then layout + validation; writes the file
   notes <file> [--open]                 list notes
   resolve <file> <noteId> "Antwort"     mark a note as done with a reply
@@ -57,6 +58,8 @@ async function main(argv: string[]): Promise<number> {
     }
     case 'render': {
       const s = await load(file);
+      const styleFile = arg(rest, '--style');
+      if (styleFile) setActiveStyle(parseStyle(JSON.parse(await readFile(styleFile, 'utf8'))));
       const out = arg(rest, '-o') ?? file.replace(/\.schema$/, '') + '.png';
       const r = renderSchema(s, { mono: rest.includes('--mono'), grid: rest.includes('--grid') });
       const crop = arg(rest, '--crop');

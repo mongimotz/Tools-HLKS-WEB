@@ -9,7 +9,7 @@
 | 4 Files, live sync, export | done (stop point: owner review) |
 | 5 Notes | done |
 | 6 OpenRouter assistant | done |
-| 7 Styles, polish, start page | open |
+| 7 Styles, polish, start page | done |
 
 ## Phase 0
 - `npm run build` builds `dist/` (relative base). `npm run check:site [out]` assembles and checks the Pages artifact (old pages, `CNAME`, `.nojekyll`, `/schema/index.html`, no sources leaked).
@@ -64,3 +64,6 @@
 - Result: summary, number of operations, tokens and cost; proposal preview with «Übernehmen» (one undo step) / «Verwerfen».
 - Tests: Vitest 114 (+1 skipped real call): success, invalid op with correction, abort after 3 rounds, bad JSON, cancel, 401, key only in the header, prompt content. Playwright 15: preview → apply → undo, key not in file/SVG/draft/console/request bodies, discard, abort, notes mode.
 - Not tested: a real OpenRouter call (no `OPENROUTER_API_KEY` here); the owner can run `OPENROUTER_API_KEY=… npx vitest run tests/unit/assistant.test.ts`.
+
+## Phase 7
+- Start page tile (general section), README row. Export menu: «Schwarzweiss», «Stilvorlage laden …» / back to the default; CLI `render --style`. Checked by rendering a test template (own title block, colours).

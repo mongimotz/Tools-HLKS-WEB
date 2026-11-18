@@ -81,3 +81,8 @@ Format: date | decision | alternatives | reason.
 - Key: `localStorage` key `hlks-schema-assistant` only, password field, «Key löschen». Never part of the document, draft, files or exports (e2e test checks file, SVG, draft, console, request bodies).
 - Default model `anthropic/claude-sonnet-5.5` (on OpenRouter's list, tool calling, mid price); the field offers all tool-capable models from the public model list.
 - Tests: the e2e mock is Playwright's request interception on the real OpenRouter URL (no extra server process, the app code runs unchanged); the loop has unit tests with a fetch stub. A real call runs only with `OPENROUTER_API_KEY` (optional `OPENROUTER_MODEL`).
+
+## 2026-11-18 | Phase 7
+- Start page: «Prinzipschema» is a tile in the section without discipline (Lüftung already has its three entries; the tool will cover other disciplines in phase 8). Registry `path: 'schema/'` (built), `source: 'schema-app/'` for the page check.
+- Style template and «Schwarzweiss» are per browser (localStorage), not in the file: company title blocks must not travel into shared files or the repo. Invalid values fall back to the default style.
+- Help stays the shortcut dialog (?); no separate help page. Lighthouse: not run (owner asked for minimal testing).

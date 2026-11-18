@@ -15,6 +15,7 @@ Browser-basierte Tools für Gebäudetechniker.
 | Klima        | h,x-Diagramm  | Luftzustände und Prozesse mit Leistungen      | BETA     |
 | –            | PDF-Editor    | PDF-Pläne ansehen, markieren und bearbeiten   | BETA     |
 | –            | PDF → DXF     | PDF-Pläne als massstäbliche DXF für CAD       | Released |
+| –            | Prinzipschema | Prinzipschemas Lüftung zeichnen, mit Assistent | BETA     |
 
 ## Dokumentation
 

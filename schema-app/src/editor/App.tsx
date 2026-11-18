@@ -34,6 +34,7 @@ import {
   setAutosave,
 } from '../io/session.ts';
 import { exportAs } from '../io/export.ts';
+import { initStyle } from '../io/style.ts';
 import { Icon } from './icons.tsx';
 import { loadExample } from '../io/examples.ts';
 
@@ -46,6 +47,7 @@ export function App() {
   useEffect(() => {
     const d = loadDraft();
     if (d) useEditor.getState().load(d.doc, d.fileName);
+    initStyle();
     initAutosave();
     void restoreLastFile();
   }, []);
@@ -91,7 +93,7 @@ export function App() {
     async exportAs(kind: 'pdf' | 'svg' | 'png') {
       const st = useEditor.getState();
       try {
-        await exportAs(st.doc, st.fileName, kind);
+        await exportAs(st.doc, st.fileName, kind, { mono: st.mono });
       } catch (e) {
         st.notify(`Export fehlgeschlagen: ${(e as Error).message}`, 'error');
       }

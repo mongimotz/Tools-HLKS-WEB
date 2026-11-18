@@ -60,6 +60,11 @@ export interface EditorState {
   /** External change while there are unsaved local edits. */
   conflict: { doc: Schema; text: string } | null;
   autosave: boolean;
+  /** Loaded style template (file name), null = default; styleRev changes when it does. */
+  styleName: string | null;
+  styleRev: number;
+  /** Export in black and white. */
+  mono: boolean;
   /** Last file that needs a permission click to reopen. */
   reopen: { name: string } | null;
 
@@ -108,6 +113,9 @@ export const useEditor = create<EditorState>((set, get) => ({
   conflict: null,
   autosave: false,
   reopen: null,
+  styleName: null,
+  styleRev: 0,
+  mono: false,
 
   load(doc, fileName, opts = {}) {
     const st = get();

@@ -7,7 +7,7 @@ import { frameBox, paperSize, titleBlockBox } from '../model/sheet.ts';
 import { symbolOf } from '../symbols/library.ts';
 import { placeMissing } from '../layout/place.ts';
 import { routeAll, type Route } from '../layout/route.ts';
-import { DEFAULT_STYLE, type Style } from './style.ts';
+import { getActiveStyle, type Style } from './style.ts';
 import { DEFAULT_TITLE_BLOCK, fillTemplate } from './titleblock.ts';
 import { baseline, esc, textWidth } from './text.ts';
 import { componentPinAt } from '../model/notes.ts';
@@ -50,7 +50,7 @@ const HL_COLOR: Record<Highlight, string> = {
 const f = (n: number) => String(r(n));
 
 export function renderSchema(input: Schema, opts: RenderOptions = {}): RenderResult {
-  const style = opts.style ?? DEFAULT_STYLE;
+  const style = opts.style ?? getActiveStyle();
   const s = placeMissing(input, style);
   const [W, H] = paperSize(s.sheet);
   const { routes, failed } = routeAll(s);

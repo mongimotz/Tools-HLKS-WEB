@@ -54,6 +54,10 @@ A list (or `{ "ops": [...] }`); the first invalid op aborts everything. Ports ma
 
 Example: `[{"op":"add_chain","strand":"supply","items":[{"type":"air.intake"},{"type":"air.filter","props":{"Klasse":"ePM1 55%"}},{"type":"air.fan"}]}]`
 
+## Style templates
+
+A style template is a JSON file with any part of `Style` (`src/render/style.ts`: `font`, `stroke`, `colors` incl. `media`, `layout`, `crossings`, `legend`, `titleBlock`). `titleBlock` is an SVG fragment in title-block mm (180 × 30) with `{{meta.*}}` / `{{sheet.*}}` placeholders. Editor: export menu «Stilvorlage laden …» (kept in this browser, never in the repo or the file). CLI: `render … --style style.json`. Company title blocks stay out of the repository.
+
 ## In-browser assistant
 
 The editor's assistant (OpenRouter, user's own key) uses the same operations through one tool `apply_operations` (`{ "ops": [...] }`). Its system prompt (`src/assistant/prompt.ts`) holds the symbols, media, layout rules and the schema in compact form. When you add an op or a symbol, the tool schema and prompt follow automatically; keep the rules in `prompt.ts` in line with this file.

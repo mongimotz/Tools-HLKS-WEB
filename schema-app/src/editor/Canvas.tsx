@@ -68,7 +68,8 @@ export function Canvas() {
       .filter((c) => c.pos && p.removed.includes(c.id))
       .map((c) => ({ id: c.id, box: componentBox(c) }));
   }, [st.proposal]);
-  const r = useMemo(() => renderSchema(doc, { grid: true, notes: true, highlight }), [doc, highlight]);
+  // styleRev: re-render when a style template is loaded.
+  const r = useMemo(() => renderSchema(doc, { grid: true, notes: true, highlight }), [doc, highlight, st.styleRev]);
   const inner = useMemo(() => r.svg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>\s*$/, ''), [r.svg]);
   const issues = useMemo(() => (st.preview ? [] : [...validate(st.doc), ...checkDrawing(r)]), [st.doc, st.preview, r]);
   const placed = r.placed;

@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useEditor } from './store.ts';
 import { Icon } from './icons.tsx';
 import { EXAMPLES } from '../io/examples.ts';
+import { loadStyleFile, resetStyle, setMono } from '../io/style.ts';
 
 export interface ToolbarActions {
   newDoc(): void;
@@ -160,6 +161,24 @@ export function Toolbar({ a }: { a: ToolbarActions }) {
             <button role="menuitem" data-testid="export-png" onClick={(e) => (closeMenu(e), a.exportAs('png'))}>
               PNG (300 dpi)
             </button>
+            <hr />
+            <label className="menu-check">
+              <input
+                type="checkbox"
+                checked={st.mono}
+                data-testid="export-mono"
+                onChange={(e) => setMono(e.target.checked)}
+              />{' '}
+              Schwarzweiss
+            </label>
+            <button role="menuitem" data-testid="style-load" onClick={(e) => (closeMenu(e), void loadStyleFile())}>
+              Stilvorlage laden …
+            </button>
+            {st.styleName && (
+              <button role="menuitem" title={st.styleName} onClick={(e) => (closeMenu(e), resetStyle())}>
+                Standardstil ({st.styleName} entfernen)
+              </button>
+            )}
           </div>
         </details>
       </div>
