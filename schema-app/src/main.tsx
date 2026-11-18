@@ -25,3 +25,9 @@ import { renderSchema } from './render/render.ts';
   )!.at;
   return (window as unknown as { __screen: (x: number, y: number) => { x: number; y: number } }).__screen(at[0], at[1]);
 };
+
+// Opens a FileSystemFileHandle as the live file (the end-to-end tests use files in the origin private file system).
+import { openHandle, poll } from './io/session.ts';
+(window as unknown as Record<string, unknown>).__openHandle = (h: FileSystemFileHandle) =>
+  openHandle(h as never, false);
+(window as unknown as Record<string, unknown>).__poll = poll;

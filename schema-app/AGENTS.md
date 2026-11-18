@@ -7,7 +7,8 @@ Short guide for AI agents that edit `.schema` files or this app. User-facing tex
 1. Prefer the CLI over hand edits: `npm run cli -- ops plan.schema ops.json` (atomic, validated, laid out).
 2. After every change run `npm run cli -- validate plan.schema` and `npm run cli -- render plan.schema -o out.png`, then **look at the PNG**. Zoom into details with `--crop x,y,w,h` (mm) and `--dpi 300`.
 3. Never change positions of components with `"pinned": true` (`move` needs `"force": true`; use it only when asked).
-4. Notes: `npm run cli -- notes plan.schema --open` → make the change → `npm run cli -- resolve plan.schema <noteId> "Antwort"`.
+4. Live sync: when the file is open in the editor (Chrome/Edge), the editor checks it every second and reloads it (one undo step). Write the whole file at once (the CLI does); a half-written file is skipped and retried. If the user has unsaved edits, the editor asks which version to keep.
+5. Notes: `npm run cli -- notes plan.schema --open` → make the change → `npm run cli -- resolve plan.schema <noteId> "Antwort"`.
 
 All CLI commands: `validate`, `render`, `ops`, `notes`, `resolve`, `new --template empty|ahu-basic`. Run them from `schema-app/` (`npm ci` once).
 

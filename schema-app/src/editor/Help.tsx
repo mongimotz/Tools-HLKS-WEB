@@ -5,7 +5,8 @@ import { Icon } from './icons.tsx';
 const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Strg';
 
 const KEYS: [string, string][] = [
-  [`${MOD} + S`, 'Speichern'],
+  [`${MOD} + S`, 'Speichern (in die geöffnete Datei)'],
+  [`${MOD} + Umschalt + S`, 'Speichern unter'],
   [`${MOD} + O`, 'Öffnen'],
   [`${MOD} + Z`, 'Rückgängig'],
   [`${MOD} + Y`, 'Wiederholen'],

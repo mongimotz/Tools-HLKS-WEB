@@ -21,8 +21,20 @@ import {
   newGroup,
   rotateSelection,
 } from './actions.ts';
-import { download, loadDraft, pickFile, readSchemaFile, saveAsDownload, saveDraft } from '../io/files.ts';
-import { SchemaError } from '../model/schema.ts';
+import { loadDraft, saveDraft } from '../io/files.ts';
+import {
+  closeFile,
+  initAutosave,
+  openFile,
+  reopenLast,
+  resolveConflict,
+  restoreLastFile,
+  save,
+  saveAs,
+  setAutosave,
+} from '../io/session.ts';
+import { exportAs } from '../io/export.ts';
+import { Icon } from './icons.tsx';
 import { loadExample } from '../io/examples.ts';
 
 export function App() {
@@ -30,10 +42,12 @@ export function App() {
   const [help, setHelp] = useState(false);
   const canvasSize = useRef({ w: 1000, h: 700 });
 
-  // Restore the browser draft once.
+  // Restore the browser draft, then the last file (live sync) if permission is still granted.
   useEffect(() => {
     const d = loadDraft();
     if (d) useEditor.getState().load(d.doc, d.fileName);
+    initAutosave();
+    void restoreLastFile();
   }, []);
   // Keep the draft current (debounced).
   useEffect(() => {
@@ -62,27 +76,28 @@ export function App() {
     newDoc() {
       const st = useEditor.getState();
       if (st.dirty && !confirm('Ungespeicherte Änderungen verwerfen?')) return;
+      closeFile();
       st.load(emptySchema(), 'prinzipschema.schema');
     },
     async open() {
-      const st = useEditor.getState();
-      const f = await pickFile();
-      if (!f) return;
-      try {
-        st.load(await readSchemaFile(f), f.name);
-        st.notify(`${f.name} geöffnet`);
-      } catch (e) {
-        st.notify(e instanceof SchemaError ? e.message : `Datei nicht lesbar: ${(e as Error).message}`, 'error');
-      }
+      await openFile();
     },
     save() {
-      const st = useEditor.getState();
-      saveAsDownload(st.doc, st.fileName);
-      st.markSaved();
+      void save();
     },
-    exportSvg() {
+    saveAs() {
+      void saveAs();
+    },
+    async exportAs(kind: 'pdf' | 'svg' | 'png') {
       const st = useEditor.getState();
-      download(st.fileName.replace(/\.schema$/, '') + '.svg', renderSchema(st.doc).svg, 'image/svg+xml');
+      try {
+        await exportAs(st.doc, st.fileName, kind);
+      } catch (e) {
+        st.notify(`Export fehlgeschlagen: ${(e as Error).message}`, 'error');
+      }
+    },
+    setAutosave(on: boolean) {
+      setAutosave(on);
     },
     tidy() {
       const st = useEditor.getState();
@@ -109,6 +124,7 @@ export function App() {
     async example(id: string) {
       const st = useEditor.getState();
       if (st.dirty && !confirm('Ungespeicherte Änderungen verwerfen?')) return;
+      closeFile();
       st.load(await loadExample(id), `${id}.schema`);
     },
   };
@@ -122,7 +138,8 @@ export function App() {
       const k = e.key.toLowerCase();
       if (mod && k === 's') {
         e.preventDefault();
-        actions.save();
+        if (e.shiftKey) actions.saveAs();
+        else actions.save();
         return;
       }
       if (mod && k === 'o') {
@@ -220,6 +237,23 @@ export function App() {
         }}
       >
         <Canvas />
+        {st.reopen && (
+          <div className="banner" role="status">
+            Zuletzt geöffnet: <b>{st.reopen.name}</b>
+            <button onClick={() => void reopenLast()} data-testid="reopen">
+              Wieder öffnen
+            </button>
+            <button className="tb" aria-label="Schliessen" onClick={() => useEditor.setState({ reopen: null })}>
+              <Icon name="close" />
+            </button>
+          </div>
+        )}
+        {st.syncError && (
+          <div className="banner error" role="alert" data-testid="sync-error">
+            Externe Änderung nicht geladen: {st.syncError} Neuer Versuch in 1 s.
+          </div>
+        )}
+        {st.conflict && <ConflictDialog />}
         {st.message && (
           <div className={`toast ${st.message.kind}`} role="status" data-testid="toast">
             {st.message.text}
@@ -228,6 +262,28 @@ export function App() {
       </main>
       <Properties issues={issues} />
       {help && <Help onClose={() => setHelp(false)} />}
+    </div>
+  );
+}
+
+function ConflictDialog() {
+  return (
+    <div className="modal-backdrop">
+      <div className="modal" role="alertdialog" aria-labelledby="conflict-title" data-testid="conflict">
+        <h2 id="conflict-title">Datei wurde extern geändert</h2>
+        <p>Die Datei wurde ausserhalb des Editors geändert, und hier gibt es ungespeicherte Änderungen.</p>
+        <div className="modal-buttons">
+          <button onClick={() => void resolveConflict('external')} data-testid="conflict-external">
+            Externe Version laden
+          </button>
+          <button onClick={() => void resolveConflict('mine')} data-testid="conflict-mine">
+            Meine behalten (überschreiben)
+          </button>
+          <button onClick={() => void resolveConflict('copy')} data-testid="conflict-copy">
+            Beide als Kopie
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

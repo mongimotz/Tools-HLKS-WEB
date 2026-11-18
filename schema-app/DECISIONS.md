@@ -57,3 +57,13 @@ Format: date | decision | alternatives | reason.
 - A connection drawn from an input port to an output port is stored output → input, so from → to stays the flow direction.
 - The first edit of a file with auto-placed components (`pos: null`) writes the computed positions into the file, so what the user sees is what is saved.
 - Browser draft in `localStorage` until phase 4 adds file handles (only this device; nothing leaves the browser).
+
+## 2026-11-18 | Live sync details
+- Change detection: `lastModified` every 1 s, then a text comparison (a touched but unchanged file is ignored). An invalid file keeps the old `lastModified` as known, so the next poll retries it.
+- «Beide als Kopie»: the user's version is written to a new file (save picker, suggested name "… (Kopie).schema"; download in other browsers); the editor then continues with the external version of the original file, so live sync with the other program keeps working.
+- Test approach: files in the origin private file system are real `FileSystemFileHandle`s with the same API; the test writes into them like an external program. A test hook `window.__openHandle` opens such a handle.
+- The browser draft (localStorage) stays as a safety net; an open file has priority once its permission is granted.
+
+## 2026-11-18 | Export
+- PDF via jsPDF + svg2pdf from the same SVG as the editor, page size = sheet size (1:1). Plex 400/600 embedded; svg2pdf requests the style "600normal" for semibold, registered explicitly.
+- PNG: SVG with fonts embedded as data URLs drawn onto a canvas at 300 dpi (A3: 4961 × 3508 px).

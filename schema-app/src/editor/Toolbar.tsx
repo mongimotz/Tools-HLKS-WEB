@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { useEffect } from 'react';
 import { useEditor } from './store.ts';
 import { Icon } from './icons.tsx';
 import { EXAMPLES } from '../io/examples.ts';
@@ -7,12 +8,18 @@ export interface ToolbarActions {
   newDoc(): void;
   open(): void;
   save(): void;
-  exportSvg(): void;
+  saveAs(): void;
+  exportAs(kind: 'pdf' | 'svg' | 'png'): void;
   tidy(): void;
   fit(): void;
   zoom(k: number): void;
   help(): void;
   example(id: string): void;
+  setAutosave(on: boolean): void;
+}
+
+function closeMenu(e: React.MouseEvent) {
+  (e.currentTarget as HTMLElement).closest('details')?.removeAttribute('open');
 }
 
 function B({
@@ -48,6 +55,20 @@ const MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator
 
 export function Toolbar({ a }: { a: ToolbarActions }) {
   const st = useEditor();
+  // Open menus close on a click elsewhere or Escape.
+  useEffect(() => {
+    const close = (e: Event) => {
+      document.querySelectorAll('details.menu[open]').forEach((d) => {
+        if (e instanceof KeyboardEvent ? e.key === 'Escape' : !d.contains(e.target as Node)) d.removeAttribute('open');
+      });
+    };
+    document.addEventListener('pointerdown', close);
+    document.addEventListener('keydown', close);
+    return () => {
+      document.removeEventListener('pointerdown', close);
+      document.removeEventListener('keydown', close);
+    };
+  }, []);
   return (
     <header className="toolbar">
       <div className="brand">
@@ -61,7 +82,13 @@ export function Toolbar({ a }: { a: ToolbarActions }) {
       <div className="tb-group">
         <B icon="new" label="Neu" onClick={a.newDoc} testid="btn-new" />
         <B icon="open" label="Öffnen" onClick={a.open} keys={`${MOD}O`} testid="btn-open" />
-        <B icon="save" label="Speichern" onClick={a.save} keys={`${MOD}S`} testid="btn-save" />
+        <B
+          icon="save"
+          label={st.handle ? 'Speichern (in die Datei)' : 'Speichern'}
+          onClick={a.save}
+          keys={`${MOD}S`}
+          testid="btn-save"
+        />
         <select
           className="tb-select"
           aria-label="Beispiel laden"
@@ -99,7 +126,22 @@ export function Toolbar({ a }: { a: ToolbarActions }) {
       </div>
       <div className="tb-group">
         <B icon="tidy" label="Aufräumen (nicht fixierte Elemente neu anordnen)" onClick={a.tidy} testid="btn-tidy" />
-        <B icon="export" label="Als SVG exportieren" onClick={a.exportSvg} testid="btn-export" />
+        <details className="menu" data-testid="export-menu">
+          <summary className="tb" title="Exportieren" aria-label="Exportieren">
+            <Icon name="export" />
+          </summary>
+          <div className="menu-list" role="menu">
+            <button role="menuitem" data-testid="export-pdf" onClick={(e) => (closeMenu(e), a.exportAs('pdf'))}>
+              PDF (Vektor, {st.doc.sheet.size} 1:1)
+            </button>
+            <button role="menuitem" data-testid="export-svg" onClick={(e) => (closeMenu(e), a.exportAs('svg'))}>
+              SVG
+            </button>
+            <button role="menuitem" data-testid="export-png" onClick={(e) => (closeMenu(e), a.exportAs('png'))}>
+              PNG (300 dpi)
+            </button>
+          </div>
+        </details>
       </div>
       <div className="tb-group">
         <B icon="minus" label="Verkleinern" onClick={() => a.zoom(1 / 1.25)} keys="-" />

@@ -6,7 +6,7 @@
 | 1 Model, validation, renderer, CLI | done |
 | 2 Ventilation symbols, chain layout, ops | done (stop point: owner review) |
 | 3 Editor | done |
-| 4 Files, live sync, export | open |
+| 4 Files, live sync, export | done (stop point: owner review) |
 | 5 Notes | open |
 | 6 OpenRouter assistant | open |
 | 7 Styles, polish, start page | open |
@@ -41,3 +41,11 @@
 - Tests: Vitest 100, Playwright 4 (build 6 components by mouse → save → reopen → identical file; undo/redo; insert into a line; rectangle selection, group, duplicate, delete). `npm run test:e2e` builds and serves `dist/` itself.
 - Fixed on the way: Ctrl+S saved a stale document (keyboard handler kept an old state); file input "cancel" fired before "change" in Chromium.
 - Open: text items can be edited but not created in the UI yet (only via file/ops); note tool comes in phase 5.
+
+## Phase 4
+- File System Access API (`src/io/fsa.ts`, `session.ts`): open and save in place (Ctrl+S, Ctrl+Shift+S save as), last file remembered in IndexedDB; on start it reopens directly if permission is still granted, else a banner offers «Wieder öffnen» (permission needs a click).
+- Live sync: polling every second (`lastModified`, then content). No local edits → reload as one undo step with a message, view and selection kept. Unsaved edits → dialog «Externe Version laden», «Meine behalten (überschreiben)», «Beide als Kopie». Invalid/half-written file → banner with the error line, retried every second. Own writes are not taken as external changes. Optional autosave 2 s after the last edit (toolbar, only with an open file).
+- Other browsers: file input + download, a one-time hint that live sync needs Chrome or Edge.
+- Export menu: PDF (vector, sheet size 1:1, Plex embedded, text as text), SVG, PNG 300 dpi (fonts embedded). jsPDF/svg2pdf load only on PDF export.
+- E2E (10 total): reload within 2 s after the test writes the file, half-written file, conflict (both choices), Ctrl+S into the file, PDF 420 × 297 mm with extractable text and no raster images, SVG/PNG (4961 × 3508 px). The live-sync tests use real file handles of the origin private file system; the native pickers cannot be automated.
+- Not tested automatically: the native open/save pickers and the permission prompt after a browser restart (manual check in Chrome).

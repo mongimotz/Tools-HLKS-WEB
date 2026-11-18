@@ -39,6 +39,15 @@ export interface EditorState {
   dirty: boolean;
   fileName: string;
   message: { text: string; kind: 'info' | 'error' } | null;
+  /** Open file handle (File System Access API), null = no live file. */
+  handle: FileSystemFileHandle | null;
+  /** External change that could not be loaded (e.g. half-written JSON). */
+  syncError: string | null;
+  /** External change while there are unsaved local edits. */
+  conflict: { doc: Schema; text: string } | null;
+  autosave: boolean;
+  /** Last file that needs a permission click to reopen. */
+  reopen: { name: string } | null;
 
   load(doc: Schema, fileName?: string, opts?: { keepView?: boolean; asStep?: string }): void;
   change(label: string, recipe: (d: Draft<Schema>) => void): void;
@@ -71,6 +80,11 @@ export const useEditor = create<EditorState>((set, get) => ({
   dirty: false,
   fileName: 'prinzipschema.schema',
   message: null,
+  handle: null,
+  syncError: null,
+  conflict: null,
+  autosave: false,
+  reopen: null,
 
   load(doc, fileName, opts = {}) {
     const st = get();

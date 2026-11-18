@@ -6,6 +6,11 @@ import { connect, doc, dropSymbol, fresh, screen } from './helpers.ts';
 const CHAIN = ['air.intake', 'air.damper.motor', 'air.filter', 'air.heater', 'air.fan', 'air.silencer'];
 
 test('build a schema with 6 components by mouse, save, reopen: same file', async ({ page }) => {
+  // As in Safari/Firefox: no File System Access API, so save = download and open = file input.
+  await page.addInitScript(() => {
+    delete (window as any).showOpenFilePicker;
+    delete (window as any).showSaveFilePicker;
+  });
   await fresh(page);
   for (const [i, type] of CHAIN.entries()) await dropSymbol(page, type, 80 + i * 30, 140);
   let d = await doc(page);

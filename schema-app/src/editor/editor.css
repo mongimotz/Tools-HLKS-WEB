@@ -512,3 +512,118 @@ kbd {
   border-radius: 4px;
   background: var(--hover);
 }
+
+/* Menus, banners, dialogs (phase 4) */
+.menu {
+  position: relative;
+}
+.menu summary {
+  list-style: none;
+}
+.menu summary::-webkit-details-marker {
+  display: none;
+}
+.menu-list {
+  position: absolute;
+  top: 36px;
+  left: 0;
+  z-index: 10;
+  min-width: 190px;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.14);
+}
+.menu-list button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+}
+.menu-list button:hover {
+  background: var(--hover);
+}
+.live {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #2e9a4a;
+  vertical-align: 1px;
+}
+.autosave {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.banner {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 5;
+  max-width: 90%;
+}
+.banner.error {
+  border-color: var(--error);
+  color: var(--error);
+  padding-right: 14px;
+}
+.banner button:not(.tb) {
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  background: none;
+  border-radius: 6px;
+  padding: 3px 10px;
+}
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 20;
+}
+.modal {
+  width: min(520px, 92vw);
+  padding: 16px 18px;
+  background: var(--panel);
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+.modal h2 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+.modal-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.modal-buttons button {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+}
+.modal-buttons button:first-child {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
