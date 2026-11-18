@@ -5,3 +5,8 @@ Thumbs.db
 
 # real plans for local PDF to DXF tests (never committed)
 tests/fixtures/pdf-to-dxf/real/
+
+# Prinzipschema: local norm PDFs and company references (never committed)
+schema-app/_local/
+schema-app/normen/
+_site/

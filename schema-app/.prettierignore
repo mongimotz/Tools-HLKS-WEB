@@ -1,0 +1,5 @@
+dist
+node_modules
+examples
+tests/visual
+src/symbols/**/*.json

@@ -1,0 +1,47 @@
+{
+  "name": "hlks-schema-app",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-or-later",
+  "description": "Prinzipschema editor for building services (served at /schema/).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run symbols && tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "symbols": "node scripts/gen-symbol-index.mjs",
+    "cli": "tsx cli/schema-cli.ts",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "check:site": "node scripts/check-site.mjs"
+  },
+  "dependencies": {
+    "elkjs": "^0.12.1",
+    "immer": "^11.2.10",
+    "jspdf": "^4.2.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "svg2pdf.js": "^2.9.0",
+    "zod": "^4.6.7",
+    "zustand": "^5.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.65.1",
+    "@resvg/resvg-js": "^2.6.2",
+    "@types/node": "^26.6.6",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^6.3.0",
+    "eslint": "^10.15.0",
+    "pdfjs-dist": "^6.5.438",
+    "prettier": "^3.10.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.73.0",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
+  }
+}
