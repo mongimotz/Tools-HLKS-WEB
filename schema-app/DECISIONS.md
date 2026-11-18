@@ -33,7 +33,7 @@ Format: date | decision | alternatives | reason.
 
 ## 2026-11-18 | Default style follows Swiss practice (owner request)
 - The owner's sample schemas (several Swiss offices) all use AUL green, ZUL red, ABL yellow, FOL blue, heating flow red / return blue. This replaces the EN 12792 colours above (ZUL blue, FOL brown) as default; a style template can bring them back.
-- Air lines are drawn as thick ducts (`stroke.duct` 1 mm), pipes stay 0.5 mm. Device frames (groups) are magenta and dashed, component IDs blue (`colors.unit`, `colors.label`). Black-and-white output keeps everything in ink.
+- Air lines are drawn as ducts with a black edge (`stroke.duct` 0.8 mm overall, `stroke.ductOutline` 0.1 mm; owner: slightly thinner than the samples, thinner edges), pipes stay 0.5 mm. Device frames (groups) are magenta and dashed, component IDs blue (`colors.unit`, `colors.label`). Black-and-white output keeps everything in ink.
 - Red-green: AUL and ZUL differ in hue only for colour-blind readers; the line codes and the legend name them, and black-and-white output uses dash patterns.
 
 ## 2026-11-18 | Symbols

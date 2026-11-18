@@ -151,10 +151,9 @@ export function renderSchema(input: Schema, opts: RenderOptions = {}): RenderRes
     const signal = m?.kind === 'signal';
     const color = opts.mono ? ink : (style.colors.media[con.medium] ?? m?.color ?? ink);
     const dash = opts.mono ? m?.dash || '' : signal ? m?.dash || '' : '';
-    const sw = lineWidth(con.medium, style);
     const d = pathWithCrossings(pts, crossings.get(con.id) ?? [], style.crossings);
     out.push(
-      `<g class="con" data-id="${esc(con.id)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${sw}"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
+      `<g class="con" data-id="${esc(con.id)}">` + linePaths(d, con.medium, color, dash, style, !!opts.mono),
     );
     if (!signal) {
       const seg = longestSegment(pts);
@@ -417,7 +416,7 @@ function legend(s: Schema, used: string[], style: Style, mono: boolean): string 
     const color = mono ? style.colors.ink : (style.colors.media[m.id] ?? m.color);
     const dash = mono || m.kind === 'signal' ? m.dash : '';
     parts.push(
-      `<path d="M${f(x)} ${f(y + 1.2)}H${f(x + 10)}" stroke="${color}" stroke-width="${lineWidth(m.id, style)}"${dash ? ` stroke-dasharray="${dash}"` : ''} fill="none"/>` +
+      linePaths(`M${f(x)} ${f(y + 1.2)}H${f(x + 10)}`, m.id, color, dash, style, mono) +
         `<text x="${f(x + 12)}" y="${f(y + 1.2 + baseline(size) / 2)}" font-size="${size}" fill="${style.colors.ink}" stroke="none"><tspan font-weight="600">${esc(m.code)}</tspan> ${esc(m.name)}</text>`,
     );
   });
@@ -464,4 +463,17 @@ function notePins(s: Schema, pins: { id: string; at: Vec }[]): string {
 function lineWidth(mediumId: string, style: Style): number {
   if (medium(mediumId)?.kind === 'signal') return style.stroke.signal;
   return mediumId.startsWith('air.') ? style.stroke.duct : style.stroke.line;
+}
+
+/** A line as SVG paths: ducts in colour get a black edge (outline path below, coloured core on top). */
+function linePaths(d: string, mediumId: string, color: string, dash: string, style: Style, mono: boolean): string {
+  const sw = lineWidth(mediumId, style);
+  const da = dash ? ` stroke-dasharray="${dash}"` : '';
+  const edge = style.stroke.ductOutline;
+  const cased = !mono && mediumId.startsWith('air.') && edge > 0 && sw > 2 * edge;
+  if (!cased) return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${sw}"${da}/>`;
+  return (
+    `<path d="${d}" fill="none" stroke="${style.colors.ink}" stroke-width="${f(sw)}"${da}/>` +
+    `<path d="${d}" fill="none" stroke="${color}" stroke-width="${f(sw - 2 * edge)}"${da}/>`
+  );
 }

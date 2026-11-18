@@ -5,8 +5,8 @@ import { MEDIA } from '../model/media.ts';
 export interface Style {
   id: string;
   font: { family: string; label: number; small: number; normal: number; large: number };
-  /** line: pipes, duct: air lines (air.*), signal: Wirklinie. */
-  stroke: { line: number; duct: number; signal: number; symbol: number; frame: number; thin: number; group: number };
+  /** line: pipes, duct: air lines (air.*, total width incl. outline), ductOutline: black edge of a duct (0 = none), signal: Wirklinie. */
+  stroke: { line: number; duct: number; ductOutline: number; signal: number; symbol: number; frame: number; thin: number; group: number };
   /** group: secondary text (title block labels); unit: device frame (group); label: component IDs. */
   colors: {
     ink: string;
@@ -34,7 +34,7 @@ export const DEFAULT_STYLE: Style = {
     normal: 3.5,
     large: 5,
   },
-  stroke: { line: 0.5, duct: 1, signal: 0.25, symbol: 0.35, frame: 0.7, thin: 0.25, group: 0.3 },
+  stroke: { line: 0.5, duct: 0.8, ductOutline: 0.1, signal: 0.25, symbol: 0.35, frame: 0.7, thin: 0.25, group: 0.3 },
   colors: {
     ink: '#1a1a1a',
     paper: '#ffffff',

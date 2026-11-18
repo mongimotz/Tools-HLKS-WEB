@@ -58,7 +58,7 @@ Example: `[{"op":"add_chain","strand":"supply","items":[{"type":"air.intake"},{"
 
 ## Style templates
 
-A style template is a JSON file with any part of `Style` (`src/render/style.ts`: `font`, `stroke` incl. `duct` for air lines, `colors` incl. `unit` (device frame), `label` (IDs) and `media`, `layout`, `crossings`, `legend`, `titleBlock`). `titleBlock` is an SVG fragment in title-block mm (180 × 30) with `{{meta.*}}` / `{{sheet.*}}` placeholders. Editor: export menu «Stilvorlage laden …» (kept in this browser, never in the repo or the file). CLI: `render … --style style.json`. Company title blocks stay out of the repository.
+A style template is a JSON file with any part of `Style` (`src/render/style.ts`: `font`, `stroke` incl. `duct` and `ductOutline` for air lines, `colors` incl. `unit` (device frame), `label` (IDs) and `media`, `layout`, `crossings`, `legend`, `titleBlock`). `titleBlock` is an SVG fragment in title-block mm (180 × 30) with `{{meta.*}}` / `{{sheet.*}}` placeholders. Editor: export menu «Stilvorlage laden …» (kept in this browser, never in the repo or the file). CLI: `render … --style style.json`. Company title blocks stay out of the repository.
 
 ## In-browser assistant
 
