@@ -26,13 +26,13 @@ export function buildCsv(doc) {
       ].join(';'));
     }
     for (const b of c.blocks) {
-      if (b.type === 'point') continue;
+      if (b.type === 'point' || b.type === 'comfort') continue;
       const res = r.blocks.get(b.id);
       const v = res.values;
       const label = (id) => r.points.get(id)?.label ?? '';
       const water = v.water ?? (v.condensate ? -v.condensate : null);
       lines.push([
-        q(name), q('Prozess'), q(b.type === 'line' ? '' : label(b.id)), q(BLOCK_LABELS[b.type]), q(res.inputs.map(label).join(' + ')),
+        q(name), q('Prozess'), q(res.out.length ? label(b.id) : ''), q(BLOCK_LABELS[b.type]), q(res.inputs.map(label).join(' + ')),
         '', '', '', '', '', '', '', '', '', n(v.q, 2), n(water, 2),
       ].join(';'));
     }

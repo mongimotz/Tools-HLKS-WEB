@@ -14,11 +14,13 @@ export const BLOCK_LABELS = {
   hrv: 'WRG',
   mix: 'Mischung',
   fan: 'Ventilator',
+  room: 'Raum',
   line: 'Verbindung',
+  comfort: 'Behaglichkeit',
 };
 
 /** Order of the + menu. */
-export const MENU_ORDER = ['point', 'hrv', 'mix', 'heater', 'cooler', 'steam', 'adiabatic', 'fan', 'line'];
+export const MENU_ORDER = ['point', 'hrv', 'mix', 'heater', 'cooler', 'steam', 'adiabatic', 'fan', 'room', 'line', 'comfort'];
 
 /** Properties of a state: symbol (HTML), plain symbol (PDF, CSV), unit, decimals. */
 export const KEY_INFO = {
@@ -33,7 +35,7 @@ export const KEY_INFO = {
 /** Mode buttons of the process blocks. */
 export const MODE_LABELS = {
   heater: { t: 't', q: 'Q' },
-  cooler: { t: 't', q: 'Q' },
+  cooler: { t: 't', q: 'Q', bf: 'BF' },
   steam: { x: 'x', phi: 'φ', m: 'ṁ' },
   adiabatic: { eta: 'η', x: 'x', phi: 'φ' },
   hrv: { sensible: 'sensibel', enthalpy: 'Enthalpie' },
@@ -42,7 +44,7 @@ export const MODE_LABELS = {
 
 /** Second input of two-input blocks. */
 export const SECOND_INPUT = { hrv: 'Abluft', mix: 'mit', line: 'nach' };
-export const FIRST_INPUT = { hrv: 'Aussenluft', mix: 'von', line: 'von' };
+export const FIRST_INPUT = { hrv: 'Aussenluft', mix: 'von', line: 'von', room: 'Zuluft' };
 
 export const SEVERITY_LABELS = { error: 'Fehler', warning: 'Warnung', info: 'Hinweis' };
 
@@ -62,6 +64,9 @@ export function issueText(issue) {
     case 'not-reached': return 'Ziel nicht erreichbar';
     case 'share-range': return 'Anteil 0 bis 100 %';
     case 'input-missing': return 'Eintritt fehlt';
+    case 'ref-missing': return 'Bezugspunkt fehlt';
+    case 'bf-range': return 'Bypassfaktor 0 bis 1';
+    case 'comfort-range': return 'Grenzen ungültig';
     case 'fog': return `Nebelgebiet, Wasser ${v(2, 'g/kg')}`;
     case 'outside': return 'Ausserhalb des Diagramms';
     case 'frost': return `Fortluft ${v(1, '°C')}, Vereisung`;

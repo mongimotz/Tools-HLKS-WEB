@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 
 import * as P from '../tools/hx-diagram/psychro.js';
-import { computeCalculation, computeProject, snapshotProjectOf, CALC_VERSION, autoLabels } from '../tools/hx-diagram/calc.js';
+import { computeCalculation, computeProject, snapshotProjectOf, summaryOf, comfortZone, CALC_VERSION, T_FEED, autoLabels } from '../tools/hx-diagram/calc.js';
+import { stepsOf } from '../tools/hx-diagram/steps.js';
 import { normalizeInputs, exampleInputs, emptyInputs, newBlock, TOOL_ID, INPUT_VERSION } from '../tools/hx-diagram/defaults.js';
 import { buildChart, sheetMap, cleanRange, DEFAULT_RANGE } from '../tools/hx-diagram/chart.js';
 import { buildReport, buildBlankSheet } from '../tools/hx-diagram/report.js';
@@ -119,6 +120,107 @@ test('adiabatic humidifier: about constant h, efficiency to saturation', () => {
   near(b.state.t, a.state.tw, 0.01, 'reaches the wet bulb');
   near(b.state.phi, 1, 1e-6, 'saturated');
   near(b.state.h - a.state.h, ((b.state.x - a.state.x) / 1000) * 4.19 * a.state.tw, 1e-6, 'Δh = Δx h_w');
+});
+
+test('cooler: surface from the water temperatures, bypass factor mode, water flow of the coil', () => {
+  const blocks = (mode, extra) => [point('b1', 30, 50), { id: 'b2', type: 'cooler', from: 'b1', mode, ts: null, vl: 6, rl: 12, ...extra }];
+  const r = run(blocks('t', { t: 16 }));
+  const v = r.blocks.get('b2').values;
+  near(v.ts, 10, 1e-12, 't_O = (VL + RL) / 2 + 1');
+  near(v.waterFlow, (Math.abs(v.q) * 3600) / (P.CP_WATER * 6), 1e-9, 'water flow');
+  // the bypass factor mode with the reported BF gives the same outlet
+  const r2 = run(blocks('bf', { bf: v.bf }));
+  near(r2.points.get('b2').state.t, 16, 1e-6, 't from BF');
+  near(r2.points.get('b2').state.x, r.points.get('b2').state.x, 1e-6, 'x from BF');
+  // BF = 0 reaches the coil point
+  const r3 = run(blocks('bf', { bf: 0 }));
+  near(r3.points.get('b2').state.t, 10, 1e-6, 'BF 0 at the surface');
+  assert.equal(run(blocks('bf', { bf: 1.5 })).blocks.get('b2').issues[0].code, 'bf-range');
+});
+
+test('heater: water flow from supply and return temperatures', () => {
+  const r = run([point('b1', 5, 80), { id: 'b2', type: 'heater', from: 'b1', mode: 't', t: 25, vl: 50, rl: 35 }]);
+  const v = r.blocks.get('b2').values;
+  near(v.waterFlow, (v.q * 3600) / (P.CP_WATER * 15), 1e-9, 'water flow');
+  assert.equal(run([point('b1', 5, 80), { id: 'b2', type: 'heater', from: 'b1', mode: 't', t: 25 }]).blocks.get('b2').values.waterFlow, null);
+});
+
+test('steam generator heats the feed water and evaporates it', () => {
+  const r = run([point('b1', 22, 20), { id: 'b2', type: 'steam', from: 'b1', mode: 'x', x: 7, ts: 100 }]);
+  const v = r.blocks.get('b2').values;
+  near(v.generator, (v.water * (P.R0 + P.CP_VAPOUR * 100 - P.CP_WATER * T_FEED)) / 3600, 1e-9, 'Q_DE');
+});
+
+test('room: sensible load warms, moisture load adds water; balances close', () => {
+  const r = run([point('b1', 17, 60), { id: 'b2', type: 'room', from: 'b1', qs: 10, mw: 4 }]);
+  const a = r.points.get('b1');
+  const b = r.points.get('b2');
+  const v = r.blocks.get('b2').values;
+  near((a.m * (b.state.x - a.state.x)) / 1000, 4, 1e-9, 'water balance');
+  near((a.m * (P.CP_AIR + (P.CP_VAPOUR * b.state.x) / 1000) * (b.state.t - a.state.t)) / 3600, 10, 1e-9, 'sensible');
+  near(v.q, (a.m * (b.state.h - a.state.h)) / 3600, 1e-9, 'total');
+  near(v.latent, v.q - 10, 1e-12, 'latent');
+  near(v.ratio, (b.state.h - a.state.h) / ((b.state.x - a.state.x) / 1000), 1e-6, 'Δh/Δx');
+  assert.equal(run([point('b1', 17, 60), { id: 'b2', type: 'room', from: 'b1', qs: 10 }], null).blocks.get('b2').issues[0].code, 'flow-missing');
+});
+
+test('points refer to earlier points with an offset; later or missing points give an error', () => {
+  const r = run([
+    point('b1', 20, 50),
+    { id: 'b2', type: 'point', given: [{ key: 't', ref: 'b1', value: 2 }, { key: 'x', ref: 'b1', value: null }] },
+    { id: 'b3', type: 'point', given: [{ key: 't', ref: 'b4', value: 0 }, { key: 'x', value: 5 }] },
+    point('b4', 10, 50),
+  ]);
+  near(r.points.get('b2').state.t, 22, 1e-9, 't = b1 + 2');
+  near(r.points.get('b2').state.x, r.points.get('b1').state.x, 1e-9, 'x = b1');
+  assert.equal(r.blocks.get('b3').issues[0].code, 'ref-missing');
+});
+
+test('mixing of three flows by shares and by flows conserves enthalpy and water', () => {
+  const pts = [point('b1', -5, 80, { flow: 1000 }), point('b2', 22, 40, { flow: 2000 }), point('b3', 30, 30, { flow: 500 })];
+  const flows = run([...pts, { id: 'b4', type: 'mix', from: 'b1', to: 'b2', parts: [{ from: 'b3' }], mode: 'flows' }]);
+  const ins = ['b1', 'b2', 'b3'].map((id) => flows.points.get(id));
+  const m = ins.reduce((s, i) => s + i.m, 0);
+  const out = flows.points.get('b4');
+  near(out.m, m, 1e-9, 'mass');
+  near(out.state.h, ins.reduce((s, i) => s + i.m * i.state.h, 0) / m, 1e-9, 'h');
+  near(out.state.x, ins.reduce((s, i) => s + i.m * i.state.x, 0) / m, 1e-12, 'x');
+  const shares = flows.blocks.get('b4').values.shares;
+  const byShare = run([...pts, { id: 'b4', type: 'mix', from: 'b1', to: 'b2', share: shares[0], parts: [{ from: 'b3', share: shares[2] }], mode: 'share' }]);
+  near(byShare.points.get('b4').state.h, out.state.h, 1e-9, 'shares give the same state');
+  const over = run([...pts, { id: 'b4', type: 'mix', from: 'b1', to: 'b2', share: 70, parts: [{ from: 'b3', share: 40 }], mode: 'share' }]);
+  assert.equal(over.blocks.get('b4').issues[0].code, 'share-range');
+});
+
+test('comfort zone: closed path within the limits, cut at x max', () => {
+  const zone = comfortZone({ tMin: 20, tMax: 26, phiMin: 30, phiMax: 60, xMax: 10 }, p);
+  for (const q of zone) {
+    const t = P.tFromHX(q.h, q.x, p);
+    const s = P.stateTX(t, q.x, p);
+    assert.ok(t > 20 - 1e-6 && t < 26 + 1e-6, `t ${t}`);
+    assert.ok(s.phi > 0.3 - 1e-3 && s.phi < 0.6 + 1e-3, `phi ${s.phi}`); // straight chords between samples
+    assert.ok(q.x <= 10 + 1e-9, `x ${q.x}`);
+  }
+  assert.ok(zone.some((q) => Math.abs(q.x - 10) < 1e-9), 'cut at x max');
+  assert.equal(comfortZone({ tMin: 26, tMax: 20, phiMin: 30, phiMax: 60, xMax: null }, p), null);
+  const r = run([{ id: 'b1', type: 'comfort', tMin: 30, tMax: 20 }]);
+  assert.equal(r.blocks.get('b1').issues[0].code, 'comfort-range');
+  assert.equal(r.points.size, 0);
+});
+
+test('summary and calculation steps of the example', () => {
+  const inputs = exampleInputs();
+  const results = computeProject(inputs);
+  for (const c of inputs.calculations) {
+    const r = results.calculations.get(c.id);
+    const sum = summaryOf(r);
+    assert.ok(sum.heat > 0 || sum.cool > 0, 'coil power');
+    for (const b of c.blocks) {
+      const lines = stepsOf(b, r, (id) => r.points.get(id)?.label);
+      if (b.type !== 'point' && b.type !== 'comfort') assert.ok(lines.length >= 2, `${b.type} has steps`);
+      for (const line of lines) assert.ok(!/undefined|NaN/.test(line), line);
+    }
+  }
 });
 
 test('missing inputs and flows give notices, not exceptions', () => {
@@ -264,7 +366,7 @@ test('CSV: every point and process of every calculation', () => {
   const csv = buildCsv({ project, inputs });
   const lines = csv.trim().split('\r\n');
   const result = computeProject(inputs);
-  const expected = inputs.calculations.reduce((n, c) => n + result.calculations.get(c.id).points.size + c.blocks.filter((b) => b.type !== 'point').length, 1);
+  const expected = inputs.calculations.reduce((n, c) => n + result.calculations.get(c.id).points.size + c.blocks.filter((b) => b.type !== 'point' && b.type !== 'comfort').length, 1);
   assert.equal(lines.length, expected);
   assert.ok(csv.startsWith('﻿'));
   assert.ok(csv.includes('"Winter";"Zustand";"AU"'));

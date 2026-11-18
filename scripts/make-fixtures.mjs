@@ -89,7 +89,7 @@ const tools = [
   },
 ];
 
-/** h,x diagram: every process type, mixing by flows, an enthalpy wheel and a room line. */
+/** h,x diagram: every process type, mixing by flows and of three inputs, an enthalpy wheel, a room line and loads, references, own colours, a comfort zone. */
 function hxProcesses() {
   return hxDefaults.normalizeInputs({
     site: { altitude: 1200 },
@@ -109,7 +109,12 @@ function hxProcesses() {
         { id: 'b9', type: 'cooler', label: 'KÜ', from: 'b8', mode: 'q', q: 5, ts: 12 },
         { id: 'b10', type: 'steam', label: 'ZU', from: 'b9', mode: 'm', m: 6, ts: 110 },
         { id: 'b11', type: 'point', label: 'RA', given: [{ key: 't', value: 22 }, { key: 'tw', value: 13 }] },
-        { id: 'b12', type: 'line', from: 'b10', to: 'b11' },
+        { id: 'b12', type: 'line', from: 'b10', to: 'b11', color: 'chart-4' },
+        { id: 'b13', type: 'room', label: 'R2', from: 'b10', qs: 6, mw: 1.5, color: 'chart-6' },
+        { id: 'b14', type: 'point', label: 'P', given: [{ key: 't', ref: 'b11', value: 3 }, { key: 'x', ref: 'b13', value: null }] },
+        { id: 'b15', type: 'mix', label: 'M3', from: 'b11', to: 'b13', parts: [{ from: 'b14', share: 25 }], mode: 'share', share: 40 },
+        { id: 'b16', type: 'cooler', label: 'K2', from: 'b15', mode: 'bf', bf: 0.2, ts: null, vl: 8, rl: 14 },
+        { id: 'b17', type: 'comfort', tMin: 20, tMax: 26, phiMin: 30, phiMax: 60, xMax: 11 },
       ],
     }],
   });

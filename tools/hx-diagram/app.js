@@ -10,6 +10,9 @@ import {
   BLOCKS,
   TWO_INPUTS,
   LABEL_MAX,
+  COLORS,
+  NO_POINT,
+  COMFORT_PRESETS,
   normalizeInputs,
   emptyInputs,
   exampleInputs,
@@ -40,6 +43,7 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const ui = {
   activeCalculationId: null,
   selected: null, // block id
+  colorPick: null, // block id whose colour swatches are open
   pointTool: false,
   locked: true, // view fixed: no wheel zoom, no panning
   rangeTimer: null, // history step after wheel zooming
@@ -156,6 +160,19 @@ async function exportBlank() {
   } catch (e) {
     console.error(e);
     toast(`PDF-Fehler: ${e.message}`, { kind: 'error', timeout: 8000 });
+  }
+}
+
+async function exportImage() {
+  try {
+    const { buildPng } = await import('./image.js'); // light colours and the embedded font load only when needed
+    const host = $('#diagram');
+    const c = activeCalculation();
+    const bytes = await buildPng(ui.result, c, pressure(), { width: host.clientWidth, height: host.clientHeight, font: FONT });
+    download(bytes, safeFileName([...fileBaseName(), calculationName(c, inputs().calculations.indexOf(c))], 'png'), 'image/png');
+  } catch (e) {
+    console.error(e);
+    toast(`Bild-Fehler: ${e.message}`, { kind: 'error', timeout: 8000 });
   }
 }
 
@@ -283,10 +300,22 @@ function paramFields(b) {
   switch (b.type) {
     case 'heater':
       f.push(b.mode === 'q' ? numField('q', 'Q', 'kW', b.q) : numField('t', KEY_INFO.t.html, '°C', b.t));
+      f.push(numField('vl', '<i>t</i><sub>VL</sub>', '°C', b.vl), numField('rl', '<i>t</i><sub>RL</sub>', '°C', b.rl));
       break;
     case 'cooler':
+      if (b.mode === 'q') f.push(numField('q', 'Q<sub>K</sub>', 'kW', b.q));
+      else if (b.mode === 'bf') f.push(numField('bf', 'BF', '', b.bf));
+      else f.push(numField('t', KEY_INFO.t.html, '°C', b.t));
       f.push(numField('ts', '<i>t</i><sub>O</sub>', '°C', b.ts));
-      f.push(b.mode === 'q' ? numField('q', 'Q<sub>K</sub>', 'kW', b.q) : numField('t', KEY_INFO.t.html, '°C', b.t));
+      f.push(html`<span></span>`);
+      f.push(numField('vl', '<i>t</i><sub>VL</sub>', '°C', b.vl), numField('rl', '<i>t</i><sub>RL</sub>', '°C', b.rl));
+      break;
+    case 'room':
+      f.push(numField('qs', 'Q<sub>s</sub>', 'kW', b.qs), numField('mw', 'ṁ<sub>W</sub>', 'kg/h', b.mw));
+      break;
+    case 'comfort':
+      f.push(numField('tMin', '<i>t</i> min', '°C', b.tMin), numField('tMax', '<i>t</i> max', '°C', b.tMax), numField('xMax', '<i>x</i> max', 'g/kg', b.xMax));
+      f.push(numField('phiMin', 'φ min', '%', b.phiMin), numField('phiMax', 'φ max', '%', b.phiMax));
       break;
     case 'steam':
       if (b.mode === 'x') f.push(numField('x', KEY_INFO.x.html, 'g/kg', b.x));
@@ -304,9 +333,6 @@ function paramFields(b) {
       if (b.mode === 'enthalpy') f.push(numField('etaX', 'Φ<sub>x</sub>', '%', b.etaX));
       f.push(numField('tFrost', '<i>t</i><sub>FO,min</sub>', '°C', b.tFrost));
       break;
-    case 'mix':
-      if (b.mode === 'share') f.push(numField('share', 'Anteil', '%', b.share));
-      break;
     case 'fan':
       f.push(numField('dt', 'Δ<i>t</i>', 'K', b.dt));
       break;
@@ -314,15 +340,43 @@ function paramFields(b) {
   return f;
 }
 
+/** Colour button of a block and, when open, its swatches (auto + the chart tokens). */
+function colorPicker(b) {
+  const open = ui.colorPick === b.id;
+  const button = html`<button type="button" class="icon-btn hx-color${b.color ? ` c-${b.color}` : ''}" data-action="color-pick" aria-expanded="${open}" title="Farbe" aria-label="Farbe"><span class="hx-swatch"></span></button>`;
+  const swatches = open
+    ? html`<div class="hx-swatches" role="group" aria-label="Farbe">${['', ...COLORS].map((c) => html`<button type="button" class="hx-swatch-btn${c ? ` c-${c}` : ' is-auto'}" data-color="${c}" aria-pressed="${c === b.color}" title="${c ? c : 'Prozessfarbe'}" aria-label="${c ? c : 'Prozessfarbe'}"><span class="hx-swatch"></span></button>`)}</div>`
+    : '';
+  return { button, swatches };
+}
+
+/** Inputs of a mixing block: first and second input, extra inputs, with their shares in share mode. */
+function mixInputs(b, index) {
+  const shares = b.mode === 'share';
+  const v = ui.result?.blocks.get(b.id)?.values ?? {};
+  const rest = v.shares?.[1];
+  const row = (label, select, share, del = '') => html`<div class="hx-mix-row"><label class="hx-val"><span>${label}</span>${select}</label>${shares ? share : ''}${del}</div>`;
+  const shareField = (field, value, part) => html`<label class="hx-val"><span>Anteil<small> %</small></span><input class="input num" data-field="${field}"${part == null ? '' : html` data-part="${part}"`} inputmode="decimal" value="${toInputValue(value)}" /></label>`;
+  return html`
+    <div class="hx-mix">
+      ${row('von', html`<select class="select" data-field="from">${pointOptions(index, b.from)}</select>`, shareField('share', b.share))}
+      ${row('mit', html`<select class="select" data-field="to">${pointOptions(index, b.to)}</select>`, html`<div class="hx-val"><span>Anteil<small> %</small></span><output class="hx-out num" data-rest>${rest == null ? '–' : fmt(rest, 1)}</output></div>`)}
+      ${b.parts.map((q, i) => row('und', html`<select class="select" data-field="part-from" data-part="${i}">${pointOptions(index, q.from)}</select>`, shareField('part-share', q.share, i), html`<button type="button" class="icon-btn hx-part-del" data-action="delete-part" data-part="${i}" title="Eintritt entfernen" aria-label="Eintritt entfernen">${icon('trash')}</button>`))}
+      <button type="button" class="icon-btn hx-part-add" data-action="add-part" title="Eintritt hinzufügen" aria-label="Eintritt hinzufügen">${icon('plus')}</button>
+    </div>`;
+}
+
 function blockCard(b, index) {
   const spec = BLOCKS[b.type];
+  const pick = colorPicker(b);
   const head = html`
     <div class="hx-block-head">
       <span class="hx-type">${BLOCK_LABELS[b.type]}</span>
       ${b.type === 'line' ? '' : html`<input class="input hx-label" data-field="label" maxlength="${LABEL_MAX}" value="${b.label}" aria-label="Bezeichnung" />`}
       ${b.type === 'hrv' ? html`<input class="input hx-label" data-field="label2" maxlength="${LABEL_MAX}" value="${b.label2}" aria-label="Bezeichnung Fortluft" />` : ''}
+      ${pick.button}
       <button class="icon-btn hx-del" data-action="delete-block" title="Löschen" aria-label="Löschen">${icon('trash')}</button>
-    </div>`;
+    </div>${pick.swatches}`;
   let body;
   if (b.type === 'point') {
     const givenKeys = b.given.map((g) => g.key);
@@ -331,18 +385,28 @@ function blockCard(b, index) {
         ${GIVEN_KEYS.map((key) => html`<label class="hx-val"><span>${raw(KEY_INFO[key].html)}${unitSpan(KEY_INFO[key].unit)}</span><input class="input num${givenKeys.includes(key) ? ' is-given' : ''}" data-key="${key}" inputmode="decimal" /></label>`)}
         ${numField('flow', 'V̇', 'm³/h', b.flow)}
       </div>`;
+  } else if (b.type === 'comfort') {
+    const matches = (v) => Object.entries(v).every(([k, x]) => b[k] === x);
+    body = html`
+      <div class="hx-modes" role="group" aria-label="Kategorie SIA 382/1">${Object.entries(COMFORT_PRESETS).map(([k, v]) => html`<button type="button" data-comfort="${k}" aria-pressed="${matches(v)}" title="IEQ ${k} | IDA ${k} (H2O)">${k}</button>`)}</div>
+      <div class="hx-vals">${paramFields(b)}</div>`;
   } else {
     const two = TWO_INPUTS.has(b.type);
     const modes = spec.modes
       ? html`<div class="hx-modes" role="group">${spec.modes.map((m) => html`<button type="button" data-mode="${m}" aria-pressed="${m === b.mode}">${raw(MODE_LABELS[b.type][m])}</button>`)}</div>`
       : '';
-    body = html`
+    const io = b.type === 'mix'
+      ? mixInputs(b, index)
+      : html`
       <div class="hx-io">
         <label class="hx-val"><span>${FIRST_INPUT[b.type] ?? 'von'}</span><select class="select" data-field="from">${pointOptions(index, b.from)}</select></label>
         ${two ? html`<label class="hx-val"><span>${SECOND_INPUT[b.type]}</span><select class="select" data-field="to">${pointOptions(index, b.to)}</select></label>` : ''}
-      </div>
-      ${modes}
-      <div class="hx-vals">${paramFields(b)}</div>`;
+      </div>`;
+    const params = paramFields(b);
+    body = html`
+      ${b.type === 'mix' ? modes : ''}${io}
+      ${b.type === 'mix' ? '' : modes}
+      ${params.length ? html`<div class="hx-vals">${params}</div>` : ''}`;
   }
   return html`<li class="hx-block" data-id="${b.id}" data-type="${b.type}">${head}${body}<div class="hx-res" data-res></div></li>`;
 }
@@ -381,17 +445,24 @@ function resultHtml(b) {
       parts.push(html`<span><b>Q<sub>s</sub></b> ${fmt(v.sensible, 1)}<small> kW</small></span>`);
       if (v.water) parts.push(html`<span><b>Kondensat</b> ${fmt(-v.water, 1)}<small> kg/h</small></span>`);
     }
+    if (b.type === 'cooler' && v.bf != null && b.mode !== 'bf') parts.push(html`<span><b>BF</b> ${fmt(v.bf, 2)}</span>`);
+    if (b.type === 'room' && v.q != null) {
+      parts.push(html`<span><b>Q<sub>l</sub></b> ${fmt(v.latent, 1)}<small> kW</small></span>`);
+      if (v.ratio != null) parts.push(html`<span><b>Δ<i>h</i>/Δ<i>x</i></b> ${fmt(v.ratio, 0)}<small> kJ/kg</small></span>`);
+    }
+    if (v.waterFlow != null) parts.push(html`<span><b>ṁ<sub>W</sub></b> ${fmt(v.waterFlow, 0)}<small> kg/h</small></span>`);
     if ((b.type === 'steam' || b.type === 'adiabatic') && v.water != null) parts.push(html`<span><b>Wasser</b> ${fmt(v.water, 1)}<small> kg/h</small></span>`);
+    if (b.type === 'steam' && v.generator != null) parts.push(html`<span><b>Q<sub>DE</sub></b> ${fmt(v.generator, 1)}<small> kW</small></span>`);
     if (b.type === 'adiabatic' && v.eta != null && b.mode !== 'eta') parts.push(html`<span><b>η</b> ${fmt(v.eta, 0)}<small> %</small></span>`);
     if (b.type === 'hrv' && v.limited) {
       parts.push(html`<span><b>Φ<sub>t</sub></b> ${fmt(v.eta, 0)}<small> %</small></span>`);
       if (b.mode === 'enthalpy') parts.push(html`<span><b>Φ<sub>x</sub></b> ${fmt(v.etaX, 0)}<small> %</small></span>`);
     }
     if (b.type === 'hrv' && v.condensate) parts.push(html`<span><b>Kondensat</b> ${fmt(v.condensate, 1)}<small> kg/h</small></span>`);
-    if (b.type === 'mix' && b.mode === 'flows' && v.share != null) parts.push(html`<span><b>Anteil</b> ${fmt(v.share, 0)}<small> %</small></span>`);
+    if (b.type === 'mix' && b.mode === 'flows' && v.shares) parts.push(html`<span><b>Anteile</b> ${v.shares.map((x) => fmt(x, 0)).join(' | ')}<small> %</small></span>`);
     if (pt?.m && b.type === 'mix') parts.push(html`<span><b>ṁ</b> ${fmt(pt.m, 0)}<small> kg/h</small></span>`);
   }
-  const outs = b.type === 'point' || b.type === 'line' ? [] : r.out.map((id) => ui.result.points.get(id)).filter((p) => p?.state);
+  const outs = b.type === 'point' || NO_POINT.has(b.type) ? [] : r.out.map((id) => ui.result.points.get(id)).filter((p) => p?.state);
   return html`
     ${outs.map((p) => html`<div class="hx-out-row"><span class="hx-pt-label">${p.label}</span>${stateLine(p.state)}</div>`)}
     ${parts.length ? html`<div class="hx-values">${parts}</div>` : ''}
@@ -415,7 +486,8 @@ function syncBlocks() {
         const key = input.dataset.key;
         const g = b.given.find((x) => x.key === key);
         input.classList.toggle('is-given', givenKeys.includes(key));
-        if (g) setField(input, g.value);
+        if (g?.ref) setField(input, null, refText(g));
+        else if (g) setField(input, g.value);
         else setField(input, null, state ? valueText(state, key) : '');
       }
       setField(li.querySelector('[data-field="flow"]'), b.flow);
@@ -428,8 +500,41 @@ function syncBlocks() {
       const auto = ui.result.points.get(id)?.label ?? '';
       input.placeholder = b[field] ? '' : auto;
     }
+    if (b.type === 'cooler') {
+      const ts = li.querySelector('[data-field="ts"]');
+      const used = ui.result.blocks.get(b.id).values.ts;
+      ts.placeholder = b.ts == null && used != null ? fmt(used, 1) : '';
+    }
+    const rest = li.querySelector('[data-rest]');
+    if (rest) {
+      const v = ui.result.blocks.get(b.id).values.shares?.[1];
+      rest.textContent = v == null ? '–' : fmt(v, 1);
+    }
     li.querySelector('[data-res]').innerHTML = String(resultHtml(b));
   }
+}
+
+const pointLabel = (id) => ui.result?.points.get(id)?.label ?? id;
+
+/** Text of a given value that refers to another point: label and offset, e.g. "AU+2". */
+function refText(g) {
+  const off = g.value ? `${g.value > 0 ? '+' : '-'}${toInputValue(Math.abs(g.value))}` : '';
+  return `${pointLabel(g.ref)}${off}`;
+}
+
+/** A typed given value: a number, or the label of an earlier point with an optional offset. */
+function parseGiven(text, b) {
+  const value = parseNum(text);
+  if (value === null || Number.isFinite(value)) return { value };
+  const ids = pointIds(blocks().slice(0, blocks().indexOf(b)));
+  const find = (name) => ids.find((id) => pointLabel(id) === name) ?? ids.find((id) => pointLabel(id).toLowerCase() === name.toLowerCase());
+  const whole = find(text.trim());
+  if (whole) return { value: 0, ref: whole };
+  const m = /^(.+?)\s*([+-])\s*([\d.,’']+)$/.exec(text.trim());
+  const id = m && find(m[1].trim());
+  if (!id) return { value: null };
+  const off = parseNum(m[3]);
+  return { value: Number.isFinite(off) ? (m[2] === '-' ? -off : off) : 0, ref: id };
 }
 
 // ---- notices -----------------------------------------------------------------------
@@ -602,6 +707,7 @@ const roundTo = (v, step) => Math.round(v / step) * step;
 function moveGiven(b, t, x) {
   const s = stateTX(t, Math.max(0, x), pressure());
   for (const g of b.given) {
+    delete g.ref;
     const v = userValue(s, g.key);
     g.value = v == null ? g.value : Number(roundTo(v, KEY_INFO[g.key].step).toFixed(2));
   }
@@ -629,7 +735,7 @@ function bindDiagram() {
   host.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
     const ptEl = e.target.closest('.hx-pt');
-    const segEl = e.target.closest('.hx-seg');
+    const segEl = e.target.closest('.hx-seg, .hx-zone');
     if (ptEl && !ui.pointTool) {
       select(ptEl.dataset.block);
       const b = blockById(ptEl.dataset.block);
@@ -765,10 +871,14 @@ function onBlockInput(e) {
   const el = e.target;
   if (el.dataset.key) {
     const key = el.dataset.key;
-    const value = parseNum(el.value);
-    const g = b.given.find((x) => x.key === key);
-    if (g) g.value = value;
-    else b.given = [...b.given.slice(-1), { key, value }];
+    const next = { key, ...parseGiven(el.value, b) };
+    const i = b.given.findIndex((x) => x.key === key);
+    if (i >= 0) b.given[i] = next;
+    else b.given = [...b.given.slice(-1), next];
+  } else if (el.dataset.field === 'part-from') {
+    b.parts[Number(el.dataset.part)].from = el.value;
+  } else if (el.dataset.field === 'part-share') {
+    b.parts[Number(el.dataset.part)].share = parseNum(el.value);
   } else if (el.dataset.field === 'label' || el.dataset.field === 'label2') {
     b[el.dataset.field] = el.value.trim().slice(0, LABEL_MAX);
   } else if (el.dataset.field === 'from' || el.dataset.field === 'to') {
@@ -799,6 +909,39 @@ function bindInputs() {
     const mode = e.target.closest('[data-mode]');
     if (mode && b) {
       b.mode = mode.dataset.mode;
+      commitAndRender();
+      return;
+    }
+    const preset = e.target.closest('[data-comfort]');
+    if (preset && b) {
+      Object.assign(b, COMFORT_PRESETS[preset.dataset.comfort]);
+      commitAndRender();
+      return;
+    }
+    if (e.target.closest('[data-action="color-pick"]') && b) {
+      ui.colorPick = ui.colorPick === b.id ? null : b.id;
+      renderAll();
+      $(`#blocks [data-id="${CSS.escape(b.id)}"] ${ui.colorPick ? '[data-color][aria-pressed="true"]' : '[data-action="color-pick"]'}`)?.focus();
+      return;
+    }
+    const swatch = e.target.closest('[data-color]');
+    if (swatch && b) {
+      b.color = swatch.dataset.color;
+      ui.colorPick = null;
+      commitAndRender();
+      $(`#blocks [data-id="${CSS.escape(b.id)}"] [data-action="color-pick"]`)?.focus();
+      return;
+    }
+    if (e.target.closest('[data-action="add-part"]') && b) {
+      const used = new Set([b.from, b.to, ...b.parts.map((q) => q.from)]);
+      const free = pointIds(blocks().slice(0, blocks().indexOf(b))).filter((id) => !used.has(id));
+      b.parts.push({ from: free.at(-1) ?? '', share: 0 });
+      commitAndRender();
+      return;
+    }
+    const delPart = e.target.closest('[data-action="delete-part"]');
+    if (delPart && b) {
+      b.parts.splice(Number(delPart.dataset.part), 1);
       commitAndRender();
       return;
     }
@@ -962,6 +1105,10 @@ function bindToolbar() {
       addBlock(add.dataset.add);
       return;
     }
+    if (ui.colorPick && !e.target.closest('.hx-swatches, [data-action="color-pick"]')) {
+      ui.colorPick = null;
+      renderAll();
+    }
     const a = e.target.closest('[data-action]');
     if (!a) {
       if (!e.target.closest('.menu')) closeMenus();
@@ -979,6 +1126,7 @@ function bindToolbar() {
       case 'export-json': exportJson(); break;
       case 'export-csv': exportCsv(); break;
       case 'export-blank': exportBlank(); break;
+      case 'export-image': exportImage(); break;
       case 'new': newDocument(); break;
       case 'example': loadExample(); break;
       case 'point-tool': setPointTool(!ui.pointTool); break;
@@ -990,6 +1138,12 @@ function bindToolbar() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       closeMenus();
+      if (ui.colorPick) {
+        const id = ui.colorPick;
+        ui.colorPick = null;
+        renderAll();
+        $(`#blocks [data-id="${CSS.escape(id)}"] [data-action="color-pick"]`)?.focus();
+      }
       if (ui.pointTool) setPointTool(false);
     }
     const mod = e.ctrlKey || e.metaKey;

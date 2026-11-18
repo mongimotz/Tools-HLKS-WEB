@@ -8,7 +8,8 @@ import { PDFDocument, degrees } from '../../lib/vendor/pdf-lib/pdf-lib.esm.min.j
 import { fmt, fmtDate } from '../../lib/core/format.js';
 import { buildChart, DEFAULT_RANGE } from './chart.js';
 import { overlayOf, placeLabels } from './svg.js';
-import { computeProject, snapshotProjectOf, pressureOf, CALC_VERSION } from './calc.js';
+import { computeProject, snapshotProjectOf, pressureOf, summaryOf, CALC_VERSION } from './calc.js';
+import { stepsOf } from './steps.js';
 import { calculationName } from './defaults.js';
 import { TOOL_NAME, BLOCK_LABELS, issueText } from './labels.js';
 
@@ -121,14 +122,47 @@ function clip(a, b, poly) {
   return [[a[0] + t0 * d[0], a[1] + t0 * d[1]], [a[0] + t1 * d[0], a[1] + t1 * d[1]], t1 === 1];
 }
 
-/** Process colours (light tokens), the same mapping as the page (style.css). */
-const toneColor = (tone) => ({ heat: INK.danger, cool: INK.chart1, humid: INK.chart8 })[tone] ?? INK.muted;
+/** Part of a polygon inside the convex frame (Sutherland–Hodgman). */
+function clipPolygon(poly, frame) {
+  const area = frame.reduce((s, p, i) => s + p[0] * frame[(i + 1) % frame.length][1] - frame[(i + 1) % frame.length][0] * p[1], 0);
+  let out = poly;
+  for (let i = 0; i < frame.length && out.length; i++) {
+    const p = frame[i];
+    const q = frame[(i + 1) % frame.length];
+    const side = (c) => Math.sign(area) * ((q[0] - p[0]) * (c[1] - p[1]) - (q[1] - p[1]) * (c[0] - p[0])) >= 0;
+    const cut = (a, b) => {
+      const da = (q[0] - p[0]) * (a[1] - p[1]) - (q[1] - p[1]) * (a[0] - p[0]);
+      const db = (q[0] - p[0]) * (b[1] - p[1]) - (q[1] - p[1]) * (b[0] - p[0]);
+      const t = da / (da - db);
+      return [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])];
+    };
+    const next = [];
+    out.forEach((c, k) => {
+      const prev = out[(k + out.length - 1) % out.length];
+      if (side(c)) {
+        if (!side(prev)) next.push(cut(prev, c));
+        next.push(c);
+      } else if (side(prev)) next.push(cut(prev, c));
+    });
+    out = next;
+  }
+  return out;
+}
+
+/** Process colours (light tokens), the same mapping as the page (style.css); a block's own colour wins. */
+const toneColor = (tone, color) => (color ? INK[`chart${color.slice(-1)}`] : null) ?? ({ heat: INK.danger, cool: INK.chart1, humid: INK.chart8 })[tone] ?? INK.muted;
 
 function drawOverlay(w, map, overlay, P) {
   const frame = map.frame();
   const inside = (q) => clip(q, q, frame) !== null;
+  for (const z of overlay.zones ?? []) {
+    const poly = clipPolygon(z.path.map((q) => map.ph(q.x, q.h)), frame).map(P);
+    if (poly.length < 3) continue;
+    const color = hexColor(z.color ? toneColor(null, z.color) : INK.chart5);
+    w.page.drawSvgPath(`M${poly.map((c) => `${c[0]} ${c[1]}`).join('L')}Z`, { x: 0, y: w.pageH, color, opacity: 0.12, borderColor: color, borderWidth: 0.8 });
+  }
   for (const s of overlay.segments) {
-    const color = toneColor(s.tone);
+    const color = toneColor(s.tone, s.color);
     const dashed = s.kind !== 'arrow';
     const pts = s.path.map((q) => map.ph(q.x, q.h));
     for (let i = 1; i < pts.length; i++) {
@@ -153,7 +187,7 @@ function drawOverlay(w, map, overlay, P) {
     const at = map.ph(q.x, q.h);
     if (!inside(at)) return;
     const [x, y] = P(at);
-    const color = q.given ? INK.strong : toneColor(q.tone);
+    const color = q.given && !q.color ? INK.strong : toneColor(q.tone, q.color);
     w.page.drawCircle({ x, y: w.pageH - y, size: 1.7, color: hexColor(q.given ? INK.surface : color), borderColor: hexColor(color), borderWidth: 0.9 });
     const l = labels[i];
     drawText(w, { at: [l.x, l.y], text: q.label, size: map.font * 1.06, anchor: l.anchor, base: l.base, angle: 0, knock: true }, P, { color: INK.strong, bold: true });
@@ -197,7 +231,7 @@ function drawTables(w, c, index, r, project) {
     }),
   });
 
-  const processes = c.blocks.filter((b) => b.type !== 'point');
+  const processes = c.blocks.filter((b) => b.type !== 'point' && b.type !== 'comfort');
   if (processes.length) {
     w.heading('Prozesse');
     const label = (id) => r.points.get(id)?.label ?? '–';
@@ -226,6 +260,35 @@ function drawTables(w, c, index, r, project) {
       }),
     });
   }
+  const sum = summaryOf(r);
+  const sums = [
+    ['Lufterhitzer', sum.heat, 'kW', 1],
+    ['Luftkühler', sum.cool, 'kW', 1],
+    ['WRG', sum.recovered, 'kW', 1],
+    ['Dampf', sum.steam, 'kg/h', 1],
+    ['Dampferzeuger', sum.generator, 'kW', 1],
+    ['Wasser verdunstet', sum.evaporated, 'kg/h', 1],
+    ['Kondensat', sum.condensate, 'kg/h', 1],
+  ].filter((row) => row[1] != null);
+  if (sums.length) {
+    w.heading('Summen');
+    w.keyValues(sums.map(([k, v, unit, d]) => [k, `${n(v, d)} ${unit}`]), { columns: 4 });
+  }
+
+  const label = (id) => r.points.get(id)?.label ?? '–';
+  const steps = processes.map((b) => [b, stepsOf(b, r, label)]).filter(([, lines]) => lines.length);
+  if (steps.length) {
+    w.heading('Rechenweg');
+    for (const [b, lines] of steps) {
+      const res = r.blocks.get(b.id);
+      const title = `${BLOCK_LABELS[b.type]}: ${res.inputs.map(label).join(' + ')}${res.out.length ? ` → ${res.out.map(label).join(' + ')}` : ''}`;
+      w.ensure(12 + 11 * Math.min(lines.length, 3));
+      w.paragraph(title, { size: 8.5, bold: true, color: INK.strong });
+      for (const line of lines) w.paragraph(line, { size: 7.5, x: w.left + 8, width: w.contentWidth - 8 });
+      w.y += 4;
+    }
+  }
+
   const notes = r.issues.filter((i) => i.severity !== 'error');
   if (notes.length) {
     w.heading('Hinweise');
@@ -236,12 +299,13 @@ function drawTables(w, c, index, r, project) {
 /** Short parameter text of a process. */
 function keyText(b, v) {
   switch (b.type) {
-    case 'heater': return b.mode === 'q' ? `Q = ${n(b.q, 1)} kW` : `t = ${n(b.t, 1)} °C`;
-    case 'cooler': return `tO = ${n(b.ts, 1)} °C${v.sensible != null ? ` | Qs = ${n(v.sensible, 1)} kW` : ''}${v.wet ? '' : ' | trocken'}`;
-    case 'steam': return `tD = ${n(b.ts, 0)} °C`;
+    case 'heater': return `${b.mode === 'q' ? `Q = ${n(b.q, 1)} kW` : `t = ${n(b.t, 1)} °C`}${v.waterFlow != null ? ` | Wasser ${n(v.waterFlow, 0)} kg/h` : ''}`;
+    case 'cooler': return `tO = ${n(v.ts, 1)} °C | BF = ${n(v.bf, 2)}${v.sensible != null ? ` | Qs = ${n(v.sensible, 1)} kW` : ''}${v.wet ? '' : ' | trocken'}`;
+    case 'steam': return `tD = ${n(b.ts, 0)} °C${v.generator != null ? ` | QDE = ${n(v.generator, 1)} kW` : ''}`;
+    case 'room': return `Qs = ${n(b.qs, 1)} kW | mW = ${n(b.mw, 1)} kg/h`;
     case 'adiabatic': return `η = ${n(v.eta, 0)} %`;
     case 'hrv': return `Φt = ${n(b.eta, 0)} %${b.mode === 'enthalpy' ? ` | Φx = ${n(b.etaX, 0)} %` : ''}${b.tFrost == null ? '' : ` | tFO,min = ${n(b.tFrost, 1)} °C`}${v.limited ? ` | wirksam Φt = ${n(v.eta, 0)} %` : ''}`;
-    case 'mix': return `Anteil ${n(v.share, 0)} %`;
+    case 'mix': return `Anteile ${(v.shares ?? []).map((x) => n(x, 0)).join(' | ')} %`;
     case 'fan': return `Δt = ${n(b.dt, 1)} K`;
     case 'line': return v.ratio != null ? `Δh/Δx = ${n(v.ratio, 0)} kJ/kg | Δh = ${n(v.dh, 1)} kJ/kg` : '';
     default: return '';
