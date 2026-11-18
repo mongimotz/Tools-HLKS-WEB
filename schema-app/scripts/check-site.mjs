@@ -31,13 +31,14 @@ if (!existsSync(join(DIST, 'index.html'))) {
 
 await rm(OUT, { recursive: true, force: true });
 await mkdir(OUT, { recursive: true });
-await cp(ROOT, OUT, {
-  recursive: true,
-  filter: (src) => {
-    const rel = relative(ROOT, src).replace(/\\/g, '/');
-    return rel === '' || !excluded(rel);
-  },
-});
+// Entry by entry: copying ROOT as a whole into OUT (inside ROOT) fails with ERR_FS_CP_EINVAL on Node 22.
+for (const e of await readdir(ROOT)) {
+  if (excluded(e)) continue;
+  await cp(join(ROOT, e), join(OUT, e), {
+    recursive: true,
+    filter: (src) => !excluded(relative(ROOT, src).replace(/\\/g, '/')),
+  });
+}
 await cp(DIST, join(OUT, 'schema'), { recursive: true });
 
 // Checks: existing pages are still there, CNAME and .nojekyll survive, the editor is reachable.
