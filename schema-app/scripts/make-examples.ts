@@ -193,6 +193,37 @@ const EXAMPLES: Record<string, { title: string; ops: unknown[] }> = {
       { op: 'relayout_unpinned' },
     ],
   },
+  kaelte: {
+    title: 'Kältekreis',
+    ops: [
+      { op: 'add_component', id: 'KM01', type: 'water.chiller', props: { Q: '80 kW' } },
+      {
+        op: 'add_chain',
+        strand: 'supply',
+        medium: 'water.chill.flow',
+        after: 'KM01.out',
+        items: [
+          { id: 'AV01', type: 'water.valve' },
+          { id: 'UP01', type: 'water.pump', props: { V: '13.8 m³/h' } },
+          { id: 'MV01', type: 'water.valve.motor' },
+          { id: 'VB01', type: 'water.consumer', props: { Nutzung: 'Kühldecken' } },
+        ],
+      },
+      {
+        op: 'add_chain',
+        strand: 'extract',
+        medium: 'water.chill.return',
+        after: 'VB01.out',
+        items: [
+          { id: 'SR01', type: 'water.valve.balancing' },
+          { id: 'SF01', type: 'water.strainer' },
+          { id: 'AV02', type: 'water.valve' },
+        ],
+      },
+      { op: 'connect', from: 'AV02.out', to: 'KM01.in', medium: 'water.chill.return' },
+      { op: 'relayout_unpinned' },
+    ],
+  },
   'vvs-3-zonen': {
     title: 'Anlage mit VVS-Reglern für 3 Zonen',
     ops: [

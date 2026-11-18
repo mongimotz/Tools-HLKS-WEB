@@ -70,4 +70,4 @@
 - Start page tile (general section), README row. Export menu: «Schwarzweiss», «Stilvorlage laden …» / back to the default; CLI `render --style`. Checked by rendering a test template (own title block, colours).
 
 ## Phase 8 (first part)
-- Hydraulic symbols and media, `add_chain` with `medium`, circuit layout (return row), example «Heizgruppe mit Beimischung». Symbols not yet checked against the norm PDFs.
+- Hydraulic symbols and media, `add_chain` with `medium`, circuit layout (return row), examples «Heizgruppe mit Beimischung» and «Kältekreis». Symbols not yet checked against the norm PDFs.

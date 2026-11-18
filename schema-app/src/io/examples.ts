@@ -15,6 +15,7 @@ export const EXAMPLES: { id: string; name: string }[] = [
   { id: 'kvs-system', name: 'Zu- und Abluftgerät mit KVS-System' },
   { id: 'vvs-3-zonen', name: 'VVS-Regler für 3 Zonen' },
   { id: 'heizgruppe', name: 'Heizgruppe mit Beimischung' },
+  { id: 'kaelte', name: 'Kältekreis' },
   { id: 'symbol-catalog', name: 'Symbolübersicht' },
 ];
 
