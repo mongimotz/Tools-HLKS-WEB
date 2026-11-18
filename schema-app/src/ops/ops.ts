@@ -8,6 +8,7 @@ import { MEDIUM_IDS, medium } from '../model/media.ts';
 import { portPlace, snapVec } from '../model/geometry.ts';
 import { autoLayout } from '../layout/auto.ts';
 import { placeMissing } from '../layout/place.ts';
+import { detachNotes } from '../model/notes.ts';
 
 const vec = z.tuple([z.number(), z.number()]);
 const portRef = z.union([
@@ -257,6 +258,8 @@ export function applyOps(input: Schema, ops: Op[]): ApplyResult {
         const before = allIds(s);
         if (!before.has(id)) throw new OpError(i, `"${id}" gibt es nicht.`);
         const cons = s.connections.filter((c) => c.id === id || c.from[0] === id || c.to[0] === id).map((c) => c.id);
+        // Notes on the removed component or lines stay as free notes at the old spot.
+        s.notes = detachNotes(placeMissing(s), new Set([id, ...cons]));
         s.components = s.components.filter((c) => c.id !== id);
         s.connections = s.connections.filter((c) => !cons.includes(c.id));
         s.groups = s.groups

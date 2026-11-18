@@ -32,6 +32,10 @@ export interface EditorState {
   preview: Schema | null;
   selection: string[];
   tool: Tool;
+  /** Right panel tab. */
+  panel: 'props' | 'notes';
+  /** Note shown open in the notes panel (its pin is highlighted). */
+  activeNote: string | null;
   view: View | null;
   past: Step[];
   future: Step[];
@@ -59,6 +63,9 @@ export interface EditorState {
   redo(): void;
   select(ids: string[]): void;
   setTool(t: Tool): void;
+  setPanel(p: 'props' | 'notes'): void;
+  /** Opens a note in the panel and selects its anchor element. */
+  openNote(id: string | null): void;
   setView(v: View): void;
   markSaved(fileName?: string): void;
   notify(text: string, kind?: 'info' | 'error'): void;
@@ -74,6 +81,8 @@ export const useEditor = create<EditorState>((set, get) => ({
   preview: null,
   selection: [],
   tool: 'select',
+  panel: 'props',
+  activeNote: null,
   view: null,
   past: [],
   future: [],
@@ -186,6 +195,16 @@ export const useEditor = create<EditorState>((set, get) => ({
   },
   setTool(tool) {
     set({ tool });
+  },
+  setPanel(panel) {
+    set({ panel });
+  },
+  openNote(id) {
+    const n = id ? get().doc.notes.find((x) => x.id === id) : undefined;
+    if (!n) return set({ activeNote: null });
+    const a = n.anchor;
+    const anchorId = 'component' in a ? a.component : 'connection' in a ? a.connection : null;
+    set({ activeNote: id, panel: 'notes', selection: anchorId && exists(get().doc, anchorId) ? [anchorId] : [] });
   },
   setView(view) {
     set({ view });

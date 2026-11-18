@@ -173,11 +173,15 @@ export function App() {
         return;
       }
       if (mod) return;
-      if (k === 'escape') return s.select([]);
+      if (k === 'escape') {
+        if (s.tool !== 'select') return s.setTool('select');
+        return s.select([]);
+      }
+      if (k === 'n') return s.setTool(s.tool === 'note' ? 'select' : 'note');
       if (k === 'delete' || k === 'backspace') {
         if (!sel.length) return;
         e.preventDefault();
-        s.commit('Löschen', deleteSelection(s.doc, sel));
+        s.commit('Löschen', deleteSelection(renderSchema(s.doc).placed, sel));
         s.select([]);
         return;
       }

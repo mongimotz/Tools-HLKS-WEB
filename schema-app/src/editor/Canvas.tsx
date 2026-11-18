@@ -3,10 +3,10 @@
 // Pointer: click selects, Shift adds; drag moves (grid snap); drag from a port connects; drag a line segment
 // sets waypoints; drag on empty paper selects by rectangle; wheel zooms; middle button or Space + drag pans.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Schema, Vec } from '../model/types.ts';
+import type { NoteAnchor, Schema, Vec } from '../model/types.ts';
 import { componentBox, portPlace, snap, type Box } from '../model/geometry.ts';
 import { paperSize } from '../model/sheet.ts';
-import { renderSchema, type Highlight } from '../render/render.ts';
+import { PIN_HEAD, renderSchema, type Highlight } from '../render/render.ts';
 import { symbolOf } from '../symbols/library.ts';
 import { validate } from '../model/validate.ts';
 import { checkDrawing } from '../layout/check.ts';
@@ -45,6 +45,8 @@ export function Canvas() {
   const [drag, setDrag] = useState<Drag | null>(null);
   const space = useRef(false);
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  // Note being written (note tool): anchor and pin position in sheet mm.
+  const [noteDraft, setNoteDraft] = useState<{ anchor: NoteAnchor; at: Vec } | null>(null);
 
   const highlight = useMemo(() => {
     const h: Record<string, Highlight> = {};
@@ -126,6 +128,15 @@ export function Canvas() {
       return;
     }
     const target = e.target as Element;
+    const pin = target.closest('[data-note]');
+    if (pin) {
+      st.openNote(pin.getAttribute('data-note'));
+      return;
+    }
+    if (st.tool === 'note') {
+      setNoteDraft(noteAnchorAt(target, p));
+      return;
+    }
     const port = target.closest('[data-port]');
     if (port) {
       const [cid, pid] = port.getAttribute('data-port')!.split('|') as [string, string];
@@ -308,7 +319,7 @@ export function Canvas() {
   return (
     <div
       ref={wrap}
-      className={`canvas${drag?.kind === 'connect' ? ' connecting' : ''}${drag?.kind === 'pan' ? ' panning' : ''}`}
+      className={`canvas${st.tool === 'note' ? ' noting' : ''}${drag?.kind === 'connect' ? ' connecting' : ''}${drag?.kind === 'pan' ? ' panning' : ''}`}
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes(DND_TYPE)) {
           e.preventDefault();
@@ -418,6 +429,22 @@ export function Canvas() {
                 </g>
               );
             })}
+            {r.notePins.map(({ id, at }) => {
+              const n = doc.notes.find((x) => x.id === id)!;
+              return (
+                <circle
+                  key={id}
+                  className={`hit-note${st.activeNote === id ? ' active' : ''}`}
+                  data-note={id}
+                  cx={at[0] + PIN_HEAD[0]}
+                  cy={at[1] + PIN_HEAD[1]}
+                  r={2.6}
+                >
+                  <title>{n.text}</title>
+                </circle>
+              );
+            })}
+            {noteDraft && <circle className="note-draft" cx={noteDraft.at[0]} cy={noteDraft.at[1]} r={0.8} />}
             {drag?.kind === 'connect' && (
               <path
                 className="connect-preview"
@@ -432,7 +459,92 @@ export function Canvas() {
           </g>
         </g>
       </svg>
+      {noteDraft && (
+        <NotePopover
+          // Inside the canvas: the popover is 240 × 120 px plus its 8 px offset.
+          left={Math.max(0, Math.min((noteDraft.at[0] - view.x) * view.zoom, (size?.w ?? 0) - 256))}
+          top={Math.max(0, Math.min((noteDraft.at[1] - view.y) * view.zoom, (size?.h ?? 0) - 136))}
+          onCancel={() => setNoteDraft(null)}
+          onSave={(text) => {
+            const res = st.ops('Anmerkung', [{ op: 'add_note', anchor: noteDraft.anchor, text }]);
+            setNoteDraft(null);
+            st.setTool('select');
+            if (res?.added[0]) st.openNote(res.added[0]);
+          }}
+        />
+      )}
     </div>
+  );
+
+  /** Anchor for a note at a click: the component or line under the pointer, else the free spot. */
+  function noteAnchorAt(target: Element, p: Vec): { anchor: NoteAnchor; at: Vec } {
+    const hit = target.closest('[data-hit]');
+    const id = hit?.getAttribute('data-hit');
+    const kind = hit?.getAttribute('data-kind');
+    if (id && kind === 'cmp' && st.doc.components.some((c) => c.id === id)) {
+      const c = placed.components.find((x) => x.id === id)!;
+      const b = componentBox(c);
+      return { anchor: { component: id }, at: [b.x + b.w, b.y] };
+    }
+    if (id && kind === 'con') return { anchor: { connection: id }, at: p };
+    const q: Vec = [snap(p[0], g), snap(p[1], g)];
+    return { anchor: { pos: q }, at: q };
+  }
+}
+
+function NotePopover({
+  left,
+  top,
+  onSave,
+  onCancel,
+}: {
+  left: number;
+  top: number;
+  onSave: (text: string) => void;
+  onCancel: () => void;
+}) {
+  const [text, setText] = useState('');
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => ref.current?.focus(), []);
+  return (
+    <form
+      className="note-popover"
+      style={{ left, top }}
+      onPointerDown={(e) => e.stopPropagation()}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (text.trim()) onSave(text.trim());
+        else onCancel();
+      }}
+    >
+      <textarea
+        ref={ref}
+        rows={3}
+        value={text}
+        placeholder="Anmerkung"
+        aria-label="Anmerkung"
+        data-testid="note-input"
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            e.currentTarget.form?.requestSubmit();
+          }
+          if (e.key === 'Escape') {
+            e.stopPropagation();
+            onCancel();
+          }
+        }}
+      />
+      <div className="note-popover-buttons">
+        <button type="button" onClick={onCancel}>
+          Abbrechen
+        </button>
+        <button type="submit" className="primary" data-testid="note-save">
+          Speichern
+        </button>
+      </div>
+    </form>
   );
 }
 

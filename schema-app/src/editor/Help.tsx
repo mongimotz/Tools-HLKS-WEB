@@ -25,7 +25,8 @@ const KEYS: [string, string][] = [
   ['Mausrad', 'Zoom'],
   ['Leertaste + Ziehen, mittlere Maustaste', 'Ansicht verschieben'],
   ['0', 'Blatt einpassen'],
-  ['Esc', 'Auswahl aufheben'],
+  ['N', 'Anmerkung setzen: Klick auf Symbol, Leitung oder freie Stelle'],
+  ['Esc', 'Werkzeug beenden, Auswahl aufheben'],
 ];
 
 export function Help({ onClose }: { onClose: () => void }) {

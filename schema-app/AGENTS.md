@@ -9,6 +9,7 @@ Short guide for AI agents that edit `.schema` files or this app. User-facing tex
 3. Never change positions of components with `"pinned": true` (`move` needs `"force": true`; use it only when asked).
 4. Live sync: when the file is open in the editor (Chrome/Edge), the editor checks it every second and reloads it (one undo step). Write the whole file at once (the CLI does); a half-written file is skipped and retried. If the user has unsaved edits, the editor asks which version to keep.
 5. Notes: `npm run cli -- notes plan.schema --open` → make the change → `npm run cli -- resolve plan.schema <noteId> "Antwort"`.
+   The user sets notes in the editor (tool «Anmerkung», key `N`) on a component, a line or a free spot; the editor saves them into the file. After `resolve` the editor shows the note as done after the next live-sync reload. Notes of a removed component or line stay as free notes (`anchor.pos`) at the old spot; remove a note itself with `{"op":"remove","id":"N01"}`.
 
 All CLI commands: `validate`, `render`, `ops`, `notes`, `resolve`, `new --template empty|ahu-basic`. Run them from `schema-app/` (`npm ci` once).
 

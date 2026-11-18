@@ -125,6 +125,16 @@ export function Toolbar({ a }: { a: ToolbarActions }) {
         />
       </div>
       <div className="tb-group">
+        <button
+          className="tb"
+          title="Anmerkung (N)"
+          aria-label="Anmerkung"
+          aria-pressed={st.tool === 'note'}
+          data-testid="btn-note"
+          onClick={() => st.setTool(st.tool === 'note' ? 'select' : 'note')}
+        >
+          <Icon name="note" />
+        </button>
         <B icon="tidy" label="Aufräumen (nicht fixierte Elemente neu anordnen)" onClick={a.tidy} testid="btn-tidy" />
         <details className="menu" data-testid="export-menu">
           <summary className="tb" title="Exportieren" aria-label="Exportieren">

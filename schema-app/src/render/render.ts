@@ -10,6 +10,7 @@ import { routeAll, type Route } from '../layout/route.ts';
 import { DEFAULT_STYLE, type Style } from './style.ts';
 import { DEFAULT_TITLE_BLOCK, fillTemplate } from './titleblock.ts';
 import { baseline, esc, textWidth } from './text.ts';
+import { componentPinAt } from '../model/notes.ts';
 
 export type Highlight = 'add' | 'remove' | 'change' | 'error' | 'warning' | 'select';
 
@@ -33,6 +34,8 @@ export interface RenderResult {
   textBoxes: { id: string; box: Box; text: string }[];
   /** Group frames in sheet mm. */
   groupBoxes: { id: string; box: Box }[];
+  /** Note pin tips in sheet mm (also without `notes`, for hit areas). */
+  notePins: { id: string; at: Vec }[];
 }
 
 const HL_COLOR: Record<Highlight, string> = {
@@ -204,10 +207,11 @@ export function renderSchema(input: Schema, opts: RenderOptions = {}): RenderRes
   );
   if (style.legend && s.sheet.legend && usedMedia.size) out.push(legend(s, [...usedMedia], style, !!opts.mono));
 
-  if (opts.notes) out.push(notePins(s, routes));
+  const pins = notePinPositions(s, routes);
+  if (opts.notes) out.push(notePins(s, pins));
 
   out.push('</svg>');
-  return { svg: out.join('\n'), placed: s, routes, failedRoutes: failed, textBoxes, groupBoxes };
+  return { svg: out.join('\n'), placed: s, routes, failedRoutes: failed, textBoxes, groupBoxes, notePins: pins };
 }
 
 function TB_ATTR(style: Style): Record<string, string> {
@@ -419,28 +423,37 @@ function legend(s: Schema, used: string[], style: Style, mono: boolean): string 
   return parts.join('');
 }
 
-function notePins(s: Schema, routes: Map<string, Route>): string {
-  const pins: string[] = [];
-  s.notes.forEach((n, i) => {
+/** Pin tip of every note (sheet mm), in list order. A note whose anchor is missing has no pin. */
+export function notePinPositions(s: Schema, routes: Map<string, Route>): { id: string; at: Vec }[] {
+  const out: { id: string; at: Vec }[] = [];
+  for (const n of s.notes) {
     let at: Vec | null = null;
     if ('pos' in n.anchor) at = n.anchor.pos;
-    else if ('component' in n.anchor) {
-      const id = n.anchor.component;
-      const c = s.components.find((x) => x.id === id);
-      if (c?.pos) {
-        const b = componentBox(c);
-        at = [b.x + b.w, b.y];
-      }
-    } else {
+    else if ('component' in n.anchor) at = componentPinAt(s, n.anchor.component);
+    else {
       const pts = routes.get(n.anchor.connection);
       const seg = pts && longestSegment(pts);
       if (seg) at = [(seg.a[0] + seg.b[0]) / 2, (seg.a[1] + seg.b[1]) / 2];
     }
-    if (!at) return;
+    if (at) out.push({ id: n.id, at });
+  }
+  return out;
+}
+
+/** Centre of a pin's head relative to its tip (head: circle r 2.4 through (±1.4, −3.2)). */
+export const PIN_HEAD: Vec = [0, -3.2 - Math.sqrt(2.4 ** 2 - 1.4 ** 2)];
+
+function notePins(s: Schema, pins: { id: string; at: Vec }[]): string {
+  const out: string[] = [];
+  // Baseline so the digits sit centred in the head (cap height of Plex about 0.7 em).
+  const ty = f(PIN_HEAD[1] + 0.35 * 2.2);
+  for (const { id, at } of pins) {
+    const i = s.notes.findIndex((n) => n.id === id);
+    const n = s.notes[i]!;
     const color = n.status === 'open' ? '#e07b1a' : '#8c8c8c';
-    pins.push(
-      `<g class="note-pin" data-id="${esc(n.id)}" transform="translate(${f(at[0])} ${f(at[1])})"><path d="M0 0L-1.4 -3.2A2.4 2.4 0 1 1 1.4 -3.2Z" fill="${color}" stroke="#fff" stroke-width="0.25"/><text x="0" y="-3.6" font-size="2.2" font-weight="600" text-anchor="middle" fill="#fff" stroke="none">${i + 1}</text></g>`,
+    out.push(
+      `<g class="note-pin" data-id="${esc(n.id)}" transform="translate(${f(at[0])} ${f(at[1])})"><path d="M0 0L-1.4 -3.2A2.4 2.4 0 1 1 1.4 -3.2Z" fill="${color}" stroke="#fff" stroke-width="0.25"/><text x="0" y="${ty}" font-size="2.2" font-weight="600" text-anchor="middle" fill="#fff" stroke="none">${i + 1}</text></g>`,
     );
-  });
-  return `<g class="notes">${pins.join('')}</g>`;
+  }
+  return `<g class="notes">${out.join('')}</g>`;
 }

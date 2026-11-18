@@ -627,3 +627,167 @@ kbd {
   background: var(--accent);
   color: #fff;
 }
+
+/* Notes (phase 5) */
+.canvas.noting svg {
+  cursor: crosshair;
+}
+.hit-note {
+  fill: transparent;
+  cursor: pointer;
+}
+.hit-note:hover,
+.hit-note.active {
+  stroke: #2f80ed;
+  stroke-width: 0.35;
+}
+.note-draft {
+  fill: #e07b1a;
+}
+.note-popover {
+  position: absolute;
+  transform: translate(8px, 8px);
+  width: 240px;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  user-select: text;
+}
+.note-popover textarea,
+.field textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  resize: vertical;
+  font: inherit;
+  color: inherit;
+}
+.note-popover-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+}
+.note-popover-buttons button {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+}
+.note-popover-buttons .primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+}
+.tabs button {
+  flex: 1;
+  padding: 10px 6px 8px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+}
+.tabs button[aria-selected='true'] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+.badge {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: #e07b1a;
+  color: #fff;
+  font-size: 11px;
+}
+.seg {
+  display: flex;
+  gap: 4px;
+  margin: 10px 0 6px;
+}
+.seg button {
+  flex: 1;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+}
+.seg button[aria-checked='true'] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.note-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.note-list li {
+  border-bottom: 1px solid var(--line);
+  padding: 4px 0;
+}
+.note-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.note-head {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  min-width: 0;
+  padding: 4px;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+.note-no {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #e07b1a;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+}
+.note-list li.done .note-no {
+  background: #8c8c8c;
+}
+.note-list li.done .note-text {
+  color: var(--muted);
+}
+.note-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.note-list li.active .note-text {
+  white-space: normal;
+}
+.note-body {
+  padding: 0 4px 6px 32px;
+}
+.note-body .danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--error);
+}
+.note-body .danger:hover {
+  background: var(--hover);
+}

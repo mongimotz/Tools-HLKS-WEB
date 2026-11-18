@@ -67,3 +67,8 @@ Format: date | decision | alternatives | reason.
 ## 2026-11-18 | Export
 - PDF via jsPDF + svg2pdf from the same SVG as the editor, page size = sheet size (1:1). Plex 400/600 embedded; svg2pdf requests the style "600normal" for semibold, registered explicitly.
 - PNG: SVG with fonts embedded as data URLs drawn onto a canvas at 300 dpi (A3: 4961 × 3508 px).
+
+## 2026-11-18 | Notes
+- Deleting a component or line keeps its notes: they become free notes (`anchor.pos`) at the old pin position (editor delete and the `remove` operation). Alternative: delete them with the element (phase 3 behaviour). Rejected: a review comment would vanish silently, and a note on a deleted line left a dangling anchor.
+- The notes list is a second tab in the right panel («Anmerkungen» with the count of open notes). Opening a note (list or pin) selects its anchor element, so the sheet highlights it; the open note keeps its pin highlighted. The «Offen» filter keeps the open note visible right after it is set to done.
+- Pins stay a renderer option (`notes: true`) used only by the editor; the hit circles live in the editor overlay, positions come from `renderSchema(...).notePins`.

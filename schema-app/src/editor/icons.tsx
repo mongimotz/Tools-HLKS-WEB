@@ -24,6 +24,7 @@ const P: Record<string, string> = {
   warn: 'M10 3l7.5 13.5h-15zM10 8.5v4M10 14.5v.3',
   note: 'M4 3.5h12v9.5h-6l-4 3.5v-3.5H4z',
   close: 'M5 5l10 10M15 5L5 15',
+  check: 'M4 10.5l4 4 8-9',
   chevron: 'M7.5 5l5 5-5 5',
 };
 

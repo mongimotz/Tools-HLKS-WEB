@@ -7,7 +7,7 @@
 | 2 Ventilation symbols, chain layout, ops | done (stop point: owner review) |
 | 3 Editor | done |
 | 4 Files, live sync, export | done (stop point: owner review) |
-| 5 Notes | open |
+| 5 Notes | done |
 | 6 OpenRouter assistant | open |
 | 7 Styles, polish, start page | open |
 
@@ -49,3 +49,11 @@
 - Export menu: PDF (vector, sheet size 1:1, Plex embedded, text as text), SVG, PNG 300 dpi (fonts embedded). jsPDF/svg2pdf load only on PDF export.
 - E2E (10 total): reload within 2 s after the test writes the file, half-written file, conflict (both choices), Ctrl+S into the file, PDF 420 × 297 mm with extractable text and no raster images, SVG/PNG (4961 × 3508 px). The live-sync tests use real file handles of the origin private file system; the native pickers cannot be automated.
 - Not tested automatically: the native open/save pickers and the permission prompt after a browser restart (manual check in Chrome).
+
+## Phase 5
+- Note tool (toolbar, `N`, Esc ends it): click a component, a line or a free spot → text field at the click; Enter saves (`add_note`, one undo step), then back to the select tool with the note open.
+- Pins are clickable (hit circles in the editor overlay) and open the note in the new «Anmerkungen» tab: filter open/done/all, text and reply editable, jump to the spot (view centred on the pin), done/reopen, delete. Each change is one undo step. Pin number now centred in the pin head.
+- Deleting a component or line turns its notes into free notes at the same spot (editor and `remove` op), see DECISIONS.
+- Exports never contain pins (unit test on `renderSchema` and `exportSvgText`).
+- Fixed: Escape in a property field committed the edit instead of cancelling it.
+- Tests: Vitest 106, Playwright 12 (place a note by mouse → saved into the live file → resolved with the CLI logic written into the file → editor shows «erledigt» after live sync; pin click, status, delete, undo).

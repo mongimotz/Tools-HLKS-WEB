@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Right panel: properties of the selection, or sheet and title block when nothing is selected; issues below.
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Issue, Schema } from '../model/types.ts';
 import { MEDIA, mediumMatches } from '../model/media.ts';
 import { findSymbol, symbolOf } from '../symbols/library.ts';
 import { useEditor } from './store.ts';
 import { Icon } from './icons.tsx';
 import { flipSelection, rotateSelection } from './actions.ts';
+import { NotesPanel } from './Notes.tsx';
 
 function Field({
   label,
@@ -23,6 +24,7 @@ function Field({
 }) {
   const [v, setV] = useState(value);
   const [last, setLast] = useState(value);
+  const cancelled = useRef(false);
   if (value !== last) {
     setLast(value);
     setV(value);
@@ -35,10 +37,14 @@ function Field({
         placeholder={placeholder}
         data-testid={testid}
         onChange={(e) => setV(e.target.value)}
-        onBlur={() => v !== value && onCommit(v)}
+        onBlur={() => {
+          if (!cancelled.current && v !== value) onCommit(v);
+          cancelled.current = false;
+        }}
         onKeyDown={(e) => {
           if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
           if (e.key === 'Escape') {
+            cancelled.current = true;
             setV(value);
             (e.target as HTMLInputElement).blur();
           }
@@ -75,138 +81,169 @@ export function Properties({ issues }: { issues: Issue[] }) {
   const con = one ? doc.connections.find((c) => c.id === one) : undefined;
   const group = one ? doc.groups.find((c) => c.id === one) : undefined;
   const text = one ? doc.texts.find((c) => c.id === one) : undefined;
+  const openNotes = doc.notes.filter((n) => n.status === 'open').length;
 
   return (
-    <aside className="props" aria-label="Eigenschaften">
-      <div className="props-body">
-        {sel.length === 0 && <SheetProps doc={doc} />}
-        {sel.length > 1 && (
-          <section>
-            <h2>{sel.length} Elemente</h2>
-            <div className="row-buttons">
-              <button onClick={() => st.commit('Drehen', rotateSelection(st.doc, sel))}>
-                <Icon name="rotate" /> Drehen
-              </button>
-              <button onClick={() => st.commit('Spiegeln', flipSelection(st.doc, sel))}>
-                <Icon name="flip" /> Spiegeln
-              </button>
-            </div>
-          </section>
-        )}
-        {comp && (
-          <section>
-            <h2>{symbolOf(comp.type).name}</h2>
-            <p className="sub">
-              {comp.type}
-              {symbolOf(comp.type).norm ? ` | ${symbolOf(comp.type).norm}` : ''}
-            </p>
-            <Field
-              label="Bezeichnung"
-              value={comp.label}
-              testid="prop-label"
-              onCommit={(v) =>
-                st.change('Bezeichnung', (d) => void (d.components.find((c) => c.id === comp.id)!.label = v))
-              }
-            />
-            {[...new Set([...symbolOf(comp.type).props, ...Object.keys(comp.props)])].map((k) => (
+    <aside className="props" aria-label="Eigenschaften und Anmerkungen">
+      <div className="tabs" role="tablist">
+        <button
+          role="tab"
+          aria-selected={st.panel === 'props'}
+          data-testid="tab-props"
+          onClick={() => st.setPanel('props')}
+        >
+          Eigenschaften
+        </button>
+        <button
+          role="tab"
+          aria-selected={st.panel === 'notes'}
+          data-testid="tab-notes"
+          onClick={() => st.setPanel('notes')}
+        >
+          Anmerkungen{openNotes ? <span className="badge">{openNotes}</span> : null}
+        </button>
+      </div>
+      {st.panel === 'notes' ? (
+        <div className="props-body">
+          <NotesPanel />
+        </div>
+      ) : (
+        <div className="props-body">
+          {sel.length === 0 && <SheetProps doc={doc} />}
+          {sel.length > 1 && (
+            <section>
+              <h2>{sel.length} Elemente</h2>
+              <div className="row-buttons">
+                <button onClick={() => st.commit('Drehen', rotateSelection(st.doc, sel))}>
+                  <Icon name="rotate" /> Drehen
+                </button>
+                <button onClick={() => st.commit('Spiegeln', flipSelection(st.doc, sel))}>
+                  <Icon name="flip" /> Spiegeln
+                </button>
+              </div>
+            </section>
+          )}
+          {comp && (
+            <section>
+              <h2>{symbolOf(comp.type).name}</h2>
+              <p className="sub">
+                {comp.type}
+                {symbolOf(comp.type).norm ? ` | ${symbolOf(comp.type).norm}` : ''}
+              </p>
               <Field
-                key={k}
-                label={PROP_NAMES[k] ? `${PROP_NAMES[k]} (${k})` : k}
-                value={comp.props[k] ?? ''}
-                testid={`prop-${k}`}
+                label="Bezeichnung"
+                value={comp.label}
+                testid="prop-label"
                 onCommit={(v) =>
-                  st.change('Eigenschaft', (d) => {
-                    const c = d.components.find((x) => x.id === comp.id)!;
-                    if (v) c.props[k] = v;
-                    else delete c.props[k];
-                  })
+                  st.change('Bezeichnung', (d) => void (d.components.find((c) => c.id === comp.id)!.label = v))
                 }
               />
-            ))}
-            <NewProp
-              onAdd={(k, v) =>
-                st.change('Eigenschaft', (d) => void (d.components.find((x) => x.id === comp.id)!.props[k] = v))
-              }
-            />
-            <div className="row-buttons">
-              <button title="Drehen (R)" onClick={() => st.commit('Drehen', rotateSelection(st.doc, [comp.id]))}>
-                <Icon name="rotate" /> {comp.rot}°
-              </button>
+              {[...new Set([...symbolOf(comp.type).props, ...Object.keys(comp.props)])].map((k) => (
+                <Field
+                  key={k}
+                  label={PROP_NAMES[k] ? `${PROP_NAMES[k]} (${k})` : k}
+                  value={comp.props[k] ?? ''}
+                  testid={`prop-${k}`}
+                  onCommit={(v) =>
+                    st.change('Eigenschaft', (d) => {
+                      const c = d.components.find((x) => x.id === comp.id)!;
+                      if (v) c.props[k] = v;
+                      else delete c.props[k];
+                    })
+                  }
+                />
+              ))}
+              <NewProp
+                onAdd={(k, v) =>
+                  st.change('Eigenschaft', (d) => void (d.components.find((x) => x.id === comp.id)!.props[k] = v))
+                }
+              />
+              <div className="row-buttons">
+                <button title="Drehen (R)" onClick={() => st.commit('Drehen', rotateSelection(st.doc, [comp.id]))}>
+                  <Icon name="rotate" /> {comp.rot}°
+                </button>
+                <button
+                  title="Spiegeln (F)"
+                  aria-pressed={comp.flip}
+                  onClick={() => st.commit('Spiegeln', flipSelection(st.doc, [comp.id]))}
+                >
+                  <Icon name="flip" /> Spiegeln
+                </button>
+                <button
+                  title="Fixiert: Automatik und Assistent verschieben nicht"
+                  aria-pressed={comp.pinned}
+                  onClick={() =>
+                    st.change(
+                      'Fixieren',
+                      (d) => void (d.components.find((x) => x.id === comp.id)!.pinned = !comp.pinned),
+                    )
+                  }
+                >
+                  <Icon name="pin" /> {comp.pinned ? 'Fixiert' : 'Frei'}
+                </button>
+              </div>
+              <p className="sub">ID {comp.id}</p>
+            </section>
+          )}
+          {con && <ConnectionProps doc={doc} id={con.id} />}
+          {group && (
+            <section>
+              <h2>Gruppe</h2>
+              <Field
+                label="Bezeichnung"
+                value={group.label}
+                onCommit={(v) => st.change('Gruppe', (d) => void (d.groups.find((x) => x.id === group.id)!.label = v))}
+              />
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={group.frame}
+                  onChange={(e) =>
+                    st.change('Gruppe', (d) => void (d.groups.find((x) => x.id === group.id)!.frame = e.target.checked))
+                  }
+                />{' '}
+                Rahmen zeichnen
+              </label>
+              <p className="sub">{group.members.join(', ')}</p>
               <button
-                title="Spiegeln (F)"
-                aria-pressed={comp.flip}
-                onClick={() => st.commit('Spiegeln', flipSelection(st.doc, [comp.id]))}
-              >
-                <Icon name="flip" /> Spiegeln
-              </button>
-              <button
-                title="Fixiert: Automatik und Assistent verschieben nicht"
-                aria-pressed={comp.pinned}
                 onClick={() =>
-                  st.change('Fixieren', (d) => void (d.components.find((x) => x.id === comp.id)!.pinned = !comp.pinned))
+                  st.change('Gruppe auflösen', (d) => void (d.groups = d.groups.filter((x) => x.id !== group.id)))
                 }
               >
-                <Icon name="pin" /> {comp.pinned ? 'Fixiert' : 'Frei'}
+                Gruppe auflösen
               </button>
-            </div>
-            <p className="sub">ID {comp.id}</p>
-          </section>
-        )}
-        {con && <ConnectionProps doc={doc} id={con.id} />}
-        {group && (
-          <section>
-            <h2>Gruppe</h2>
-            <Field
-              label="Bezeichnung"
-              value={group.label}
-              onCommit={(v) => st.change('Gruppe', (d) => void (d.groups.find((x) => x.id === group.id)!.label = v))}
-            />
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={group.frame}
-                onChange={(e) =>
-                  st.change('Gruppe', (d) => void (d.groups.find((x) => x.id === group.id)!.frame = e.target.checked))
-                }
-              />{' '}
-              Rahmen zeichnen
-            </label>
-            <p className="sub">{group.members.join(', ')}</p>
-            <button
-              onClick={() =>
-                st.change('Gruppe auflösen', (d) => void (d.groups = d.groups.filter((x) => x.id !== group.id)))
-              }
-            >
-              Gruppe auflösen
-            </button>
-          </section>
-        )}
-        {text && (
-          <section>
-            <h2>Text</h2>
-            <Field
-              label="Text"
-              value={text.text}
-              onCommit={(v) => st.change('Text', (d) => void (d.texts.find((x) => x.id === text.id)!.text = v))}
-            />
-            <label className="field">
-              <span>Schriftgrösse</span>
-              <select
-                value={text.size}
-                onChange={(e) =>
-                  st.change('Text', (d) => void (d.texts.find((x) => x.id === text.id)!.size = Number(e.target.value)))
-                }
-              >
-                {[2.5, 3.5, 5, 7].map((s) => (
-                  <option key={s} value={s}>
-                    {s} mm
-                  </option>
-                ))}
-              </select>
-            </label>
-          </section>
-        )}
-      </div>
+            </section>
+          )}
+          {text && (
+            <section>
+              <h2>Text</h2>
+              <Field
+                label="Text"
+                value={text.text}
+                onCommit={(v) => st.change('Text', (d) => void (d.texts.find((x) => x.id === text.id)!.text = v))}
+              />
+              <label className="field">
+                <span>Schriftgrösse</span>
+                <select
+                  value={text.size}
+                  onChange={(e) =>
+                    st.change(
+                      'Text',
+                      (d) => void (d.texts.find((x) => x.id === text.id)!.size = Number(e.target.value)),
+                    )
+                  }
+                >
+                  {[2.5, 3.5, 5, 7].map((s) => (
+                    <option key={s} value={s}>
+                      {s} mm
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </section>
+          )}
+        </div>
+      )}
       <IssueList issues={issues} />
     </aside>
   );

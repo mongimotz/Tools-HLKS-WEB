@@ -6,6 +6,7 @@ import { MEDIA, medium, mediumMatches } from '../model/media.ts';
 import { findSymbol, symbolOf } from '../symbols/library.ts';
 import { nextId } from '../ops/ops.ts';
 import type { Route } from '../layout/route.ts';
+import { detachNotes } from '../model/notes.ts';
 
 /** Component IDs a selection stands for: components, plus the members of selected groups. */
 export function componentIds(s: Schema, sel: string[]): string[] {
@@ -76,16 +77,20 @@ export function flipSelection(s: Schema, sel: string[]): Schema {
 export function deleteSelection(s: Schema, sel: string[]): Schema {
   const del = new Set(sel);
   const comps = new Set(s.components.filter((c) => del.has(c.id)).map((c) => c.id));
+  const cons = new Set(
+    s.connections.filter((c) => del.has(c.id) || comps.has(c.from[0]) || comps.has(c.to[0])).map((c) => c.id),
+  );
+  const notes = detachNotes(s, new Set([...comps, ...cons])).filter((n) => !del.has(n.id));
   return {
     ...s,
     components: s.components.filter((c) => !comps.has(c.id)),
-    connections: s.connections.filter((c) => !del.has(c.id) && !comps.has(c.from[0]) && !comps.has(c.to[0])),
+    connections: s.connections.filter((c) => !cons.has(c.id)),
     groups: s.groups
       .filter((g) => !del.has(g.id))
       .map((g) => ({ ...g, members: g.members.filter((m) => !comps.has(m)) }))
       .filter((g) => g.members.length),
     texts: s.texts.filter((t) => !del.has(t.id)),
-    notes: s.notes.filter((n) => !del.has(n.id) && !('component' in n.anchor && comps.has(n.anchor.component))),
+    notes,
   };
 }
 
