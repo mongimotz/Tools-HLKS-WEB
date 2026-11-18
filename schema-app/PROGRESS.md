@@ -4,9 +4,9 @@
 |---|---|
 | 0 Scaffold + deploy | done |
 | 1 Model, validation, renderer, CLI | done |
-| 2 Ventilation symbols, chain layout, ops | done (stop point: owner review) |
+| 2 Ventilation symbols, chain layout, ops | done |
 | 3 Editor | done |
-| 4 Files, live sync, export | done (stop point: owner review) |
+| 4 Files, live sync, export | done |
 | 5 Notes | done |
 | 6 OpenRouter assistant | done |
 | 7 Styles, polish, start page | done |
@@ -14,7 +14,7 @@
 
 ## Phase 0
 - `npm run build` builds `dist/` (relative base). `npm run check:site [out]` assembles and checks the Pages artifact (old pages, `CNAME`, `.nojekyll`, `/schema/index.html`, no sources leaked).
-- Owner: switch Settings → Pages → Source to "GitHub Actions" before merging to `main` (otherwise the old branch deploy keeps running and `/schema/` stays missing).
+- Pages source switched to "GitHub Actions" by the owner (2026-11-18). Until PR 1 is merged, pushes to `main` do not deploy.
 - Root `npm test`: 3 failures locally come from an untracked `tools/.DS_Store` (Finder file); not present in a clean checkout.
 
 ## Phase 1
@@ -72,3 +72,6 @@
 ## Phase 8 (first part)
 - Hydraulic symbols and media, `add_chain` with `medium`, circuit layout (return row), examples «Heizgruppe mit Beimischung» and «Kältekreis». Symbols not yet checked against the norm PDFs.
 - Symbols checked against EN 1861 / EN 806-1 where they define one; network connection symbol; example «Trinkwasser mit Wassererwärmer».
+
+## Open (2026-11-18)
+Owner checks and remaining points: see `HANDOFF.md`.

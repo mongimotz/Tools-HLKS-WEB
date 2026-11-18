@@ -94,3 +94,6 @@ Format: date | decision | alternatives | reason.
 - Norm check (2026-11-18, EN 1861 table 1 and EN 806-1 table 1, both scans): pump (EN 1861 group 15, chevron to the outlet), valve and three-way valve (group 2), tank (group 8), plate heat exchanger (group 11), check valve (EN 806-1 6.6.4) and water meter (6.10.8) redrawn or confirmed and marked checked. Boiler, heat pump, chiller, consumer, radiator, balancing valve, strainer, water heater, expansion vessel, tap, motor valve and network connection are own drawings (*): the norms have no building-services symbol for them or only process-plant forms.
 - Single-port symbols that hang off a row are mirrored instead of turned upside down (a tap keeps its spout down).
 - Not done: IEC 81346 reference designations (optional in the plan; the component IDs serve as designations for now).
+
+## 2026-11-18 | Way of working
+- Owner decision: no stop points between phases; build without asking, minimal testing. The plan's stop points (after phases 2, 4, and «phase 8 only after feedback») no longer apply.
