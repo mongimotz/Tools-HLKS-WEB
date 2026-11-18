@@ -58,6 +58,10 @@ export const OP_SCHEMAS = {
     props: props.optional(),
     in: z.string().default('in'),
     out: z.string().default('out'),
+    /** Position for the new component (no relayout then), e.g. where it was dropped on the line. */
+    pos: vec.optional(),
+    rot: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]).optional(),
+    flip: z.boolean().optional(),
   }),
   set_props: z.object({ op: z.literal('set_props'), id: z.string(), props, replace: z.boolean().default(false) }),
   set_label: z.object({ op: z.literal('set_label'), id: z.string(), label: z.string() }),
@@ -276,7 +280,16 @@ export function applyOps(input: Schema, ops: Op[]): ApplyResult {
         const con = s.connections.find((c) => c.id === op.connection);
         if (!con) throw new OpError(i, `Verbindung "${op.connection}" gibt es nicht.`);
         let c: Component;
-        if (op.type) c = newComponent(i, { id: op.id, type: op.type, label: op.label, props: op.props });
+        if (op.type)
+          c = newComponent(i, {
+            id: op.id,
+            type: op.type,
+            label: op.label,
+            props: op.props,
+            pos: op.pos,
+            rot: op.rot,
+            flip: op.flip,
+          });
         else if (op.id) c = comp(i, op.id);
         else throw new OpError(i, 'type (neue Komponente) oder id (bestehende) angeben.');
         const def = symbolOf(c.type);
@@ -295,9 +308,11 @@ export function applyOps(input: Schema, ops: Op[]): ApplyResult {
           pinned: false,
         });
         added.push(s.connections[s.connections.length - 1]!.id);
-        if (!c.pos) needLayout = true;
-        // Room on the line: relayout of unpinned elements makes the gap.
-        relayout = relayout ?? { all: false };
+        if (!c.pos) {
+          // Room on the line: relayout of unpinned elements makes the gap.
+          needLayout = true;
+          relayout = relayout ?? { all: false };
+        }
         break;
       }
       case 'set_props': {

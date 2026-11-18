@@ -47,3 +47,13 @@ Format: date | decision | alternatives | reason.
 
 ## 2026-11-18 | Drawing check (`src/layout/check.ts`)
 - Rendering returns text boxes, routes and group frames; the check reports overlapping texts, texts on symbols, lines through symbols, frames cutting non-members, content outside the frame or on the title block. It runs in `cli validate`, `cli ops` and for every example in the tests, so "look at the PNG" is backed by an automatic check.
+
+## 2026-11-18 | Editor canvas shows the renderer's SVG
+- The sheet in the editor is the same SVG string the CLI and the exports produce (plus grid and note pins), injected into the canvas; a separate React layer draws hit areas, ports and handles. Every edit re-renders the whole sheet (< 1 ms for the examples), during a drag as an uncommitted preview.
+- Alternative: React components per symbol. Rejected: two drawing paths would drift apart; the plan requires one renderer for editor and CLI.
+
+## 2026-11-18 | Editing details
+- A manual move pins the component (plan). Lines with exactly one moved end lose their manual waypoints and are routed automatically again; with both ends moved the waypoints move along.
+- A connection drawn from an input port to an output port is stored output → input, so from → to stays the flow direction.
+- The first edit of a file with auto-placed components (`pos: null`) writes the computed positions into the file, so what the user sees is what is saved.
+- Browser draft in `localStorage` until phase 4 adds file handles (only this device; nothing leaves the browser).

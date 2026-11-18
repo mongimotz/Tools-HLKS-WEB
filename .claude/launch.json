@@ -4,15 +4,34 @@
     {
       "name": "hlks-tools",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["scripts/serve.mjs", "8080"],
+      "runtimeArgs": [
+        "scripts/serve.mjs",
+        "8080"
+      ],
       "port": 8080
     },
     {
       "name": "hlks-tools-subpath",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["scripts/serve.mjs", "8083", "--base", "Tools-HLKS-WEB"],
+      "runtimeArgs": [
+        "scripts/serve.mjs",
+        "8083",
+        "--base",
+        "Tools-HLKS-WEB"
+      ],
       "port": 8083,
       "url": "http://localhost:8083"
+    },
+    {
+      "name": "schema-editor",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "schema-app",
+        "run",
+        "dev"
+      ],
+      "port": 5180
     }
   ]
 }
