@@ -1,0 +1,53 @@
+{
+  "id": "water.boiler",
+  "name": "Wärmeerzeuger",
+  "category": "water",
+  "norm": "",
+  "checked": false,
+  "size": [
+    15,
+    15
+  ],
+  "prefix": "WE",
+  "ports": [
+    {
+      "id": "in",
+      "at": [
+        15,
+        12.5
+      ],
+      "dir": "E",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "out",
+      "at": [
+        15,
+        2.5
+      ],
+      "dir": "E",
+      "media": [
+        "water.*"
+      ]
+    }
+  ],
+  "labelAnchor": [
+    7.5,
+    -1.5
+  ],
+  "props": [
+    "Q",
+    "Art"
+  ],
+  "keywords": [
+    "Kessel",
+    "Heizkessel",
+    "Wärmeerzeugung",
+    "Fernwärme",
+    "Holz",
+    "Gas"
+  ],
+  "svg": "<rect x='0' y='0' width='15' height='15'/><path d='M7.5 12C5 12 4.5 9.5 6 8C6 9.5 7 9.5 7 8.5C7 6.5 8.5 5.5 8.5 3.5C10.5 5.5 11 8 10.5 9.5C10 11 9 12 7.5 12Z'/>"
+}

@@ -1,0 +1,4 @@
+{ "id": "air.damper", "name": "Klappe (Hand)", "category": "air", "norm": "SN EN 12792 T4/9", "checked": true,
+  "size": [5, 10], "prefix": "KL", "ports": [ { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] }, { "id": "out", "at": [5, 5], "dir": "E", "media": ["air.*"] } ],
+  "labelAnchor": [2.5, -1.5], "props": ["Funktion"], "keywords": ["Drosselklappe", "Handklappe", "Regulierklappe"],
+  "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M1 9.5L4 0.5'/><circle cx='2.5' cy='5' r='0.7'/>" }

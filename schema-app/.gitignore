@@ -1,0 +1,11 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+out/
+_local/
+normen/
+*.local.*
+
+# Owner work order, kept local (mentions a company name)
+PLAN_Prinzipschema.md

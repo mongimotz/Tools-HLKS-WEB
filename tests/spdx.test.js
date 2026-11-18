@@ -13,6 +13,7 @@ const ID = 'SPDX-License-Identifier: AGPL-3.0-or-later';
 // Logic ported from BentoPDF keeps its license (AGPL-3.0-only) and names its source and commit on line 2.
 const PORTED = /^\/\/ SPDX-License-Identifier: AGPL-3\.0-only\r?\n\/\/ Ported from BentoPDF \S+.* at [0-9a-f]{40}\r?\n/;
 const SKIP = ['lib/vendor', 'assets/fonts', 'tests/fixtures', 'node_modules', '.git', '.claude', 'docs'];
+const BUILD_DIRS = ['node_modules', 'dist', 'test-results', 'playwright-report', 'out', '_local', 'normen', '_site'];
 const EXT = new Set(['.js', '.mjs', '.css', '.html', '.py']);
 
 async function* walk(dir) {
@@ -20,6 +21,8 @@ async function* walk(dir) {
     const p = join(dir, e.name);
     const rel = relative(ROOT, p).replace(/\\/g, '/');
     if (SKIP.some((s) => rel === s || rel.startsWith(`${s}/`))) continue;
+    // Build output and dependencies of the Prinzipschema app (tools/schema-app, Vite build).
+    if (BUILD_DIRS.includes(e.name) && e.isDirectory()) continue;
     if (e.isDirectory()) yield* walk(p);
     else if (EXT.has(extname(p))) yield { p, rel };
   }

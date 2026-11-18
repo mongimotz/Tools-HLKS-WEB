@@ -1,0 +1,43 @@
+{
+  "format": "hlks-schema",
+  "version": 1,
+  "meta": {
+    "title": "Trinkwasser mit Wassererwärmer",
+    "project": "Beispiel",
+    "author": "HLKS-Tools",
+    "date": "2026-11-18",
+    "revision": "A"
+  },
+  "sheet": {
+    "size": "A3",
+    "orientation": "landscape",
+    "grid": 2.5,
+    "titleBlock": "default",
+    "legend": true
+  },
+  "style": "default",
+  "components": [
+    { "id": "HA01", "type": "water.connection", "label": "HA01", "props": {}, "pos": [137.5, 155], "rot": 0, "flip": false, "pinned": false },
+    { "id": "AV01", "type": "water.valve", "label": "AV01", "props": {}, "pos": [155, 155], "rot": 0, "flip": false, "pinned": false },
+    { "id": "WZ01", "type": "water.meter", "label": "WZ01", "props": {}, "pos": [175, 155], "rot": 0, "flip": false, "pinned": false },
+    { "id": "SF01", "type": "water.strainer", "label": "SF01", "props": {}, "pos": [195, 155], "rot": 0, "flip": false, "pinned": false },
+    { "id": "RV01", "type": "water.valve.check", "label": "RV01", "props": {}, "pos": [215, 155], "rot": 0, "flip": false, "pinned": false },
+    { "id": "EN01", "type": "water.tap", "label": "EN01", "props": {}, "pos": [290, 155], "rot": 0, "flip": false, "pinned": false },
+    { "id": "WW01", "type": "water.dhw", "label": "WW01", "props": { "V": "300 l" }, "pos": [252.5, 135], "rot": 0, "flip": false, "pinned": false },
+    { "id": "EN02", "type": "water.tap", "label": "EN02", "props": {}, "pos": [237.5, 110], "rot": 0, "flip": true, "pinned": false },
+    { "id": "J01", "type": "junction", "label": "J01", "props": {}, "pos": [252.5, 155], "rot": 0, "flip": false, "pinned": false }
+  ],
+  "connections": [
+    { "id": "L01", "from": ["HA01", "out"], "to": ["AV01", "in"], "medium": "water.potable.cold", "waypoints": [], "pinned": false },
+    { "id": "L02", "from": ["AV01", "out"], "to": ["WZ01", "in"], "medium": "water.potable.cold", "waypoints": [], "pinned": false },
+    { "id": "L03", "from": ["WZ01", "out"], "to": ["SF01", "in"], "medium": "water.potable.cold", "waypoints": [], "pinned": false },
+    { "id": "L04", "from": ["SF01", "out"], "to": ["RV01", "in"], "medium": "water.potable.cold", "waypoints": [], "pinned": false },
+    { "id": "L05", "from": ["RV01", "out"], "to": ["J01", "w"], "medium": "water.potable.cold", "waypoints": [], "pinned": false },
+    { "id": "L06", "from": ["J01", "e"], "to": ["EN01", "in"], "medium": "water.potable.cold", "waypoints": [], "pinned": false },
+    { "id": "L07", "from": ["J01", "n"], "to": ["WW01", "pwc"], "medium": "water.potable.cold", "waypoints": [], "pinned": false },
+    { "id": "L08", "from": ["WW01", "pwh"], "to": ["EN02", "in"], "medium": "water.potable.hot", "waypoints": [], "pinned": false }
+  ],
+  "groups": [],
+  "texts": [],
+  "notes": []
+}

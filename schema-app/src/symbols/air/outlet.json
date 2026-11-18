@@ -1,0 +1,4 @@
+{ "id": "air.outlet", "name": "Fortluftauslass (Wetterschutzgitter)", "category": "air", "norm": "SN EN 12792 T4/26", "checked": true,
+  "size": [5, 10], "prefix": "FA", "ports": [ { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] } ],
+  "labelAnchor": [2.5, -1.5], "props": [], "keywords": ["Wetterschutzgitter", "Fortluftgitter", "Ausblas", "FOL"],
+  "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M3.8 4L1.2 2M3.8 6.2L1.2 4.2M3.8 8.4L1.2 6.4'/>" }

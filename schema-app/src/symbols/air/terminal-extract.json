@@ -1,0 +1,4 @@
+{ "id": "air.terminal.extract", "name": "Abluftdurchlass", "category": "air", "norm": "SN EN 12792 T3/2", "checked": true,
+  "size": [10, 10], "prefix": "AD", "ports": [ { "id": "out", "at": [5, 0], "dir": "N", "media": ["air.*"] } ],
+  "labelAnchor": [11, 4], "labelAlign": "start", "props": ["V"], "keywords": ["Luftdurchlass", "Abluftgitter", "Absaugung", "ABL"],
+  "svg": "<rect x='0' y='0' width='10' height='8'/><path d='M3.8 8L5 6.2L6.2 8'/>" }

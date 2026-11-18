@@ -1,0 +1,4 @@
+{ "id": "air.damper.motor", "name": "Klappe mit Antrieb", "category": "air", "norm": "SN EN 12792 T4/9 + T6/3", "checked": true,
+  "size": [5, 10], "prefix": "KL", "ports": [ { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] }, { "id": "out", "at": [5, 5], "dir": "E", "media": ["air.*"] } ],
+  "labelAnchor": [2.5, -6.5], "props": ["Funktion"], "keywords": ["Jalousieklappe", "Motorklappe", "Absperrklappe", "Stellantrieb"],
+  "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M1 9.5L4 0.5'/><circle cx='2.5' cy='5' r='0.7'/><path d='M2.5 0V-2'/><rect x='0.5' y='-4.5' width='4' height='2.5'/>" }

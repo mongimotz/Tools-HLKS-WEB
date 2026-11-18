@@ -1,0 +1,50 @@
+{
+  "id": "water.valve",
+  "name": "Absperrarmatur",
+  "category": "water",
+  "norm": "SN EN 1861 T1/2",
+  "checked": true,
+  "size": [
+    10,
+    5
+  ],
+  "prefix": "AV",
+  "ports": [
+    {
+      "id": "in",
+      "at": [
+        0,
+        2.5
+      ],
+      "dir": "W",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "out",
+      "at": [
+        10,
+        2.5
+      ],
+      "dir": "E",
+      "media": [
+        "water.*"
+      ]
+    }
+  ],
+  "labelAnchor": [
+    5,
+    -1.5
+  ],
+  "props": [
+    "DN"
+  ],
+  "keywords": [
+    "Ventil",
+    "Absperrventil",
+    "Kugelhahn",
+    "Schieber"
+  ],
+  "svg": "<path d='M0 0L10 5V0L0 5Z'/>"
+}

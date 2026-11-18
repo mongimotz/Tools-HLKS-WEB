@@ -1,0 +1,10 @@
+dist
+node_modules
+examples
+tests/visual
+src/symbols/**/*.json
+src/symbols/index.generated.ts
+src/render/font-metrics.generated.ts
+package-lock.json
+out
+*.md

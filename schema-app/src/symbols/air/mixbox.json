@@ -1,0 +1,6 @@
+{ "id": "air.mixbox", "name": "Mischkammer", "category": "air", "norm": "SN EN 12792 T5/6", "checked": true,
+  "size": [10, 10], "prefix": "MK",
+  "ports": [ { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] }, { "id": "rec", "at": [5, 0], "dir": "N", "media": ["air.*"] }, { "id": "out", "at": [10, 5], "dir": "E", "media": ["air.*"] } ],
+  "flow": [["in", "out"], ["rec", "out"]],
+  "labelAnchor": [-1, -1.5], "labelAlign": "end", "props": [], "keywords": ["Mischluft", "Umluft", "Mischkasten"],
+  "svg": "<rect x='0' y='0' width='10' height='10'/><path d='M0 5H5V0'/><circle cx='5' cy='5' r='0.7' fill='currentColor' stroke='none'/>" }

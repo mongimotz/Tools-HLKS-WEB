@@ -1,0 +1,51 @@
+{
+  "id": "water.pump",
+  "name": "Umwälzpumpe",
+  "category": "water",
+  "norm": "SN EN 1861 T1/15",
+  "checked": true,
+  "size": [
+    10,
+    10
+  ],
+  "prefix": "UP",
+  "ports": [
+    {
+      "id": "in",
+      "at": [
+        0,
+        5
+      ],
+      "dir": "W",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "out",
+      "at": [
+        10,
+        5
+      ],
+      "dir": "E",
+      "media": [
+        "water.*"
+      ]
+    }
+  ],
+  "labelAnchor": [
+    5,
+    -1.5
+  ],
+  "props": [
+    "V",
+    "H",
+    "P"
+  ],
+  "keywords": [
+    "Pumpe",
+    "Heizungspumpe",
+    "pump"
+  ],
+  "svg": "<circle cx='5' cy='5' r='5'/><path d='M6.71 0.3L10 5L6.71 9.7'/>"
+}

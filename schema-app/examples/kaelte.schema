@@ -1,0 +1,42 @@
+{
+  "format": "hlks-schema",
+  "version": 1,
+  "meta": {
+    "title": "Kältekreis",
+    "project": "Beispiel",
+    "author": "HLKS-Tools",
+    "date": "2026-11-18",
+    "revision": "A"
+  },
+  "sheet": {
+    "size": "A3",
+    "orientation": "landscape",
+    "grid": 2.5,
+    "titleBlock": "default",
+    "legend": true
+  },
+  "style": "default",
+  "components": [
+    { "id": "KM01", "type": "water.chiller", "label": "KM01", "props": { "Q": "80 kW" }, "pos": [175, 127.5], "rot": 0, "flip": false, "pinned": false },
+    { "id": "AV01", "type": "water.valve", "label": "AV01", "props": {}, "pos": [197.5, 122.5], "rot": 0, "flip": false, "pinned": false },
+    { "id": "UP01", "type": "water.pump", "label": "UP01", "props": { "V": "13.8 m³/h" }, "pos": [217.5, 122.5], "rot": 0, "flip": false, "pinned": false },
+    { "id": "MV01", "type": "water.valve.motor", "label": "MV01", "props": {}, "pos": [237.5, 120], "rot": 0, "flip": false, "pinned": false },
+    { "id": "VB01", "type": "water.consumer", "label": "VB01", "props": { "Nutzung": "Kühldecken" }, "pos": [257.5, 122.5], "rot": 0, "flip": false, "pinned": false },
+    { "id": "SR01", "type": "water.valve.balancing", "label": "SR01", "props": {}, "pos": [237.5, 150], "rot": 0, "flip": true, "pinned": false },
+    { "id": "SF01", "type": "water.strainer", "label": "SF01", "props": {}, "pos": [217.5, 150], "rot": 0, "flip": true, "pinned": false },
+    { "id": "AV02", "type": "water.valve", "label": "AV02", "props": {}, "pos": [197.5, 150], "rot": 0, "flip": true, "pinned": false }
+  ],
+  "connections": [
+    { "id": "L01", "from": ["KM01", "out"], "to": ["AV01", "in"], "medium": "water.chill.flow", "waypoints": [], "pinned": false },
+    { "id": "L02", "from": ["AV01", "out"], "to": ["UP01", "in"], "medium": "water.chill.flow", "waypoints": [], "pinned": false },
+    { "id": "L03", "from": ["UP01", "out"], "to": ["MV01", "in"], "medium": "water.chill.flow", "waypoints": [], "pinned": false },
+    { "id": "L04", "from": ["MV01", "out"], "to": ["VB01", "in"], "medium": "water.chill.flow", "waypoints": [], "pinned": false },
+    { "id": "L05", "from": ["VB01", "out"], "to": ["SR01", "in"], "medium": "water.chill.return", "waypoints": [], "pinned": false },
+    { "id": "L06", "from": ["SR01", "out"], "to": ["SF01", "in"], "medium": "water.chill.return", "waypoints": [], "pinned": false },
+    { "id": "L07", "from": ["SF01", "out"], "to": ["AV02", "in"], "medium": "water.chill.return", "waypoints": [], "pinned": false },
+    { "id": "L08", "from": ["AV02", "out"], "to": ["KM01", "in"], "medium": "water.chill.return", "waypoints": [], "pinned": false }
+  ],
+  "groups": [],
+  "texts": [],
+  "notes": []
+}

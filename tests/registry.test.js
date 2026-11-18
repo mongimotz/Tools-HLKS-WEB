@@ -14,7 +14,7 @@ test('registry: unique ids, known groups, pages and icons exist', async () => {
   for (const t of TOOLS) {
     assert.ok(groups.has(t.group), `${t.id}: group`);
     if (t.status !== 'ready') continue;
-    assert.ok((await stat(new URL(`../${t.path}index.html`, import.meta.url))).isFile(), `${t.id}: page`);
+    assert.ok((await stat(new URL(`../${t.source ?? t.path}index.html`, import.meta.url))).isFile(), `${t.id}: page`);
     if (t.group === GENERAL) assert.match(String(icon(t.icon)), /<path|<rect|<circle/, `${t.id}: icon ${t.icon}`);
   }
 });

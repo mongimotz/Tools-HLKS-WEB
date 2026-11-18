@@ -1,0 +1,55 @@
+{
+  "format": "hlks-schema",
+  "version": 1,
+  "meta": {
+    "title": "Zu- und Abluftgerät mit KVS-System",
+    "project": "Beispiel",
+    "author": "HLKS-Tools",
+    "date": "2026-11-18",
+    "revision": "A"
+  },
+  "sheet": {
+    "size": "A3",
+    "orientation": "landscape",
+    "grid": 2.5,
+    "titleBlock": "default",
+    "legend": true
+  },
+  "style": "default",
+  "components": [
+    { "id": "AF01", "type": "air.intake", "label": "AF01", "props": {}, "pos": [157.5, 155], "rot": 0, "flip": false, "pinned": false },
+    { "id": "KL01", "type": "air.damper.motor", "label": "KL01", "props": {}, "pos": [172.5, 155], "rot": 0, "flip": false, "pinned": false },
+    { "id": "FI01", "type": "air.filter", "label": "FI01", "props": { "Klasse": "ePM1 55%" }, "pos": [190, 155], "rot": 0, "flip": false, "pinned": false },
+    { "id": "KVS01", "type": "air.hrc.coil", "label": "KVS01", "props": {}, "pos": [210, 155], "rot": 0, "flip": false, "pinned": false },
+    { "id": "ER01", "type": "air.heater", "label": "ER01", "props": {}, "pos": [227.5, 155], "rot": 0, "flip": false, "pinned": false },
+    { "id": "VE01", "type": "air.fan", "label": "VE01", "props": { "V": "3000 m³/h" }, "pos": [245, 155], "rot": 0, "flip": false, "pinned": false },
+    { "id": "ZD01", "type": "air.terminal.supply", "label": "ZD01", "props": {}, "pos": [270, 170], "rot": 0, "flip": false, "pinned": false },
+    { "id": "AD01", "type": "air.terminal.extract", "label": "AD01", "props": {}, "pos": [270, 95], "rot": 180, "flip": false, "pinned": false },
+    { "id": "FI02", "type": "air.filter", "label": "FI02", "props": { "Klasse": "ePM10 50%" }, "pos": [250, 110], "rot": 0, "flip": true, "pinned": false },
+    { "id": "VE02", "type": "air.fan", "label": "VE02", "props": { "V": "3000 m³/h" }, "pos": [230, 110], "rot": 0, "flip": true, "pinned": false },
+    { "id": "KVS02", "type": "air.hrc.coil", "label": "KVS02", "props": {}, "pos": [210, 110], "rot": 180, "flip": false, "pinned": false },
+    { "id": "KL02", "type": "air.damper.motor", "label": "KL02", "props": {}, "pos": [192.5, 110], "rot": 0, "flip": true, "pinned": false },
+    { "id": "FA01", "type": "air.outlet", "label": "FA01", "props": {}, "pos": [177.5, 110], "rot": 0, "flip": true, "pinned": false }
+  ],
+  "connections": [
+    { "id": "L01", "from": ["AF01", "out"], "to": ["KL01", "in"], "medium": "air.outdoor", "waypoints": [], "pinned": false },
+    { "id": "L02", "from": ["KL01", "out"], "to": ["FI01", "in"], "medium": "air.outdoor", "waypoints": [], "pinned": false },
+    { "id": "L03", "from": ["FI01", "out"], "to": ["KVS01", "in"], "medium": "air.outdoor", "waypoints": [], "pinned": false },
+    { "id": "L04", "from": ["KVS01", "out"], "to": ["ER01", "in"], "medium": "air.supply", "waypoints": [], "pinned": false },
+    { "id": "L05", "from": ["ER01", "out"], "to": ["VE01", "in"], "medium": "air.supply", "waypoints": [], "pinned": false },
+    { "id": "L06", "from": ["VE01", "out"], "to": ["ZD01", "in"], "medium": "air.supply", "waypoints": [], "pinned": false },
+    { "id": "L07", "from": ["AD01", "out"], "to": ["FI02", "in"], "medium": "air.extract", "waypoints": [], "pinned": false },
+    { "id": "L08", "from": ["FI02", "out"], "to": ["VE02", "in"], "medium": "air.extract", "waypoints": [], "pinned": false },
+    { "id": "L09", "from": ["VE02", "out"], "to": ["KVS02", "in"], "medium": "air.extract", "waypoints": [], "pinned": false },
+    { "id": "L10", "from": ["KVS02", "out"], "to": ["KL02", "in"], "medium": "air.exhaust", "waypoints": [], "pinned": false },
+    { "id": "L11", "from": ["KL02", "out"], "to": ["FA01", "in"], "medium": "air.exhaust", "waypoints": [], "pinned": false },
+    { "id": "L12", "from": ["KVS02", "p1"], "to": ["KVS01", "p2"], "medium": "water.hrc", "waypoints": [], "pinned": false },
+    { "id": "L13", "from": ["KVS01", "p1"], "to": ["KVS02", "p2"], "medium": "water.hrc", "waypoints": [], "pinned": false }
+  ],
+  "groups": [
+    { "id": "G1", "label": "Zuluftgerät", "members": ["KL01", "FI01", "KVS01", "ER01", "VE01"], "frame": true },
+    { "id": "G2", "label": "Abluftgerät", "members": ["FI02", "VE02", "KVS02", "KL02"], "frame": true }
+  ],
+  "texts": [],
+  "notes": []
+}

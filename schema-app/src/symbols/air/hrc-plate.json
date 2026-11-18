@@ -1,0 +1,4 @@
+{ "id": "air.hrc.plate", "name": "WRG Plattenwärmeübertrager", "category": "air", "norm": "", "checked": false,
+  "size": [15, 45], "prefix": "WRG", "ports": [ { "id": "a.in", "at": [0, 40], "dir": "W", "media": ["air.*"] }, { "id": "a.out", "at": [15, 40], "dir": "E", "media": ["air.*"] }, { "id": "b.in", "at": [15, 5], "dir": "E", "media": ["air.*"] }, { "id": "b.out", "at": [0, 5], "dir": "W", "media": ["air.*"] } ], "flow": [["a.in", "a.out"], ["b.in", "b.out"]],
+  "labelAnchor": [7.5, -1.5], "props": ["eta"], "keywords": ["Wärmerückgewinnung", "Plattentauscher", "Kreuzstrom", "Gegenstrom", "WRG"],
+  "svg": "<rect x='0' y='0' width='15' height='45'/><path d='M0 0L15 45M15 0L0 45'/>" }

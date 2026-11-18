@@ -1,0 +1,84 @@
+{
+  "id": "water.tank",
+  "name": "Speicher",
+  "category": "water",
+  "norm": "SN EN 1861 T1/8",
+  "checked": true,
+  "size": [
+    10,
+    20
+  ],
+  "prefix": "SP",
+  "ports": [
+    {
+      "id": "a.in",
+      "at": [
+        0,
+        2.5
+      ],
+      "dir": "W",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "a.out",
+      "at": [
+        0,
+        17.5
+      ],
+      "dir": "W",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "b.out",
+      "at": [
+        10,
+        2.5
+      ],
+      "dir": "E",
+      "media": [
+        "water.*"
+      ],
+      "optional": true
+    },
+    {
+      "id": "b.in",
+      "at": [
+        10,
+        17.5
+      ],
+      "dir": "E",
+      "media": [
+        "water.*"
+      ],
+      "optional": true
+    }
+  ],
+  "flow": [
+    [
+      "a.in",
+      "a.out"
+    ],
+    [
+      "b.in",
+      "b.out"
+    ]
+  ],
+  "labelAnchor": [
+    5,
+    -1.5
+  ],
+  "props": [
+    "V"
+  ],
+  "keywords": [
+    "Pufferspeicher",
+    "Puffer",
+    "Kältespeicher",
+    "Behälter"
+  ],
+  "svg": "<path d='M0 2.5A5 2.5 0 0 1 10 2.5V17.5A5 2.5 0 0 1 0 17.5Z'/>"
+}

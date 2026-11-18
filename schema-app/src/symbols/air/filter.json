@@ -1,0 +1,4 @@
+{ "id": "air.filter", "name": "Filter", "category": "air", "norm": "SN EN 12792 T4/24", "checked": true,
+  "size": [10, 10], "prefix": "FI", "ports": [ { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] }, { "id": "out", "at": [10, 5], "dir": "E", "media": ["air.*"] } ],
+  "labelAnchor": [5, -1.5], "props": ["Klasse", "dp"], "keywords": ["Luftfilter", "ePM1", "ePM10", "ISO 16890"],
+  "svg": "<rect x='0' y='0' width='10' height='10'/><path d='M6.5 0L10 5L6.5 10'/>" }

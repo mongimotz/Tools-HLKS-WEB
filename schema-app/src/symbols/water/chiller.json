@@ -1,0 +1,84 @@
+{
+  "id": "water.chiller",
+  "name": "Kältemaschine",
+  "category": "water",
+  "norm": "",
+  "checked": false,
+  "size": [
+    15,
+    15
+  ],
+  "prefix": "KM",
+  "ports": [
+    {
+      "id": "in",
+      "at": [
+        15,
+        12.5
+      ],
+      "dir": "E",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "out",
+      "at": [
+        15,
+        2.5
+      ],
+      "dir": "E",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "rec.in",
+      "at": [
+        0,
+        12.5
+      ],
+      "dir": "W",
+      "media": [
+        "water.*"
+      ],
+      "optional": true
+    },
+    {
+      "id": "rec.out",
+      "at": [
+        0,
+        2.5
+      ],
+      "dir": "W",
+      "media": [
+        "water.*"
+      ],
+      "optional": true
+    }
+  ],
+  "flow": [
+    [
+      "in",
+      "out"
+    ],
+    [
+      "rec.in",
+      "rec.out"
+    ]
+  ],
+  "labelAnchor": [
+    7.5,
+    -1.5
+  ],
+  "props": [
+    "Q",
+    "EER"
+  ],
+  "keywords": [
+    "Kälteerzeuger",
+    "Kaltwassersatz",
+    "Chiller"
+  ],
+  "svg": "<rect x='0' y='0' width='15' height='15'/><path d='M0 15L15 0'/><text x='4.5' y='6' font-size='3.5' fill='currentColor' stroke='none' text-anchor='middle'>K</text><text x='10.5' y='12' font-size='3.5' fill='currentColor' stroke='none' text-anchor='middle'>M</text>"
+}

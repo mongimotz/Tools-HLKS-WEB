@@ -1,0 +1,86 @@
+{
+  "id": "water.dhw",
+  "name": "Wassererwärmer",
+  "category": "water",
+  "norm": "",
+  "checked": false,
+  "size": [
+    10,
+    20
+  ],
+  "prefix": "WW",
+  "ports": [
+    {
+      "id": "h.in",
+      "at": [
+        0,
+        5
+      ],
+      "dir": "W",
+      "media": [
+        "water.*"
+      ],
+      "optional": true
+    },
+    {
+      "id": "h.out",
+      "at": [
+        0,
+        15
+      ],
+      "dir": "W",
+      "media": [
+        "water.*"
+      ],
+      "optional": true
+    },
+    {
+      "id": "pwh",
+      "at": [
+        5,
+        0
+      ],
+      "dir": "N",
+      "media": [
+        "water.potable.*"
+      ]
+    },
+    {
+      "id": "pwc",
+      "at": [
+        5,
+        20
+      ],
+      "dir": "S",
+      "media": [
+        "water.potable.*"
+      ]
+    }
+  ],
+  "flow": [
+    [
+      "h.in",
+      "h.out"
+    ],
+    [
+      "pwc",
+      "pwh"
+    ]
+  ],
+  "labelAnchor": [
+    11,
+    9.5
+  ],
+  "labelAlign": "start",
+  "props": [
+    "V",
+    "Q"
+  ],
+  "keywords": [
+    "Boiler",
+    "Trinkwassererwärmer",
+    "Warmwasserspeicher",
+    "Brauchwarmwasser"
+  ],
+  "svg": "<path d='M0 2.5A5 2.5 0 0 1 10 2.5V17.5A5 2.5 0 0 1 0 17.5Z'/><path d='M0 5H2.5L5 7.5L2.5 10L5 12.5L2.5 15H0'/>"
+}

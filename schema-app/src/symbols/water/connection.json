@@ -1,0 +1,14 @@
+{
+  "id": "water.connection",
+  "name": "Netzanschluss",
+  "category": "water",
+  "norm": "",
+  "checked": false,
+  "size": [5, 10],
+  "prefix": "HA",
+  "ports": [{ "id": "out", "at": [5, 5], "dir": "E", "media": ["water.*"] }],
+  "labelAnchor": [2.5, -1.5],
+  "props": ["DN"],
+  "keywords": ["Hausanschluss", "Wasseranschluss", "Fernwärmeanschluss", "Übergabe"],
+  "svg": "<path d='M0 0V10M0 5H5M0 2.5L2.5 0M0 5L2.5 2.5M0 7.5L2.5 5M0 10L2.5 7.5'/>"
+}

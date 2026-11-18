@@ -1,0 +1,54 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Fixed list of media. Colours follow Swiss practice (AUL green, ZUL red, ABL yellow, FOL blue); see DECISIONS.md.
+
+export interface MediumDef {
+  id: string;
+  /** Short code shown on lines and in the legend. */
+  code: string;
+  name: string;
+  /** Default colour (style can override). */
+  color: string;
+  /** Dash pattern in mm for black-and-white output, "" = solid. */
+  dash: string;
+  /** Line kind: flow lines carry media, signal lines are control links. */
+  kind: 'flow' | 'signal';
+}
+
+export const MEDIA: MediumDef[] = [
+  { id: 'air.outdoor', code: 'AUL', name: 'Aussenluft', color: '#1fa33a', dash: '', kind: 'flow' },
+  { id: 'air.supply', code: 'ZUL', name: 'Zuluft', color: '#e2231a', dash: '', kind: 'flow' },
+  { id: 'air.extract', code: 'ABL', name: 'Abluft', color: '#e6c000', dash: '6 1.5', kind: 'flow' },
+  { id: 'air.exhaust', code: 'FOL', name: 'Fortluft', color: '#1f4fd1', dash: '6 1.5 1 1.5', kind: 'flow' },
+  { id: 'air.recirc', code: 'UML', name: 'Umluft', color: '#f07d00', dash: '3 1.5', kind: 'flow' },
+  { id: 'air.mixed', code: 'MIL', name: 'Mischluft', color: '#7a8a2e', dash: '6 1.5 1 1.5 1 1.5', kind: 'flow' },
+  { id: 'air.transfer', code: 'ÜBL', name: 'Überströmluft', color: '#8c8c8c', dash: '1.5 1.5', kind: 'flow' },
+  { id: 'water.hrc', code: 'KVS', name: 'KVS-Kreislauf', color: '#159a9c', dash: '4 1 1 1', kind: 'flow' },
+  { id: 'water.heat.flow', code: 'HVL', name: 'Heizung Vorlauf', color: '#e2231a', dash: '', kind: 'flow' },
+  { id: 'water.heat.return', code: 'HRL', name: 'Heizung Rücklauf', color: '#1f4fd1', dash: '6 1.5', kind: 'flow' },
+  { id: 'water.chill.flow', code: 'KVL', name: 'Kälte Vorlauf', color: '#0a8fd8', dash: '3 1.5', kind: 'flow' },
+  {
+    id: 'water.chill.return',
+    code: 'KRL',
+    name: 'Kälte Rücklauf',
+    color: '#6a4fb3',
+    dash: '6 1.5 1 1.5',
+    kind: 'flow',
+  },
+  { id: 'water.potable.cold', code: 'PWC', name: 'Trinkwasser kalt', color: '#2e9a4a', dash: '1.5 1.5', kind: 'flow' },
+  { id: 'water.potable.hot', code: 'PWH', name: 'Trinkwasser warm', color: '#e07b1a', dash: '4 1.5', kind: 'flow' },
+  { id: 'water.potable.circ', code: 'PWH-C', name: 'Zirkulation', color: '#a0569c', dash: '4 1.5 1 1.5', kind: 'flow' },
+  { id: 'signal', code: 'S', name: 'Wirklinie', color: '#555555', dash: '1 1', kind: 'signal' },
+];
+
+export const MEDIUM_IDS = MEDIA.map((m) => m.id);
+
+export function medium(id: string): MediumDef | undefined {
+  return MEDIA.find((m) => m.id === id);
+}
+
+/** Glob match for port media patterns: "air.*" matches "air.supply"; "*" matches anything. */
+export function mediumMatches(pattern: string, id: string): boolean {
+  if (pattern === '*' || pattern === id) return true;
+  if (pattern.endsWith('.*')) return id.startsWith(pattern.slice(0, -1));
+  return false;
+}

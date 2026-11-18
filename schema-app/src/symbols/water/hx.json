@@ -1,0 +1,81 @@
+{
+  "id": "water.hx",
+  "name": "Wärmetauscher",
+  "category": "water",
+  "norm": "SN EN 1861 T1/11",
+  "checked": true,
+  "size": [
+    10,
+    15
+  ],
+  "prefix": "WT",
+  "ports": [
+    {
+      "id": "p.in",
+      "at": [
+        0,
+        2.5
+      ],
+      "dir": "W",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "p.out",
+      "at": [
+        0,
+        12.5
+      ],
+      "dir": "W",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "s.in",
+      "at": [
+        10,
+        12.5
+      ],
+      "dir": "E",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "s.out",
+      "at": [
+        10,
+        2.5
+      ],
+      "dir": "E",
+      "media": [
+        "water.*"
+      ]
+    }
+  ],
+  "flow": [
+    [
+      "p.in",
+      "p.out"
+    ],
+    [
+      "s.in",
+      "s.out"
+    ]
+  ],
+  "labelAnchor": [
+    5,
+    -1.5
+  ],
+  "props": [
+    "Q"
+  ],
+  "keywords": [
+    "Plattenwärmetauscher",
+    "Wärmeübertrager",
+    "Systemtrennung"
+  ],
+  "svg": "<rect x='0' y='0' width='10' height='15'/><path d='M0 0L10 15M10 0L0 15'/>"
+}
