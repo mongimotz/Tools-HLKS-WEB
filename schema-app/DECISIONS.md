@@ -31,6 +31,11 @@ Format: date | decision | alternatives | reason.
 - Chosen: ZUL blue (typical unit with heat recovery + heater, 2–3 treatments). MIL has no norm colour: olive (between green and orange). KVS circuit (`water.hrc`) teal, own choice. Black-and-white mode uses dash patterns + codes.
 - Alternative: ZUL colour by treatment count, computed per line. Rejected for now (more rules, little gain); a style template can override colours.
 
+## 2026-11-18 | Default style follows Swiss practice (owner request)
+- The owner's sample schemas (several Swiss offices) all use AUL green, ZUL red, ABL yellow, FOL blue, heating flow red / return blue. This replaces the EN 12792 colours above (ZUL blue, FOL brown) as default; a style template can bring them back.
+- Air lines are drawn as thick ducts (`stroke.duct` 1 mm), pipes stay 0.5 mm. Device frames (groups) are magenta and dashed, component IDs blue (`colors.unit`, `colors.label`). Black-and-white output keeps everything in ink.
+- Red-green: AUL and ZUL differ in hue only for colour-blind readers; the line codes and the legend name them, and black-and-white output uses dash patterns.
+
 ## 2026-11-18 | Symbols
 - Drawn from scratch following EN 12792 tables 3–6 (descriptions and proportions, not copied). `checked: true` = compared with the local norm PDF.
 - No norm symbol exists for: WRG plate (square with both diagonals), WRG rotor (ellipse with axis and motor M), KVS coil, droplet separator (zig-zag), room/zone (dashed box), fire compartment border (dash-dot line), junction (dot). Marked with `norm: ""` and "*" in the catalog. SIA 411 contains no device symbols for these (it is a modular block representation); its sensor symbols are floor-plan symbols (electrosuisse), not used.

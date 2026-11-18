@@ -50,7 +50,9 @@ const HL_COLOR: Record<Highlight, string> = {
 const f = (n: number) => String(r(n));
 
 export function renderSchema(input: Schema, opts: RenderOptions = {}): RenderResult {
-  const style = opts.style ?? getActiveStyle();
+  const base = opts.style ?? getActiveStyle();
+  // Black and white: device frames and IDs in ink as well.
+  const style = opts.mono ? { ...base, colors: { ...base.colors, unit: base.colors.ink, label: base.colors.ink } } : base;
   const s = placeMissing(input, style);
   const [W, H] = paperSize(s.sheet);
   const { routes, failed } = routeAll(s);
@@ -118,9 +120,9 @@ export function renderSchema(input: Schema, opts: RenderOptions = {}): RenderRes
       h = tb.h + 4 + style.font.small + 1;
     groupBoxes.push({ id: gr.id, box: { x, y, w, h } });
     out.push(
-      `<g class="group" data-id="${esc(gr.id)}"><rect x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" fill="none" stroke="${style.colors.group}" stroke-width="${style.stroke.group}" stroke-dasharray="4 1 1 1"/>` +
+      `<g class="group" data-id="${esc(gr.id)}"><rect x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" fill="none" stroke="${style.colors.unit}" stroke-width="${style.stroke.group}" stroke-dasharray="3 1.5"/>` +
         (gr.label
-          ? `<text x="${f(x + 1.5)}" y="${f(y + 1.5 + baseline(style.font.small))}" font-size="${style.font.small}" fill="${style.colors.group}" stroke="none">${esc(gr.label)}</text>`
+          ? `<text x="${f(x + 1.5)}" y="${f(y + 1.5 + baseline(style.font.small))}" font-size="${style.font.small}" fill="${ink}" stroke="none">${esc(gr.label)}</text>`
           : '') +
         `</g>`,
     );
@@ -149,7 +151,7 @@ export function renderSchema(input: Schema, opts: RenderOptions = {}): RenderRes
     const signal = m?.kind === 'signal';
     const color = opts.mono ? ink : (style.colors.media[con.medium] ?? m?.color ?? ink);
     const dash = opts.mono ? m?.dash || '' : signal ? m?.dash || '' : '';
-    const sw = signal ? style.stroke.signal : style.stroke.line;
+    const sw = lineWidth(con.medium, style);
     const d = pathWithCrossings(pts, crossings.get(con.id) ?? [], style.crossings);
     out.push(
       `<g class="con" data-id="${esc(con.id)}"><path d="${d}" fill="none" stroke="${color}" stroke-width="${sw}"${dash ? ` stroke-dasharray="${dash}"` : ''}/>`,
@@ -266,7 +268,7 @@ function componentText(c: Component, style: Style, boxes: RenderResult['textBoxe
     const x0 = a === 'start' ? x : a === 'end' ? x - w : x - w / 2;
     boxes.push({ id: c.id, box: { x: x0, y: yy - baseline(size), w, h: size }, text });
     out.push(
-      `<text x="${f(x)}" y="${f(yy)}" font-size="${size}"${weight === 600 ? ' font-weight="600"' : ''}${a !== 'start' ? ` text-anchor="${a}"` : ''} fill="${style.colors.ink}" stroke="none">${esc(text)}</text>`,
+      `<text x="${f(x)}" y="${f(yy)}" font-size="${size}"${weight === 600 ? ' font-weight="600"' : ''}${a !== 'start' ? ` text-anchor="${a}"` : ''} fill="${weight === 600 ? style.colors.label : style.colors.ink}" stroke="none">${esc(text)}</text>`,
     );
   };
   for (const l of lines) put(l.text, anchor[0], y, l.weight, align);
@@ -415,7 +417,7 @@ function legend(s: Schema, used: string[], style: Style, mono: boolean): string 
     const color = mono ? style.colors.ink : (style.colors.media[m.id] ?? m.color);
     const dash = mono || m.kind === 'signal' ? m.dash : '';
     parts.push(
-      `<path d="M${f(x)} ${f(y + 1.2)}H${f(x + 10)}" stroke="${color}" stroke-width="${m.kind === 'signal' ? style.stroke.signal : style.stroke.line}"${dash ? ` stroke-dasharray="${dash}"` : ''} fill="none"/>` +
+      `<path d="M${f(x)} ${f(y + 1.2)}H${f(x + 10)}" stroke="${color}" stroke-width="${lineWidth(m.id, style)}"${dash ? ` stroke-dasharray="${dash}"` : ''} fill="none"/>` +
         `<text x="${f(x + 12)}" y="${f(y + 1.2 + baseline(size) / 2)}" font-size="${size}" fill="${style.colors.ink}" stroke="none"><tspan font-weight="600">${esc(m.code)}</tspan> ${esc(m.name)}</text>`,
     );
   });
@@ -456,4 +458,10 @@ function notePins(s: Schema, pins: { id: string; at: Vec }[]): string {
     );
   }
   return `<g class="notes">${out.join('')}</g>`;
+}
+
+/** Stroke width of a line: air media as thick ducts, pipes thinner, Wirklinien thin. */
+function lineWidth(mediumId: string, style: Style): number {
+  if (medium(mediumId)?.kind === 'signal') return style.stroke.signal;
+  return mediumId.startsWith('air.') ? style.stroke.duct : style.stroke.line;
 }

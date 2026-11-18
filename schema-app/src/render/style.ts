@@ -5,8 +5,19 @@ import { MEDIA } from '../model/media.ts';
 export interface Style {
   id: string;
   font: { family: string; label: number; small: number; normal: number; large: number };
-  stroke: { line: number; signal: number; symbol: number; frame: number; thin: number; group: number };
-  colors: { ink: string; paper: string; grid: string; frame: string; group: string; media: Record<string, string> };
+  /** line: pipes, duct: air lines (air.*), signal: Wirklinie. */
+  stroke: { line: number; duct: number; signal: number; symbol: number; frame: number; thin: number; group: number };
+  /** group: secondary text (title block labels); unit: device frame (group); label: component IDs. */
+  colors: {
+    ink: string;
+    paper: string;
+    grid: string;
+    frame: string;
+    group: string;
+    unit: string;
+    label: string;
+    media: Record<string, string>;
+  };
   layout: { gap: number; minGap: number; rowGap: number; minRowGap: number };
   crossings: 'bridge' | 'gap';
   legend: boolean;
@@ -23,13 +34,15 @@ export const DEFAULT_STYLE: Style = {
     normal: 3.5,
     large: 5,
   },
-  stroke: { line: 0.5, signal: 0.25, symbol: 0.35, frame: 0.7, thin: 0.25, group: 0.25 },
+  stroke: { line: 0.5, duct: 1, signal: 0.25, symbol: 0.35, frame: 0.7, thin: 0.25, group: 0.3 },
   colors: {
     ink: '#1a1a1a',
     paper: '#ffffff',
     grid: '#d6dde5',
     frame: '#1a1a1a',
     group: '#6b7785',
+    unit: '#d61f9b',
+    label: '#1a7fd0',
     media: Object.fromEntries(MEDIA.map((m) => [m.id, m.color])),
   },
   layout: { gap: 10, minGap: 5, rowGap: 45, minRowGap: 30 },
@@ -79,6 +92,8 @@ export function parseStyle(raw: unknown): Style {
       grid: str(colors.grid, d.colors.grid),
       frame: str(colors.frame, d.colors.frame),
       group: str(colors.group, d.colors.group),
+      unit: str(colors.unit, d.colors.unit),
+      label: str(colors.label, d.colors.label),
       media: Object.fromEntries(Object.entries(d.colors.media).map(([k, v]) => [k, str(media[k], v)])),
     },
     layout: nums(r.layout, d.layout),

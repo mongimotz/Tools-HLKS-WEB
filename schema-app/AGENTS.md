@@ -24,7 +24,7 @@ JSON, 2-space indent, stable key order (one component per line). Coordinates are
 | `sheet` | `size` A4/A3/A2/A1, `orientation`, `grid`, `titleBlock`, `legend` |
 | `components[]` | `id`, `type` (symbol id), `label`, `props` (strings), `pos` (symbol **centre**, `null` = place automatically), `rot` 0/90/180/270 (clockwise), `flip` (mirror left/right), `pinned` |
 | `connections[]` | `id`, `from` `[componentId, portId]`, `to`, `medium`, `waypoints` (corner points; empty = automatic route), `pinned`. **from → to is the flow direction.** |
-| `groups[]` | `id`, `label`, `members`, `frame` (dash-dot frame, e.g. "Monoblock") |
+| `groups[]` | `id`, `label`, `members`, `frame` (dashed device frame, e.g. "Monoblock") |
 | `texts[]` | `id`, `pos` (top left), `text`, `size` (mm) |
 | `notes[]` | `id`, `anchor` `{component}` / `{connection}` / `{pos}`, `text`, `status` open/done, `created`, `reply` |
 
@@ -58,7 +58,7 @@ Example: `[{"op":"add_chain","strand":"supply","items":[{"type":"air.intake"},{"
 
 ## Style templates
 
-A style template is a JSON file with any part of `Style` (`src/render/style.ts`: `font`, `stroke`, `colors` incl. `media`, `layout`, `crossings`, `legend`, `titleBlock`). `titleBlock` is an SVG fragment in title-block mm (180 × 30) with `{{meta.*}}` / `{{sheet.*}}` placeholders. Editor: export menu «Stilvorlage laden …» (kept in this browser, never in the repo or the file). CLI: `render … --style style.json`. Company title blocks stay out of the repository.
+A style template is a JSON file with any part of `Style` (`src/render/style.ts`: `font`, `stroke` incl. `duct` for air lines, `colors` incl. `unit` (device frame), `label` (IDs) and `media`, `layout`, `crossings`, `legend`, `titleBlock`). `titleBlock` is an SVG fragment in title-block mm (180 × 30) with `{{meta.*}}` / `{{sheet.*}}` placeholders. Editor: export menu «Stilvorlage laden …» (kept in this browser, never in the repo or the file). CLI: `render … --style style.json`. Company title blocks stay out of the repository.
 
 ## In-browser assistant
 

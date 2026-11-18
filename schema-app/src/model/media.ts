@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Fixed list of media. Colours follow EN 12792:2003 table 1 (air) where the norm names one; see DECISIONS.md.
+// Fixed list of media. Colours follow Swiss practice (AUL green, ZUL red, ABL yellow, FOL blue); see DECISIONS.md.
 
 export interface MediumDef {
   id: string;
@@ -15,17 +15,17 @@ export interface MediumDef {
 }
 
 export const MEDIA: MediumDef[] = [
-  { id: 'air.outdoor', code: 'AUL', name: 'Aussenluft', color: '#2e9a4a', dash: '', kind: 'flow' },
-  { id: 'air.supply', code: 'ZUL', name: 'Zuluft', color: '#2f6fc9', dash: '', kind: 'flow' },
-  { id: 'air.extract', code: 'ABL', name: 'Abluft', color: '#d9a400', dash: '6 1.5', kind: 'flow' },
-  { id: 'air.exhaust', code: 'FOL', name: 'Fortluft', color: '#8a5a2b', dash: '6 1.5 1 1.5', kind: 'flow' },
-  { id: 'air.recirc', code: 'UML', name: 'Umluft', color: '#e07b1a', dash: '3 1.5', kind: 'flow' },
+  { id: 'air.outdoor', code: 'AUL', name: 'Aussenluft', color: '#1fa33a', dash: '', kind: 'flow' },
+  { id: 'air.supply', code: 'ZUL', name: 'Zuluft', color: '#e2231a', dash: '', kind: 'flow' },
+  { id: 'air.extract', code: 'ABL', name: 'Abluft', color: '#e6c000', dash: '6 1.5', kind: 'flow' },
+  { id: 'air.exhaust', code: 'FOL', name: 'Fortluft', color: '#1f4fd1', dash: '6 1.5 1 1.5', kind: 'flow' },
+  { id: 'air.recirc', code: 'UML', name: 'Umluft', color: '#f07d00', dash: '3 1.5', kind: 'flow' },
   { id: 'air.mixed', code: 'MIL', name: 'Mischluft', color: '#7a8a2e', dash: '6 1.5 1 1.5 1 1.5', kind: 'flow' },
   { id: 'air.transfer', code: 'ÜBL', name: 'Überströmluft', color: '#8c8c8c', dash: '1.5 1.5', kind: 'flow' },
   { id: 'water.hrc', code: 'KVS', name: 'KVS-Kreislauf', color: '#159a9c', dash: '4 1 1 1', kind: 'flow' },
-  { id: 'water.heat.flow', code: 'HVL', name: 'Heizung Vorlauf', color: '#c4332b', dash: '', kind: 'flow' },
-  { id: 'water.heat.return', code: 'HRL', name: 'Heizung Rücklauf', color: '#2f6fc9', dash: '6 1.5', kind: 'flow' },
-  { id: 'water.chill.flow', code: 'KVL', name: 'Kälte Vorlauf', color: '#159a9c', dash: '3 1.5', kind: 'flow' },
+  { id: 'water.heat.flow', code: 'HVL', name: 'Heizung Vorlauf', color: '#e2231a', dash: '', kind: 'flow' },
+  { id: 'water.heat.return', code: 'HRL', name: 'Heizung Rücklauf', color: '#1f4fd1', dash: '6 1.5', kind: 'flow' },
+  { id: 'water.chill.flow', code: 'KVL', name: 'Kälte Vorlauf', color: '#0a8fd8', dash: '3 1.5', kind: 'flow' },
   {
     id: 'water.chill.return',
     code: 'KRL',
