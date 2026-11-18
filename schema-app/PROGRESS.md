@@ -8,7 +8,7 @@
 | 3 Editor | done |
 | 4 Files, live sync, export | done (stop point: owner review) |
 | 5 Notes | done |
-| 6 OpenRouter assistant | open |
+| 6 OpenRouter assistant | done |
 | 7 Styles, polish, start page | open |
 
 ## Phase 0
@@ -57,3 +57,10 @@
 - Exports never contain pins (unit test on `renderSchema` and `exportSvgText`).
 - Fixed: Escape in a property field committed the edit instead of cancelling it.
 - Tests: Vitest 106, Playwright 12 (place a note by mouse → saved into the live file → resolved with the CLI logic written into the file → editor shows «erledigt» after live sync; pin click, status, delete, undo).
+
+## Phase 6
+- Assistant tab (toolbar ✦ or tab «Assistent»): settings (OpenRouter key in this browser only, model with the list of tool-capable models), free-text task (Ctrl/Cmd+Enter) and «Anmerkungen abarbeiten (n)». Progress «Runde k von 3» with «Abbrechen».
+- `src/assistant/`: `client.ts` (chat completions, usage incl. cost), `tools.ts` (one tool from the op schemas), `prompt.ts` (symbols, media, rules, compact schema; positions only for pinned components), `run.ts` (check loop, diff), `settings.ts`.
+- Result: summary, number of operations, tokens and cost; proposal preview with «Übernehmen» (one undo step) / «Verwerfen».
+- Tests: Vitest 114 (+1 skipped real call): success, invalid op with correction, abort after 3 rounds, bad JSON, cancel, 401, key only in the header, prompt content. Playwright 15: preview → apply → undo, key not in file/SVG/draft/console/request bodies, discard, abort, notes mode.
+- Not tested: a real OpenRouter call (no `OPENROUTER_API_KEY` here); the owner can run `OPENROUTER_API_KEY=… npx vitest run tests/unit/assistant.test.ts`.

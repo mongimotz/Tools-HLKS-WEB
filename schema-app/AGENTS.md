@@ -54,6 +54,10 @@ A list (or `{ "ops": [...] }`); the first invalid op aborts everything. Ports ma
 
 Example: `[{"op":"add_chain","strand":"supply","items":[{"type":"air.intake"},{"type":"air.filter","props":{"Klasse":"ePM1 55%"}},{"type":"air.fan"}]}]`
 
+## In-browser assistant
+
+The editor's assistant (OpenRouter, user's own key) uses the same operations through one tool `apply_operations` (`{ "ops": [...] }`). Its system prompt (`src/assistant/prompt.ts`) holds the symbols, media, layout rules and the schema in compact form. When you add an op or a symbol, the tool schema and prompt follow automatically; keep the rules in `prompt.ts` in line with this file.
+
 ## Developing the app
 
 - Stack: TypeScript strict, Vite, React 18, Zustand + Immer, zod, own SVG canvas. Decisions with reasons: `DECISIONS.md`. Status: `PROGRESS.md`.

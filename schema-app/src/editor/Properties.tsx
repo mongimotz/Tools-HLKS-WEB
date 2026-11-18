@@ -8,6 +8,7 @@ import { useEditor } from './store.ts';
 import { Icon } from './icons.tsx';
 import { flipSelection, rotateSelection } from './actions.ts';
 import { NotesPanel } from './Notes.tsx';
+import { AssistantPanel } from './Assistant.tsx';
 
 function Field({
   label,
@@ -102,10 +103,22 @@ export function Properties({ issues }: { issues: Issue[] }) {
         >
           Anmerkungen{openNotes ? <span className="badge">{openNotes}</span> : null}
         </button>
+        <button
+          role="tab"
+          aria-selected={st.panel === 'assistant'}
+          data-testid="tab-assistant"
+          onClick={() => st.setPanel('assistant')}
+        >
+          Assistent
+        </button>
       </div>
       {st.panel === 'notes' ? (
         <div className="props-body">
           <NotesPanel />
+        </div>
+      ) : st.panel === 'assistant' ? (
+        <div className="props-body">
+          <AssistantPanel />
         </div>
       ) : (
         <div className="props-body">

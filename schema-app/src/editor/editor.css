@@ -791,3 +791,92 @@ kbd {
 .note-body .danger:hover {
   background: var(--hover);
 }
+
+/* Assistant (phase 6) */
+.tabs button {
+  padding-left: 2px;
+  padding-right: 2px;
+}
+.assistant-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.assistant-settings {
+  padding: 4px 0 8px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 6px;
+}
+.row-buttons button.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+.row-buttons button.primary:hover:not(:disabled) {
+  background: var(--accent);
+  filter: brightness(1.08);
+}
+.row-buttons button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.assistant-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+}
+.assistant-status button {
+  margin-left: auto;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+}
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.assistant-error {
+  color: var(--error);
+}
+.assistant-result p {
+  margin: 6px 0;
+  white-space: pre-wrap;
+}
+.assistant-result.aborted p:first-child {
+  color: var(--error);
+}
+.proposal .add {
+  color: #1f9e5a;
+  font-weight: 600;
+}
+.proposal .change {
+  color: var(--accent);
+  font-weight: 600;
+}
+.proposal .remove {
+  color: #d0342c;
+  font-weight: 600;
+}
+.overlay .removed {
+  fill: rgba(208, 52, 44, 0.08);
+  stroke: #d0342c;
+  stroke-width: 0.4;
+  stroke-dasharray: 1.2 0.8;
+  pointer-events: none;
+}
+.canvas.proposal .overlay .hit,
+.canvas.proposal .overlay .hit-con,
+.canvas.proposal .overlay .hit-group {
+  pointer-events: none;
+}

@@ -111,7 +111,7 @@ export function Toolbar({ a }: { a: ToolbarActions }) {
           icon="undo"
           label="Rückgängig"
           onClick={st.undo}
-          disabled={!st.past.length}
+          disabled={!st.past.length || !!st.proposal}
           keys={`${MOD}Z`}
           testid="btn-undo"
         />
@@ -119,7 +119,7 @@ export function Toolbar({ a }: { a: ToolbarActions }) {
           icon="redo"
           label="Wiederholen"
           onClick={st.redo}
-          disabled={!st.future.length}
+          disabled={!st.future.length || !!st.proposal}
           keys={`${MOD}Y`}
           testid="btn-redo"
         />
@@ -134,6 +134,16 @@ export function Toolbar({ a }: { a: ToolbarActions }) {
           onClick={() => st.setTool(st.tool === 'note' ? 'select' : 'note')}
         >
           <Icon name="note" />
+        </button>
+        <button
+          className="tb"
+          title="Assistent"
+          aria-label="Assistent"
+          aria-pressed={st.panel === 'assistant'}
+          data-testid="btn-assistant"
+          onClick={() => st.setPanel(st.panel === 'assistant' ? 'props' : 'assistant')}
+        >
+          <Icon name="spark" />
         </button>
         <B icon="tidy" label="Aufräumen (nicht fixierte Elemente neu anordnen)" onClick={a.tidy} testid="btn-tidy" />
         <details className="menu" data-testid="export-menu">

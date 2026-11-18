@@ -26,6 +26,7 @@ const KEYS: [string, string][] = [
   ['Leertaste + Ziehen, mittlere Maustaste', 'Ansicht verschieben'],
   ['0', 'Blatt einpassen'],
   ['N', 'Anmerkung setzen: Klick auf Symbol, Leitung oder freie Stelle'],
+  [`${MOD} + Enter`, 'Assistent: Auftrag ausführen'],
   ['Esc', 'Werkzeug beenden, Auswahl aufheben'],
 ];
 

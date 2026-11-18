@@ -50,9 +50,24 @@ export function Canvas() {
 
   const highlight = useMemo(() => {
     const h: Record<string, Highlight> = {};
+    const p = st.proposal;
+    if (p) {
+      for (const id of p.changed) h[id] = 'change';
+      for (const id of p.added) h[id] = 'add';
+      return h;
+    }
     for (const id of st.selection) h[id] = 'select';
     return h;
-  }, [st.selection]);
+  }, [st.selection, st.proposal]);
+  // Removed elements of a proposal: drawn as red boxes at their old place.
+  const removedBoxes = useMemo(() => {
+    const p = st.proposal;
+    if (!p?.removed.length) return [];
+    const old = renderSchema(p.base).placed;
+    return old.components
+      .filter((c) => c.pos && p.removed.includes(c.id))
+      .map((c) => ({ id: c.id, box: componentBox(c) }));
+  }, [st.proposal]);
   const r = useMemo(() => renderSchema(doc, { grid: true, notes: true, highlight }), [doc, highlight]);
   const inner = useMemo(() => r.svg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>\s*$/, ''), [r.svg]);
   const issues = useMemo(() => (st.preview ? [] : [...validate(st.doc), ...checkDrawing(r)]), [st.doc, st.preview, r]);
@@ -123,7 +138,7 @@ export function Canvas() {
     if (e.button === 2) return;
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
     const p = toSheet(e.clientX, e.clientY);
-    if (e.button === 1 || space.current) {
+    if (e.button === 1 || space.current || st.proposal) {
       setDrag({ kind: 'pan', sx: e.clientX, sy: e.clientY, view });
       return;
     }
@@ -279,7 +294,7 @@ export function Canvas() {
   // Drop from the palette: on a line → insert into it, else add at the drop point.
   const onDrop = (e: React.DragEvent) => {
     const type = e.dataTransfer.getData(DND_TYPE);
-    if (!type) return;
+    if (!type || st.proposal) return;
     e.preventDefault();
     const p = toSheet(e.clientX, e.clientY);
     const seg = segmentAt(r.routes, p, 2.5, signalIds);
@@ -319,7 +334,7 @@ export function Canvas() {
   return (
     <div
       ref={wrap}
-      className={`canvas${st.tool === 'note' ? ' noting' : ''}${drag?.kind === 'connect' ? ' connecting' : ''}${drag?.kind === 'pan' ? ' panning' : ''}`}
+      className={`canvas${st.proposal ? ' proposal' : ''}${st.tool === 'note' ? ' noting' : ''}${drag?.kind === 'connect' ? ' connecting' : ''}${drag?.kind === 'pan' ? ' panning' : ''}`}
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes(DND_TYPE)) {
           e.preventDefault();
@@ -445,6 +460,9 @@ export function Canvas() {
               );
             })}
             {noteDraft && <circle className="note-draft" cx={noteDraft.at[0]} cy={noteDraft.at[1]} r={0.8} />}
+            {removedBoxes.map(({ id, box }) => (
+              <rect key={id} className="removed" x={box.x - 1} y={box.y - 1} width={box.w + 2} height={box.h + 2} />
+            ))}
             {drag?.kind === 'connect' && (
               <path
                 className="connect-preview"

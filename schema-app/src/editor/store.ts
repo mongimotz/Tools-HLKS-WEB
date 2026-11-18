@@ -18,6 +18,14 @@ interface Step {
 
 export type Tool = 'select' | 'note';
 
+export interface Proposal {
+  base: Schema;
+  schema: Schema;
+  added: string[];
+  removed: string[];
+  changed: string[];
+}
+
 export interface View {
   /** Sheet mm at the top-left corner of the canvas. */
   x: number;
@@ -33,7 +41,9 @@ export interface EditorState {
   selection: string[];
   tool: Tool;
   /** Right panel tab. */
-  panel: 'props' | 'notes';
+  panel: 'props' | 'notes' | 'assistant';
+  /** Assistant result shown as a preview until «Übernehmen» or «Verwerfen». */
+  proposal: Proposal | null;
   /** Note shown open in the notes panel (its pin is highlighted). */
   activeNote: string | null;
   view: View | null;
@@ -63,7 +73,10 @@ export interface EditorState {
   redo(): void;
   select(ids: string[]): void;
   setTool(t: Tool): void;
-  setPanel(p: 'props' | 'notes'): void;
+  setPanel(p: EditorState['panel']): void;
+  setProposal(p: Proposal | null): void;
+  /** Commits the proposal as one undo step; false if the document changed since the request. */
+  applyProposal(): boolean;
   /** Opens a note in the panel and selects its anchor element. */
   openNote(id: string | null): void;
   setView(v: View): void;
@@ -82,6 +95,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   selection: [],
   tool: 'select',
   panel: 'props',
+  proposal: null,
   activeNote: null,
   view: null,
   past: [],
@@ -113,6 +127,7 @@ export const useEditor = create<EditorState>((set, get) => ({
     set({
       doc,
       preview: null,
+      proposal: null,
       selection: [],
       past: [],
       future: [],
@@ -199,6 +214,23 @@ export const useEditor = create<EditorState>((set, get) => ({
   setPanel(panel) {
     set({ panel });
   },
+  setProposal(proposal) {
+    set({ proposal, preview: null });
+  },
+  applyProposal() {
+    const st = get();
+    const p = st.proposal;
+    if (!p) return false;
+    if (st.doc !== p.base) {
+      set({ proposal: null });
+      st.notify('Das Schema wurde inzwischen geändert. Vorschlag verworfen.', 'error');
+      return false;
+    }
+    set({ proposal: null });
+    get().commit('Assistent', p.schema);
+    set({ selection: p.added.filter((id) => exists(get().doc, id)) });
+    return true;
+  },
   openNote(id) {
     const n = id ? get().doc.notes.find((x) => x.id === id) : undefined;
     if (!n) return set({ activeNote: null });
@@ -222,6 +254,6 @@ export function exists(s: Schema, id: string): boolean {
 }
 
 /** The document as currently shown (drag preview or committed). */
-export function shownDoc(st: Pick<EditorState, 'doc' | 'preview'>): Schema {
-  return st.preview ?? st.doc;
+export function shownDoc(st: Pick<EditorState, 'doc' | 'preview' | 'proposal'>): Schema {
+  return st.proposal?.schema ?? st.preview ?? st.doc;
 }

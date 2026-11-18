@@ -148,6 +148,8 @@ export function App() {
         return;
       }
       if (typing) return;
+      // While an assistant proposal is shown, only the view changes.
+      if (s.proposal && !['0', '+', '=', '-', '?'].includes(k)) return;
       const sel = s.selection;
       const g = s.doc.sheet.grid;
       if (mod && k === 'z' && !e.shiftKey) return (e.preventDefault(), s.undo());
@@ -228,6 +230,7 @@ export function App() {
       <Toolbar a={actions} />
       <Palette
         onPick={(type) => {
+          if (st.proposal) return;
           const placed: Schema = renderSchema(st.doc).placed;
           const r = addComponentAt(placed, type, viewCenter());
           st.commit('Symbol einfügen', r.schema);
