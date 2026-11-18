@@ -73,6 +73,28 @@ export function componentBox(c: Component): Box {
   return { x: cx - w / 2, y: cy - h / 2, w, h };
 }
 
+/** Box that routed lines must avoid (symbol obstacle or the whole box). */
+export function obstacleBox(c: Component): Box {
+  const def = symbolOf(c.type);
+  if (!def.obstacle) return componentBox(c);
+  const [x, y, w, h] = def.obstacle;
+  const a = localToSheet(def, c, [x, y]),
+    b = localToSheet(def, c, [x + w, y + h]);
+  return { x: Math.min(a[0], b[0]), y: Math.min(a[1], b[1]), w: Math.abs(a[0] - b[0]), h: Math.abs(a[1] - b[1]) };
+}
+
+export function isBackground(c: Component): boolean {
+  return !!symbolOf(c.type).background;
+}
+
+/** Flow pairs of a component's symbol. */
+export function flowPairs(type: string): [string, string][] {
+  const def = symbolOf(type);
+  if (def.flow) return def.flow;
+  const ids = def.ports.map((p) => p.id);
+  return ids.includes('in') && ids.includes('out') ? [['in', 'out']] : [];
+}
+
 export function boxesOverlap(a: Box, b: Box, gap = 0): boolean {
   return a.x < b.x + b.w + gap && b.x < a.x + a.w + gap && a.y < b.y + b.h + gap && b.y < a.y + a.h + gap;
 }

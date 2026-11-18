@@ -18,7 +18,6 @@
     "check:site": "node scripts/check-site.mjs"
   },
   "dependencies": {
-    "elkjs": "^0.12.1",
     "immer": "^11.2.10",
     "jspdf": "^4.2.1",
     "react": "^18.3.1",

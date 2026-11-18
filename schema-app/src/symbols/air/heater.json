@@ -1,10 +1,4 @@
-{
-  "id": "air.heater", "name": "Lufterhitzer", "category": "air", "norm": "SN EN 12792 T5/3", "checked": true,
-  "size": [5, 10], "prefix": "ER",
-  "ports": [
-    { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] },
-    { "id": "out", "at": [5, 5], "dir": "E", "media": ["air.*"] }
-  ],
-  "labelAnchor": [2.5, -1.5], "props": ["Q", "t_ein", "t_aus"], "keywords": ["Erhitzer", "Heizregister", "Lufterwärmer"],
-  "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0 10L5 0'/>"
-}
+{ "id": "air.heater", "name": "Lufterhitzer", "category": "air", "norm": "SN EN 12792 T5/3", "checked": true,
+  "size": [5, 10], "prefix": "ER", "ports": [ { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] }, { "id": "out", "at": [5, 5], "dir": "E", "media": ["air.*"] } ],
+  "labelAnchor": [2.5, -1.5], "props": ["Q", "t"], "keywords": ["Erhitzer", "Heizregister", "Lufterwärmer", "Nacherhitzer", "Vorerhitzer"],
+  "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0 10L5 0'/>" }

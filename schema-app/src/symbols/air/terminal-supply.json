@@ -1,0 +1,4 @@
+{ "id": "air.terminal.supply", "name": "Zuluftdurchlass", "category": "air", "norm": "SN EN 12792 T3/1", "checked": true,
+  "size": [10, 10], "prefix": "ZD", "ports": [ { "id": "in", "at": [5, 0], "dir": "N", "media": ["air.*"] } ],
+  "labelAnchor": [11, 4], "labelAlign": "start", "props": ["V"], "keywords": ["Luftdurchlass", "Zuluftgitter", "Drallauslass", "ZUL"],
+  "svg": "<rect x='0' y='0' width='10' height='8'/><path d='M3.8 8L5 9.8L6.2 8'/>" }

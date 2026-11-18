@@ -22,6 +22,7 @@ export const MEDIA: MediumDef[] = [
   { id: 'air.recirc', code: 'UML', name: 'Umluft', color: '#e07b1a', dash: '3 1.5', kind: 'flow' },
   { id: 'air.mixed', code: 'MIL', name: 'Mischluft', color: '#7a8a2e', dash: '6 1.5 1 1.5 1 1.5', kind: 'flow' },
   { id: 'air.transfer', code: 'ÜBL', name: 'Überströmluft', color: '#8c8c8c', dash: '1.5 1.5', kind: 'flow' },
+  { id: 'water.hrc', code: 'KVS', name: 'KVS-Kreislauf', color: '#159a9c', dash: '4 1 1 1', kind: 'flow' },
   { id: 'signal', code: 'S', name: 'Wirklinie', color: '#555555', dash: '1 1', kind: 'signal' },
 ];
 

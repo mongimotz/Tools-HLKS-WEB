@@ -1,0 +1,4 @@
+{ "id": "air.humidifier", "name": "Luftbefeuchter", "category": "air", "norm": "SN EN 12792 T5/5", "checked": true,
+  "size": [10, 10], "prefix": "BF", "ports": [ { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] }, { "id": "out", "at": [10, 5], "dir": "E", "media": ["air.*"] } ],
+  "labelAnchor": [5, -1.5], "props": ["Art", "x"], "keywords": ["Befeuchter", "Dampfbefeuchter", "Verdunstungsbefeuchter"],
+  "svg": "<rect x='0' y='0' width='10' height='10'/><path d='M0 8.5H10M2 8.5V2M8 3H3.6'/><path d='M2.1 3L3.8 2.2V3.8Z' fill='currentColor' stroke='none'/>" }

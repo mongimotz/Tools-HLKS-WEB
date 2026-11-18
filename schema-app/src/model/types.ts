@@ -112,6 +112,12 @@ export interface SymbolDef {
   /** Prefix for new component IDs, e.g. "VE" → VE01. */
   prefix: string;
   keywords?: string[];
+  /** Pairs of ports air (or water) flows through, [in, out]. Default: [["in", "out"]] when both exist. */
+  flow?: [string, string][];
+  /** Drawn behind lines, no obstacle for routing, no overlap warning (rooms, fire compartment borders). */
+  background?: boolean;
+  /** Part of the box that lines must avoid, local [x, y, w, h]; default the whole box (a sensor's stem may touch a duct). */
+  obstacle?: [number, number, number, number];
   /** SVG body in symbol-local mm, without stroke widths or colours (they come from the style). */
   svg: string;
 }

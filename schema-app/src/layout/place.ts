@@ -2,7 +2,7 @@
 // Incremental placement: components without `pos` get a free spot next to a placed neighbour (in the
 // direction of the connecting port), else the first free spot in the drawing area. Placed ones never move.
 import type { Component, Schema, Vec } from '../model/types.ts';
-import { DIR_VEC, boxesOverlap, componentBox, portPlace, snapVec, type Box } from '../model/geometry.ts';
+import { DIR_VEC, boxesOverlap, componentBox, isBackground, portPlace, snapVec, type Box } from '../model/geometry.ts';
 import { drawingArea } from '../model/sheet.ts';
 import { DEFAULT_STYLE, type Style } from '../render/style.ts';
 
@@ -16,7 +16,8 @@ export function placeMissing(s: Schema, style: Style = DEFAULT_STYLE): Schema {
   const g = s.sheet.grid;
   const comps: Component[] = s.components.map((c) => ({ ...c }));
   const byId = new Map(comps.map((c) => [c.id, c]));
-  const placedBoxes = (): Box[] => comps.filter((c) => c.pos && c.type !== 'junction').map(componentBox);
+  const placedBoxes = (): Box[] =>
+    comps.filter((c) => c.pos && c.type !== 'junction' && !isBackground(c)).map(componentBox);
   const free = (c: Component, pos: Vec) => {
     const b = componentBox({ ...c, pos });
     return inside(b, area) && !placedBoxes().some((o) => boxesOverlap(b, o, style.layout.minGap - 0.01));

@@ -1,10 +1,4 @@
-{
-  "id": "air.fan", "name": "Ventilator", "category": "air", "norm": "SN EN 12792 T4/21", "checked": true,
-  "size": [10, 10], "prefix": "VE",
-  "ports": [
-    { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] },
-    { "id": "out", "at": [10, 5], "dir": "E", "media": ["air.*"] }
-  ],
-  "labelAnchor": [5, -1.5], "props": ["V", "dp", "P"], "keywords": ["Lüfter", "fan"],
-  "svg": "<circle cx='5' cy='5' r='5'/><path d='M1.17 1.79L9.83 3.71M1.17 8.21L9.83 6.29'/>"
-}
+{ "id": "air.fan", "name": "Ventilator", "category": "air", "norm": "SN EN 12792 T4/21", "checked": true,
+  "size": [10, 10], "prefix": "VE", "ports": [ { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] }, { "id": "out", "at": [10, 5], "dir": "E", "media": ["air.*"] } ],
+  "labelAnchor": [5, -1.5], "props": ["V", "dp", "P"], "keywords": ["Lüfter", "fan", "Zuluftventilator", "Abluftventilator"],
+  "svg": "<circle cx='5' cy='5' r='5'/><path d='M1.17 1.79L9.83 3.71M1.17 8.21L9.83 6.29'/>" }

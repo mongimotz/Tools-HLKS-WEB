@@ -1,0 +1,6 @@
+{ "id": "control.sensor.p", "name": "Druckfühler", "category": "control", "norm": "SN EN 12792 T6/1", "checked": true,
+  "size": [10, 15], "prefix": "PT",
+  "ports": [ { "id": "sig", "at": [10, 5], "dir": "E", "media": ["signal"], "optional": true } ],
+  "obstacle": [0, 0, 10, 9.5],
+  "labelAnchor": [6, -1.5], "labelAlign": "start", "props": [], "keywords": ["Fühler", "Sensor", "Messfühler", "p"],
+  "svg": "<circle cx='5' cy='5' r='4'/><path d='M5 9V15'/><text x='5' y='5.9' font-size='2.5' text-anchor='middle' fill='currentColor' stroke='none'>p</text>" }

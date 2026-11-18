@@ -1,0 +1,4 @@
+{ "id": "air.silencer", "name": "Schalldämpfer", "category": "air", "norm": "SN EN 12792 T4/11", "checked": true,
+  "size": [15, 10], "prefix": "SD", "ports": [ { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] }, { "id": "out", "at": [15, 5], "dir": "E", "media": ["air.*"] } ],
+  "labelAnchor": [7.5, -1.5], "props": ["L", "De"], "keywords": ["Kulissenschalldämpfer", "Telefonieschalldämpfer"],
+  "svg": "<rect x='0' y='0' width='15' height='10'/><path d='M3.5 0V3.5M7.5 0V3.5M11.5 0V3.5M5.5 10V6.5M9.5 10V6.5'/>" }

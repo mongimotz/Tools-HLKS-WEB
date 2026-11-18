@@ -3,7 +3,7 @@
 import type { Issue, Schema } from './types.ts';
 import { findSymbol, symbolOf } from '../symbols/library.ts';
 import { medium, mediumMatches } from './media.ts';
-import { boxesOverlap, componentBox } from './geometry.ts';
+import { boxesOverlap, componentBox, isBackground } from './geometry.ts';
 
 export function validate(s: Schema): Issue[] {
   const issues: Issue[] = [];
@@ -131,7 +131,7 @@ export function validate(s: Schema): Issue[] {
   });
 
   // Overlapping symbols (placed ones only).
-  const placed = s.components.filter((c) => c.pos && c.type !== 'junction');
+  const placed = s.components.filter((c) => c.pos && c.type !== 'junction' && !isBackground(c));
   for (let a = 0; a < placed.length; a++)
     for (let b = a + 1; b < placed.length; b++) {
       const A = placed[a]!,

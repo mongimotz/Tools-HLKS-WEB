@@ -1,0 +1,4 @@
+{ "id": "air.vav", "name": "VVS-Regler (variabel)", "category": "air", "norm": "SN EN 12792 T4/20", "checked": true,
+  "size": [5, 10], "prefix": "VR", "ports": [ { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] }, { "id": "out", "at": [5, 5], "dir": "E", "media": ["air.*"] } ],
+  "labelAnchor": [2.5, -1.5], "props": ["V"], "keywords": ["VAV", "Volumenstromregler", "VVS"],
+  "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0 3L5 1.2M0 7L5 8.8M1.4 4.3H3.6M1.4 5.7H3.6M3.1 3.4L1.9 6.6'/>" }

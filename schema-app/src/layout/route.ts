@@ -2,7 +2,7 @@
 // Orthogonal connection routing on the sheet grid: A* with bend, crossing and overlap costs, detours around
 // symbols. Manual waypoints win: a connection with waypoints is drawn through them as given.
 import type { Connection, Dir, Schema, Vec } from '../model/types.ts';
-import { DIR_VEC, componentBox, portPlace, r, type Box } from '../model/geometry.ts';
+import { DIR_VEC, isBackground, obstacleBox, portPlace, r, type Box } from '../model/geometry.ts';
 import { paperSize } from '../model/sheet.ts';
 
 export type Route = Vec[];
@@ -212,7 +212,7 @@ export interface RouteResult {
 
 export function routeAll(s: Schema): RouteResult {
   const comps = new Map(s.components.filter((c) => c.pos).map((c) => [c.id, c]));
-  const boxes = [...comps.values()].filter((c) => c.type !== 'junction').map(componentBox);
+  const boxes = [...comps.values()].filter((c) => c.type !== 'junction' && !isBackground(c)).map(obstacleBox);
   const grid = makeGrid(s, boxes);
   const routes = new Map<string, Route>();
   const failed: string[] = [];

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Schema → SVG string. Pure (no DOM): used by the editor, the CLI and the exports, so all show the same drawing.
 import type { Component, Schema, Vec } from '../model/types.ts';
-import { componentBox, localToSheet, r, symbolTransform, unionBox, type Box } from '../model/geometry.ts';
+import { componentBox, isBackground, localToSheet, r, symbolTransform, unionBox, type Box } from '../model/geometry.ts';
 import { MEDIA, medium } from '../model/media.ts';
 import { frameBox, paperSize, titleBlockBox } from '../model/sheet.ts';
 import { symbolOf } from '../symbols/library.ts';
@@ -31,6 +31,8 @@ export interface RenderResult {
   failedRoutes: string[];
   /** Text boxes (labels, props) in sheet mm, for checks such as clipped text. */
   textBoxes: { id: string; box: Box; text: string }[];
+  /** Group frames in sheet mm. */
+  groupBoxes: { id: string; box: Box }[];
 }
 
 const HL_COLOR: Record<Highlight, string> = {
@@ -52,6 +54,7 @@ export function renderSchema(input: Schema, opts: RenderOptions = {}): RenderRes
   const ink = style.colors.ink;
   const out: string[] = [];
   const textBoxes: RenderResult['textBoxes'] = [];
+  const groupBoxes: RenderResult['groupBoxes'] = [];
   const hl = opts.highlight ?? {};
   const fam = esc(style.font.family);
 
@@ -90,17 +93,27 @@ export function renderSchema(input: Schema, opts: RenderOptions = {}): RenderRes
   }
   if (halo.length) out.push(`<g class="highlight">${halo.join('')}</g>`);
 
-  // Group frames.
+  // Component markup first: group frames need the label extents.
+  const cmpMarkup = new Map<string, string>();
+  for (const c of s.components) if (c.pos) cmpMarkup.set(c.id, componentGroup(c, style, textBoxes));
+
+  // Group frames: around members and their labels, with the group name above the content.
   for (const gr of s.groups) {
     if (!gr.frame) continue;
     const members = s.components.filter((c) => gr.members.includes(c.id) && c.pos);
-    const b = unionBox(members.map(componentBox));
-    if (!b) continue;
-    const pad = 6;
-    const x = b.x - pad,
-      y = b.y - pad - 4,
-      w = b.w + 2 * pad,
-      h = b.h + 2 * pad + 8;
+    // Width from the symbols, height also from the member texts (labels above, values below).
+    const sb = unionBox(members.map(componentBox));
+    const tb = unionBox([
+      ...members.map(componentBox),
+      ...textBoxes.filter((t) => gr.members.includes(t.id)).map((t) => t.box),
+    ]);
+    if (!sb || !tb) continue;
+    const pad = 4;
+    const x = sb.x - pad,
+      y = tb.y - 2 - style.font.small - 1,
+      w = sb.w + 2 * pad,
+      h = tb.h + 4 + style.font.small + 1;
+    groupBoxes.push({ id: gr.id, box: { x, y, w, h } });
     out.push(
       `<g class="group" data-id="${esc(gr.id)}"><rect x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" fill="none" stroke="${style.colors.group}" stroke-width="${style.stroke.group}" stroke-dasharray="4 1 1 1"/>` +
         (gr.label
@@ -109,6 +122,17 @@ export function renderSchema(input: Schema, opts: RenderOptions = {}): RenderRes
         `</g>`,
     );
   }
+
+  // Background symbols (rooms, fire compartment borders) behind the lines.
+  for (const c of s.components) if (c.pos && isBackground(c)) out.push(cmpMarkup.get(c.id)!);
+
+  // Sensor stem tips: flow arrows keep clear of them.
+  const stems: Vec[] = s.components
+    .filter((c) => c.pos && symbolOf(c.type).obstacle)
+    .map((c) => {
+      const d = symbolOf(c.type);
+      return localToSheet(d, c, [d.size[0] / 2, d.size[1]]);
+    });
 
   // Connections.
   const crossings = findCrossings(s, routes);
@@ -129,7 +153,7 @@ export function renderSchema(input: Schema, opts: RenderOptions = {}): RenderRes
     );
     if (!signal) {
       const seg = longestSegment(pts);
-      if (seg && seg.len >= 10) out.push(arrow(seg.a, seg.b, color));
+      if (seg && seg.len >= 15) out.push(arrowAvoiding(seg.a, seg.b, color, stems));
       if (seg && startsMediumRun(s, con.id) && m) {
         const horiz = Math.abs(seg.a[1] - seg.b[1]) < 1e-6;
         const size = style.font.small;
@@ -150,15 +174,7 @@ export function renderSchema(input: Schema, opts: RenderOptions = {}): RenderRes
   if (flowLabels.length) out.push(`<g class="flow-labels">${flowLabels.join('')}</g>`);
 
   // Components.
-  for (const c of s.components) {
-    if (!c.pos) continue;
-    const def = symbolOf(c.type);
-    out.push(
-      `<g class="cmp" data-id="${esc(c.id)}"><g transform="${symbolTransform(def, c)}" fill="none" stroke="${ink}" color="${ink}" stroke-width="${style.stroke.symbol}">${def.svg}</g>`,
-    );
-    out.push(componentText(c, style, textBoxes));
-    out.push('</g>');
-  }
+  for (const c of s.components) if (c.pos && !isBackground(c)) out.push(cmpMarkup.get(c.id)!);
 
   for (const t of s.texts) {
     out.push(
@@ -191,7 +207,7 @@ export function renderSchema(input: Schema, opts: RenderOptions = {}): RenderRes
   if (opts.notes) out.push(notePins(s, routes));
 
   out.push('</svg>');
-  return { svg: out.join('\n'), placed: s, routes, failedRoutes: failed, textBoxes };
+  return { svg: out.join('\n'), placed: s, routes, failedRoutes: failed, textBoxes, groupBoxes };
 }
 
 function TB_ATTR(style: Style): Record<string, string> {
@@ -207,10 +223,22 @@ function titleBlockStyle(_style: Style): string {
   return '';
 }
 
+function componentGroup(c: Component, style: Style, textBoxes: RenderResult['textBoxes']): string {
+  const def = symbolOf(c.type);
+  const ink = style.colors.ink;
+  return (
+    `<g class="cmp" data-id="${esc(c.id)}"><g transform="${symbolTransform(def, c)}" fill="none" stroke="${ink}" color="${ink}" stroke-width="${style.stroke.symbol}" font-family="${esc(style.font.family)}">${def.svg}</g>` +
+    componentText(c, style, textBoxes) +
+    '</g>'
+  );
+}
+
 function componentText(c: Component, style: Style, boxes: RenderResult['textBoxes']): string {
   const def = symbolOf(c.type);
   const size = style.font.label;
-  const anchor = localToSheet(def, c, def.labelAnchor);
+  // A symbol turned by 180° keeps its label on the same side horizontally (anchor mirrored vertically only).
+  const anchor =
+    c.rot === 180 ? localToSheet(def, { ...c, flip: !c.flip }, def.labelAnchor) : localToSheet(def, c, def.labelAnchor);
   const [cx, cy] = c.pos!;
   const dx = anchor[0] - cx,
     dy = anchor[1] - cy;
@@ -277,9 +305,17 @@ function longestSegment(pts: Vec[]): { a: Vec; b: Vec; len: number } | null {
   return best;
 }
 
-function arrow(a: Vec, b: Vec, color: string): string {
-  const mx = (a[0] + b[0]) / 2,
-    my = (a[1] + b[1]) / 2;
+function arrowAvoiding(a: Vec, b: Vec, color: string, stems: Vec[]): string {
+  for (const t of [0.5, 0.35, 0.65, 0.25, 0.75]) {
+    const m: Vec = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+    if (!stems.some((p) => Math.abs(p[0] - m[0]) < 3 && Math.abs(p[1] - m[1]) < 3)) return arrow(a, b, color, t);
+  }
+  return '';
+}
+
+function arrow(a: Vec, b: Vec, color: string, t = 0.5): string {
+  const mx = a[0] + (b[0] - a[0]) * t,
+    my = a[1] + (b[1] - a[1]) * t;
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
   const ux = (b[0] - a[0]) / len,
     uy = (b[1] - a[1]) / len;
