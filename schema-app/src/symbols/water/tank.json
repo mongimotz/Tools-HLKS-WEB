@@ -2,8 +2,8 @@
   "id": "water.tank",
   "name": "Speicher",
   "category": "water",
-  "norm": "SN EN ISO 10628-2",
-  "checked": false,
+  "norm": "SN EN 1861 T1/8",
+  "checked": true,
   "size": [
     10,
     20

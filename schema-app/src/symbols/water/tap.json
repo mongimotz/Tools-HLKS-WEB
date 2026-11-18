@@ -2,7 +2,7 @@
   "id": "water.tap",
   "name": "Entnahmestelle",
   "category": "water",
-  "norm": "SN EN 806-1",
+  "norm": "",
   "checked": false,
   "size": [
     10,

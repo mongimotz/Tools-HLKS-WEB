@@ -2,7 +2,7 @@
   "id": "water.strainer",
   "name": "Schmutzfänger",
   "category": "water",
-  "norm": "SN EN ISO 10628-2",
+  "norm": "",
   "checked": false,
   "size": [
     10,

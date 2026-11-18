@@ -16,6 +16,7 @@ export const EXAMPLES: { id: string; name: string }[] = [
   { id: 'vvs-3-zonen', name: 'VVS-Regler für 3 Zonen' },
   { id: 'heizgruppe', name: 'Heizgruppe mit Beimischung' },
   { id: 'kaelte', name: 'Kältekreis' },
+  { id: 'trinkwasser', name: 'Trinkwasser mit Wassererwärmer' },
   { id: 'symbol-catalog', name: 'Symbolübersicht' },
 ];
 

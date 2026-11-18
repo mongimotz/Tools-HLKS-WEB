@@ -2,8 +2,8 @@
   "id": "water.valve.check",
   "name": "Rückflussverhinderer",
   "category": "water",
-  "norm": "SN EN 806-1",
-  "checked": false,
+  "norm": "SN EN 806-1 6.6.4",
+  "checked": true,
   "size": [
     10,
     5
@@ -45,5 +45,5 @@
     "Rückschlagklappe",
     "check valve"
   ],
-  "svg": "<path d='M0 0L10 5V0L0 5Z'/><path d='M5 2.5L10 0V5Z' fill='currentColor'/>"
+  "svg": "<path d='M0 2.5H10M7 0.5V4.5'/><path d='M3 0.5L7 2.5L3 4.5Z' fill='currentColor'/>"
 }

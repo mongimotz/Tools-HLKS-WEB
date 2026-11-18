@@ -2,8 +2,8 @@
   "id": "water.hx",
   "name": "Wärmetauscher",
   "category": "water",
-  "norm": "SN EN ISO 10628-2",
-  "checked": false,
+  "norm": "SN EN 1861 T1/11",
+  "checked": true,
   "size": [
     10,
     15
@@ -77,5 +77,5 @@
     "Wärmeübertrager",
     "Systemtrennung"
   ],
-  "svg": "<rect x='0' y='0' width='10' height='15'/><path d='M0 15L10 0'/>"
+  "svg": "<rect x='0' y='0' width='10' height='15'/><path d='M0 0L10 15M10 0L0 15'/>"
 }

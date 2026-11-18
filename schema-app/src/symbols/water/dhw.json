@@ -2,7 +2,7 @@
   "id": "water.dhw",
   "name": "Wassererwärmer",
   "category": "water",
-  "norm": "SN EN 806-1",
+  "norm": "",
   "checked": false,
   "size": [
     10,
@@ -19,7 +19,8 @@
       "dir": "W",
       "media": [
         "water.*"
-      ]
+      ],
+      "optional": true
     },
     {
       "id": "h.out",
@@ -30,7 +31,8 @@
       "dir": "W",
       "media": [
         "water.*"
-      ]
+      ],
+      "optional": true
     },
     {
       "id": "pwh",

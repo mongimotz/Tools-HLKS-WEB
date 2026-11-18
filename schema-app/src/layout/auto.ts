@@ -323,6 +323,11 @@ function layoutOnce(input: Schema, gap: number, opts: LayoutOptions, style: Styl
         const natural = symbolOf(c.type).ports[0]!.dir;
         c.flip = false;
         c.rot = ([0, 90, 180, 270] as Rotation[]).find((r) => rotateDir(natural, r, false) === want) ?? 0;
+        // Left ↔ right only: mirror instead of turning upside down (e.g. a tap keeps its spout down).
+        if (c.rot === 180 && horizontal(natural)) {
+          c.rot = 0;
+          c.flip = true;
+        }
         const b = componentBox({ ...c, pos: [0, 0] });
         const d = gap + (H ? b.h / 2 : b.w / 2);
         const sv = DIR_VEC[side];

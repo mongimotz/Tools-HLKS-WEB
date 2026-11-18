@@ -2,11 +2,11 @@
   "id": "water.meter",
   "name": "Wasserzähler",
   "category": "water",
-  "norm": "SN EN 806-1",
-  "checked": false,
+  "norm": "SN EN 806-1 6.10.8",
+  "checked": true,
   "size": [
     10,
-    5
+    10
   ],
   "prefix": "WZ",
   "ports": [
@@ -14,7 +14,7 @@
       "id": "in",
       "at": [
         0,
-        2.5
+        5
       ],
       "dir": "W",
       "media": [
@@ -25,7 +25,7 @@
       "id": "out",
       "at": [
         10,
-        2.5
+        5
       ],
       "dir": "E",
       "media": [
@@ -45,5 +45,5 @@
     "Wärmezähler",
     "Messung"
   ],
-  "svg": "<rect x='0' y='0' width='10' height='5'/><circle cx='5' cy='2.5' r='1.5'/>"
+  "svg": "<rect x='0' y='0' width='10' height='10'/><path d='M0 3H10'/><text x='5' y='8' font-size='3' fill='currentColor' stroke='none' text-anchor='middle'>m³</text>"
 }

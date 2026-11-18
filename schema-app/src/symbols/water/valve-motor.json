@@ -2,7 +2,7 @@
   "id": "water.valve.motor",
   "name": "Regelventil mit Antrieb",
   "category": "water",
-  "norm": "SN EN ISO 10628-2",
+  "norm": "",
   "checked": false,
   "size": [
     10,

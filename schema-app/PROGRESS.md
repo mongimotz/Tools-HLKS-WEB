@@ -10,7 +10,7 @@
 | 5 Notes | done |
 | 6 OpenRouter assistant | done |
 | 7 Styles, polish, start page | done |
-| 8 Heating, cooling, plumbing | started (hydraulic symbols, circuit layout) |
+| 8 Heating, cooling, plumbing | done (IEC 81346 designations left out, optional) |
 
 ## Phase 0
 - `npm run build` builds `dist/` (relative base). `npm run check:site [out]` assembles and checks the Pages artifact (old pages, `CNAME`, `.nojekyll`, `/schema/index.html`, no sources leaked).
@@ -71,3 +71,4 @@
 
 ## Phase 8 (first part)
 - Hydraulic symbols and media, `add_chain` with `medium`, circuit layout (return row), examples «Heizgruppe mit Beimischung» and «Kältekreis». Symbols not yet checked against the norm PDFs.
+- Symbols checked against EN 1861 / EN 806-1 where they define one; network connection symbol; example «Trinkwasser mit Wassererwärmer».

@@ -2,8 +2,8 @@
   "id": "water.pump",
   "name": "Umwälzpumpe",
   "category": "water",
-  "norm": "SN EN ISO 10628-2",
-  "checked": false,
+  "norm": "SN EN 1861 T1/15",
+  "checked": true,
   "size": [
     10,
     10
@@ -47,5 +47,5 @@
     "Heizungspumpe",
     "pump"
   ],
-  "svg": "<circle cx='5' cy='5' r='5'/><path d='M5 0L10 5L5 10'/>"
+  "svg": "<circle cx='5' cy='5' r='5'/><path d='M6.71 0.3L10 5L6.71 9.7'/>"
 }

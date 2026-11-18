@@ -224,6 +224,30 @@ const EXAMPLES: Record<string, { title: string; ops: unknown[] }> = {
       { op: 'relayout_unpinned' },
     ],
   },
+  trinkwasser: {
+    title: 'Trinkwasser mit Wassererwärmer',
+    ops: [
+      {
+        op: 'add_chain',
+        strand: 'supply',
+        medium: 'water.potable.cold',
+        items: [
+          { id: 'HA01', type: 'water.connection' },
+          { id: 'AV01', type: 'water.valve' },
+          { id: 'WZ01', type: 'water.meter' },
+          { id: 'SF01', type: 'water.strainer' },
+          { id: 'RV01', type: 'water.valve.check' },
+          { id: 'EN01', type: 'water.tap' },
+        ],
+      },
+      { op: 'add_component', id: 'WW01', type: 'water.dhw', props: { V: '300 l' } },
+      { op: 'add_component', id: 'EN02', type: 'water.tap' },
+      { op: 'insert_into_connection', connection: 'L05', type: 'junction', id: 'J01', in: 'w', out: 'e' },
+      { op: 'connect', from: 'J01.n', to: 'WW01.pwc', medium: 'water.potable.cold' },
+      { op: 'connect', from: 'WW01.pwh', to: 'EN02.in', medium: 'water.potable.hot' },
+      { op: 'relayout_unpinned' },
+    ],
+  },
   'vvs-3-zonen': {
     title: 'Anlage mit VVS-Reglern für 3 Zonen',
     ops: [
