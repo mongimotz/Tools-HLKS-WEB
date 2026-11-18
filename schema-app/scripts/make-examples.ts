@@ -158,6 +158,41 @@ const EXAMPLES: Record<string, { title: string; ops: unknown[] }> = {
       { op: 'group', id: 'G2', label: 'Abluftgerät', members: ['FI02', 'VE02', 'KVS02', 'KL02'] },
     ],
   },
+  heizgruppe: {
+    title: 'Heizgruppe mit Beimischung',
+    ops: [
+      { op: 'add_component', id: 'WE01', type: 'water.boiler', props: { Q: '120 kW', Art: 'Gas' } },
+      {
+        op: 'add_chain',
+        strand: 'supply',
+        medium: 'water.heat.flow',
+        after: 'WE01.out',
+        items: [
+          { id: 'AV01', type: 'water.valve' },
+          { id: 'MV01', type: 'water.valve.3way' },
+          { id: 'UP01', type: 'water.pump', props: { V: '5.2 m³/h' } },
+          { id: 'HK01', type: 'water.radiator', props: { Q: '120 kW' } },
+        ],
+      },
+      {
+        op: 'add_chain',
+        strand: 'extract',
+        medium: 'water.heat.return',
+        after: 'HK01.out',
+        items: [
+          { id: 'SR01', type: 'water.valve.balancing' },
+          { id: 'AV02', type: 'water.valve' },
+        ],
+      },
+      { op: 'connect', id: 'L90', from: 'AV02.out', to: 'WE01.in', medium: 'water.heat.return' },
+      { op: 'insert_into_connection', connection: 'L06', type: 'junction', id: 'J01', in: 'e', out: 'w' },
+      { op: 'connect', from: 'J01.n', to: 'MV01.b', medium: 'water.heat.return' },
+      { op: 'add_component', id: 'AG01', type: 'water.expansion' },
+      { op: 'insert_into_connection', connection: 'L90', type: 'junction', id: 'J02', in: 'e', out: 'w' },
+      { op: 'connect', from: 'J02.n', to: 'AG01.p', medium: 'water.heat.return' },
+      { op: 'relayout_unpinned' },
+    ],
+  },
   'vvs-3-zonen': {
     title: 'Anlage mit VVS-Reglern für 3 Zonen',
     ops: [

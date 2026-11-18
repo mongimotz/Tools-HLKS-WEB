@@ -23,6 +23,20 @@ export const MEDIA: MediumDef[] = [
   { id: 'air.mixed', code: 'MIL', name: 'Mischluft', color: '#7a8a2e', dash: '6 1.5 1 1.5 1 1.5', kind: 'flow' },
   { id: 'air.transfer', code: 'ÜBL', name: 'Überströmluft', color: '#8c8c8c', dash: '1.5 1.5', kind: 'flow' },
   { id: 'water.hrc', code: 'KVS', name: 'KVS-Kreislauf', color: '#159a9c', dash: '4 1 1 1', kind: 'flow' },
+  { id: 'water.heat.flow', code: 'HVL', name: 'Heizung Vorlauf', color: '#c4332b', dash: '', kind: 'flow' },
+  { id: 'water.heat.return', code: 'HRL', name: 'Heizung Rücklauf', color: '#2f6fc9', dash: '6 1.5', kind: 'flow' },
+  { id: 'water.chill.flow', code: 'KVL', name: 'Kälte Vorlauf', color: '#159a9c', dash: '3 1.5', kind: 'flow' },
+  {
+    id: 'water.chill.return',
+    code: 'KRL',
+    name: 'Kälte Rücklauf',
+    color: '#6a4fb3',
+    dash: '6 1.5 1 1.5',
+    kind: 'flow',
+  },
+  { id: 'water.potable.cold', code: 'PWC', name: 'Trinkwasser kalt', color: '#2e9a4a', dash: '1.5 1.5', kind: 'flow' },
+  { id: 'water.potable.hot', code: 'PWH', name: 'Trinkwasser warm', color: '#e07b1a', dash: '4 1.5', kind: 'flow' },
+  { id: 'water.potable.circ', code: 'PWH-C', name: 'Zirkulation', color: '#a0569c', dash: '4 1.5 1 1.5', kind: 'flow' },
   { id: 'signal', code: 'S', name: 'Wirklinie', color: '#555555', dash: '1 1', kind: 'signal' },
 ];
 

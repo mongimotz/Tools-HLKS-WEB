@@ -1,0 +1,72 @@
+{
+  "id": "water.valve.3way",
+  "name": "Dreiwegeventil mit Antrieb",
+  "category": "water",
+  "norm": "SN EN ISO 10628-2",
+  "checked": false,
+  "size": [
+    10,
+    10
+  ],
+  "prefix": "MV",
+  "ports": [
+    {
+      "id": "in",
+      "at": [
+        0,
+        7.5
+      ],
+      "dir": "W",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "out",
+      "at": [
+        10,
+        7.5
+      ],
+      "dir": "E",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "b",
+      "at": [
+        5,
+        10
+      ],
+      "dir": "S",
+      "media": [
+        "water.*"
+      ]
+    }
+  ],
+  "flow": [
+    [
+      "in",
+      "out"
+    ],
+    [
+      "b",
+      "out"
+    ]
+  ],
+  "labelAnchor": [
+    11,
+    4
+  ],
+  "labelAlign": "start",
+  "props": [
+    "DN",
+    "kvs"
+  ],
+  "keywords": [
+    "Mischventil",
+    "Umlenkventil",
+    "Beimischung"
+  ],
+  "svg": "<path d='M0 5L5 7.5L0 10ZM10 5L5 7.5L10 10ZM2.5 10L5 7.5L7.5 10'/><rect x='2.5' y='0' width='5' height='2.5'/><path d='M5 2.5V7.5'/>"
+}

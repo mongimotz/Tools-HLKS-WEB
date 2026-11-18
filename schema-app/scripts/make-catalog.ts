@@ -11,8 +11,9 @@ import { snap } from '../src/model/geometry.ts';
 const s = emptySchema('Symbolübersicht', '2026-11-18');
 s.meta.project = 'HLKS-Tools Prinzipschema';
 s.sheet.legend = false;
+s.sheet.size = 'A2';
 const area = drawingArea(s.sheet);
-const COLS = 7,
+const COLS = 9,
   CW = (area.w - 10) / COLS;
 const defs = CATEGORIES.flatMap((cat) => allSymbols().filter((d) => d.category === cat.id));
 // Row height from the tallest symbol in the row.

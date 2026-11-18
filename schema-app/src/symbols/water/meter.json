@@ -1,0 +1,49 @@
+{
+  "id": "water.meter",
+  "name": "Wasserzähler",
+  "category": "water",
+  "norm": "SN EN 806-1",
+  "checked": false,
+  "size": [
+    10,
+    5
+  ],
+  "prefix": "WZ",
+  "ports": [
+    {
+      "id": "in",
+      "at": [
+        0,
+        2.5
+      ],
+      "dir": "W",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "out",
+      "at": [
+        10,
+        2.5
+      ],
+      "dir": "E",
+      "media": [
+        "water.*"
+      ]
+    }
+  ],
+  "labelAnchor": [
+    5,
+    -1.5
+  ],
+  "props": [
+    "DN"
+  ],
+  "keywords": [
+    "Zähler",
+    "Wärmezähler",
+    "Messung"
+  ],
+  "svg": "<rect x='0' y='0' width='10' height='5'/><circle cx='5' cy='2.5' r='1.5'/>"
+}

@@ -1,0 +1,51 @@
+{
+  "id": "water.consumer",
+  "name": "Verbraucher",
+  "category": "water",
+  "norm": "",
+  "checked": false,
+  "size": [
+    10,
+    10
+  ],
+  "prefix": "VB",
+  "ports": [
+    {
+      "id": "in",
+      "at": [
+        0,
+        5
+      ],
+      "dir": "W",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "out",
+      "at": [
+        10,
+        5
+      ],
+      "dir": "E",
+      "media": [
+        "water.*"
+      ]
+    }
+  ],
+  "labelAnchor": [
+    5,
+    -1.5
+  ],
+  "props": [
+    "Q",
+    "Nutzung"
+  ],
+  "keywords": [
+    "Heizgruppe",
+    "Fussbodenheizung",
+    "Kühldecke",
+    "Lufterhitzer Wasser"
+  ],
+  "svg": "<rect x='0' y='0' width='10' height='10'/><path d='M0 5H2L3.5 2.5L6.5 7.5L8 5H10'/>"
+}

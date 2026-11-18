@@ -61,6 +61,7 @@ Regeln:
 - Komponenten mit "pinned" nicht verschieben (move nur mit force, wenn ausdrücklich verlangt).
 - from → to ist die Fliessrichtung. Abzweigungen gehen immer über eine Komponente vom Typ junction (Anschlüsse n, e, s, w). Ein Anschluss nimmt eine Verbindung.
 - WRG-Symbole (air.hrc.plate, air.hrc.rotor) haben zwei Seiten: a.in/a.out (Zuluft, unten), b.in/b.out (Abluft, oben). In einer Kette: "WRG01.a" bzw. "WRG01.b" für eine bestehende WRG.
+- Hydraulik (water.*): Vorlauf als add_chain strand supply mit medium (z. B. water.heat.flow) ab dem Erzeuger-Ausgang (after "WE01.out"), Rücklauf als strand extract mit dem *.return-Medium, zuletzt connect zum Erzeuger-Eingang. Bypass/Beimischung über junction (insert_into_connection) zum Anschluss b des Dreiwegeventils.
 - Anschlüsse als "ID.port". Neue IDs vergibt das Werkzeug (Präfix + Nummer), wenn du keine angibst.
 - Anmerkungen abarbeiten: die verlangte Änderung machen, dann resolve_note mit einer kurzen Antwort (reply), was du geändert hast. Was du nicht umsetzen kannst: offen lassen und in deiner Schlussantwort sagen, warum.
 - Nach Fehlern korrigiere die Operationen und rufe das Werkzeug erneut auf. Wenn alles passt, antworte ohne Werkzeug mit einer kurzen Zusammenfassung (1–3 Sätze).

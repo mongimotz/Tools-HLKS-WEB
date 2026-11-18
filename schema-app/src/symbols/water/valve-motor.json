@@ -1,0 +1,52 @@
+{
+  "id": "water.valve.motor",
+  "name": "Regelventil mit Antrieb",
+  "category": "water",
+  "norm": "SN EN ISO 10628-2",
+  "checked": false,
+  "size": [
+    10,
+    10
+  ],
+  "prefix": "MV",
+  "ports": [
+    {
+      "id": "in",
+      "at": [
+        0,
+        7.5
+      ],
+      "dir": "W",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "out",
+      "at": [
+        10,
+        7.5
+      ],
+      "dir": "E",
+      "media": [
+        "water.*"
+      ]
+    }
+  ],
+  "labelAnchor": [
+    11,
+    4
+  ],
+  "labelAlign": "start",
+  "props": [
+    "DN",
+    "kvs"
+  ],
+  "keywords": [
+    "Durchgangsventil",
+    "Motorventil",
+    "Stellventil",
+    "Zweiwegventil"
+  ],
+  "svg": "<path d='M0 5L10 10V5L0 10Z'/><rect x='2.5' y='0' width='5' height='2.5'/><path d='M5 2.5V7.5'/>"
+}

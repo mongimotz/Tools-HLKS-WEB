@@ -1,0 +1,40 @@
+{
+  "id": "water.expansion",
+  "name": "Ausdehnungsgefäss",
+  "category": "water",
+  "norm": "SN EN ISO 10628-2",
+  "checked": false,
+  "size": [
+    10,
+    10
+  ],
+  "prefix": "AG",
+  "ports": [
+    {
+      "id": "p",
+      "at": [
+        5,
+        10
+      ],
+      "dir": "S",
+      "media": [
+        "water.*"
+      ]
+    }
+  ],
+  "labelAnchor": [
+    11,
+    5
+  ],
+  "labelAlign": "start",
+  "props": [
+    "V",
+    "p0"
+  ],
+  "keywords": [
+    "Druckausdehnungsgefäss",
+    "Expansionsgefäss",
+    "Membrangefäss"
+  ],
+  "svg": "<path d='M5 10V8M1.5 8H8.5V2.5A3.5 2.5 0 0 0 1.5 2.5Z'/><path d='M1.5 5H8.5'/>"
+}

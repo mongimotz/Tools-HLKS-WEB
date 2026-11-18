@@ -86,3 +86,9 @@ Format: date | decision | alternatives | reason.
 - Start page: «Prinzipschema» is a tile in the section without discipline (Lüftung already has its three entries; the tool will cover other disciplines in phase 8). Registry `path: 'schema/'` (built), `source: 'schema-app/'` for the page check.
 - Style template and «Schwarzweiss» are per browser (localStorage), not in the file: company title blocks must not travel into shared files or the repo. Invalid values fall back to the default style.
 - Help stays the shortcut dialog (?); no separate help page. Lighthouse: not run (owner asked for minimal testing).
+
+## 2026-11-18 | Phase 8 (started by the owner without a review stop)
+- 18 hydraulic symbols (`src/symbols/water/`), drawn from scratch after the usual ISO 10628-2 / EN 806-1 shapes, all `checked: false` (not compared with the norm PDFs yet). 7 water media (HVL/HRL, KVL/KRL, PWC/PWH/PWH-C) with colours and dash patterns.
+- No ELK: the strand layout handles circuits. A line from a `*.flow` to a `*.return` medium starts a new strand; a return strand ending at a placed generator is placed below the flow row, right to left, ending right of the generator. Cycles start at the generator (return in, flow out). Generators have both ports on one side; orientation and row line then follow the outlet.
+- `add_chain` takes `medium` for hydraulic chains. Symbol catalogue moved to A2 (47 symbols).
+- Not done: IEC 81346 reference designations (optional in the plan), plumbing/cooling examples.

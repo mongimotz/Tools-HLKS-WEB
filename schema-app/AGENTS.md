@@ -30,7 +30,9 @@ JSON, 2-space indent, stable key order (one component per line). Coordinates are
 
 Branches always go through a `junction` component (ports `n`, `e`, `s`, `w`). A port takes one connection.
 
-Media: `air.outdoor` AUL, `air.supply` ZUL, `air.extract` ABL, `air.exhaust` FOL, `air.recirc` UML, `air.mixed` MIL, `air.transfer` ÜBL, `water.hrc` KVS, `signal` (Wirklinie).
+Media: `air.outdoor` AUL, `air.supply` ZUL, `air.extract` ABL, `air.exhaust` FOL, `air.recirc` UML, `air.mixed` MIL, `air.transfer` ÜBL, `water.hrc` KVS, `water.heat.flow` HVL, `water.heat.return` HRL, `water.chill.flow` KVL, `water.chill.return` KRL, `water.potable.cold` PWC, `water.potable.hot` PWH, `water.potable.circ` PWH-C, `signal` (Wirklinie).
+
+Hydraulics (`water.*` symbols, unchecked against the norms): build a circuit with `add_chain` and `medium`: the flow (Vorlauf) as `strand: "supply"` from the generator's `out`, the return as `strand: "extract"` with a `*.return` medium, then `connect` the last item to the generator's `in`. The layout draws the return as its own row below, right to left, ending at the generator. Example: `examples/heizgruppe.schema` (`scripts/make-examples.ts`).
 
 Symbols: `examples/symbol-catalog.schema` shows all of them; definitions in `src/symbols/<category>/*.json` (ports, props, prefix for new IDs). WRG symbols (`air.hrc.plate`, `air.hrc.rotor`) have two sides: ports `a.in`/`a.out` (supply, bottom) and `b.in`/`b.out` (extract, top).
 
@@ -46,7 +48,7 @@ A list (or `{ "ops": [...] }`); the first invalid op aborts everything. Ports ma
 | `insert_into_connection` | `connection`, new `type` (+ `id?`, `props?`) or existing `id`, `in`/`out` ports (default in/out) |
 | `set_props` (`replace?`), `set_label`, `set_medium` | `id` + value |
 | `move` | `id`, `pos`, `force?` |
-| `add_chain` | `strand` supply/extract, `items` (`{type, id?, props?, then?}` or existing `"WRG01.a"`), `after?` (port to start from). Supply: AUL → ZUL, left → right, ZUL from the first treatment (WRG, heater, cooler, fan). Extract: ABL → FOL, right → left above, FOL after the WRG (else after the fan). `then` sets the medium of the line leaving an item. Sensors (`control.sensor.*`) in a chain sit on the duct after the previous item. |
+| `add_chain` | `strand` supply/extract, `medium?` (all lines, e.g. `water.heat.flow`), `items` (`{type, id?, props?, then?}` or existing `"WRG01.a"`), `after?` (port to start from). Supply: AUL → ZUL, left → right, ZUL from the first treatment (WRG, heater, cooler, fan). Extract: ABL → FOL, right → left above, FOL after the WRG (else after the fan). `then` sets the medium of the line leaving an item. Sensors (`control.sensor.*`) in a chain sit on the duct after the previous item. |
 | `group` | `label`, `members`, `id?`, `frame?` |
 | `add_note`, `resolve_note` | `anchor`, `text` / `id`, `reply?` |
 | `set_meta` | `title?`, `project?`, `author?`, `date?`, `revision?`, `size?`, `orientation?` |

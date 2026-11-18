@@ -1,0 +1,49 @@
+{
+  "id": "water.strainer",
+  "name": "Schmutzfänger",
+  "category": "water",
+  "norm": "SN EN ISO 10628-2",
+  "checked": false,
+  "size": [
+    10,
+    5
+  ],
+  "prefix": "SF",
+  "ports": [
+    {
+      "id": "in",
+      "at": [
+        0,
+        2.5
+      ],
+      "dir": "W",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "out",
+      "at": [
+        10,
+        2.5
+      ],
+      "dir": "E",
+      "media": [
+        "water.*"
+      ]
+    }
+  ],
+  "labelAnchor": [
+    5,
+    -1.5
+  ],
+  "props": [
+    "DN"
+  ],
+  "keywords": [
+    "Filter",
+    "Siebfilter",
+    "Schlammabscheider"
+  ],
+  "svg": "<path d='M0 2.5L5 0L10 2.5L5 5Z'/><path d='M2.5 1.25L7.5 3.75'/>"
+}

@@ -1,0 +1,37 @@
+{
+  "id": "water.tap",
+  "name": "Entnahmestelle",
+  "category": "water",
+  "norm": "SN EN 806-1",
+  "checked": false,
+  "size": [
+    10,
+    10
+  ],
+  "prefix": "EN",
+  "ports": [
+    {
+      "id": "in",
+      "at": [
+        0,
+        5
+      ],
+      "dir": "W",
+      "media": [
+        "water.potable.*"
+      ]
+    }
+  ],
+  "labelAnchor": [
+    5,
+    -1.5
+  ],
+  "props": [],
+  "keywords": [
+    "Zapfstelle",
+    "Armatur",
+    "Waschtisch",
+    "Dusche"
+  ],
+  "svg": "<path d='M0 5H7.5V8.5M6 8.5H9'/><circle cx='4' cy='5' r='1.5'/>"
+}

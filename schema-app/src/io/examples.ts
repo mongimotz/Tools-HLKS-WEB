@@ -14,6 +14,7 @@ export const EXAMPLES: { id: string; name: string }[] = [
   { id: 'monoblock-rotor-erhitzer-kuehler', name: 'Monoblock mit Rotor, Erhitzer und Kühler' },
   { id: 'kvs-system', name: 'Zu- und Abluftgerät mit KVS-System' },
   { id: 'vvs-3-zonen', name: 'VVS-Regler für 3 Zonen' },
+  { id: 'heizgruppe', name: 'Heizgruppe mit Beimischung' },
   { id: 'symbol-catalog', name: 'Symbolübersicht' },
 ];
 

@@ -73,7 +73,9 @@ function nodesOf(c: Component, s: Schema): Node[] {
   const pairs = flowPairs(c.type);
   if (pairs.length) return pairs.map(([a, b]) => ({ id: c.id, inPort: a, outPort: b }));
   const def = symbolOf(c.type);
-  const ports = def.ports.filter((p) => p.media.some((m) => m.startsWith('air')) || p.media.includes('*'));
+  const ports = def.ports.filter(
+    (p) => p.media.some((m) => m.startsWith('air') || m.startsWith('water')) || p.media.includes('*'),
+  );
   if (ports.length !== 1) return [];
   const p = ports[0]!;
   // A single port is an outlet of the flow if a connection starts there.
@@ -81,8 +83,14 @@ function nodesOf(c: Component, s: Schema): Node[] {
   return [starts ? { id: c.id, inPort: null, outPort: p.id } : { id: c.id, inPort: p.id, outPort: null }];
 }
 
+/** Hydraulic circuits: the line from a flow (Vorlauf) to a return (Rücklauf) medium starts a new strand. */
+export const isReturn = (m: string) => m.endsWith('.return');
+const isFlowMedium = (m: string) => m.endsWith('.flow');
+
 /** Splits the flow graph into strands. */
 export function strands(s: Schema): Strand[] {
+  const conById = new Map(s.connections.map((c) => [c.id, c]));
+  const restarts: Node[] = [];
   const idx = portIndex(s);
   const comps = new Map(s.components.map((c) => [c.id, c]));
   const nodes = s.components.flatMap((c) => nodesOf(c, s));
@@ -103,6 +111,14 @@ export function strands(s: Schema): Strand[] {
       const [cid, pid] = link.other;
       const c = comps.get(cid);
       if (!c) break;
+      const inMed = n.inPort ? conById.get(idx.get(`${n.id}:${n.inPort}`)?.con ?? '')?.medium : undefined;
+      const outMed = conById.get(link.con)!.medium;
+      if (isReturn(outMed) && (!inMed || !isReturn(inMed)) && c.type !== 'junction') {
+        // Flow → return: the return is its own row.
+        const next = nodesOf(c, s).find((x) => x.inPort === pid);
+        if (next) restarts.push(next);
+        break;
+      }
       if (c.type === 'junction') {
         const outs = s.connections.filter((x) => x.from[0] === cid).map((x) => x.from[1]);
         const pIn = symbolOf('junction').ports.find((p) => p.id === pid)!;
@@ -137,9 +153,37 @@ export function strands(s: Schema): Strand[] {
       const rest = next ? walk(next, b.from) : { nodes: [] };
       out.push({ nodes: rest.nodes, from: b.from });
     }
+    drain();
   }
-  // Leftover cycles: start anywhere.
-  for (const n of nodes) if (!visited.has(key(n))) out.push(walk(n));
+  function drain() {
+    while (restarts.length || queue.length) {
+      const r = restarts.shift();
+      if (r) {
+        if (!visited.has(key(r))) out.push(walk(r));
+        continue;
+      }
+      const b = queue.shift()!;
+      const jn = b.nodes[0]!;
+      const link = idx.get(`${jn.id}:${jn.outPort}`);
+      if (!link) continue;
+      const c = comps.get(link.other[0]);
+      const next = c ? (c.type === 'junction' ? null : nodesOf(c, s).find((x) => x.inPort === link.other[1])) : null;
+      out.push({ nodes: next ? walk(next, b.from).nodes : [], from: b.from });
+    }
+  }
+  drain();
+  // Leftover cycles (hydraulic circuits): start at a generator (return in, flow out), else anywhere.
+  const medOf = (id: string, port: string | null) =>
+    port ? (conById.get(idx.get(`${id}:${port}`)?.con ?? '')?.medium ?? '') : '';
+  const starts = [
+    ...nodes.filter((n) => isReturn(medOf(n.id, n.inPort)) && isFlowMedium(medOf(n.id, n.outPort))),
+    ...nodes,
+  ];
+  for (const n of starts)
+    if (!visited.has(key(n))) {
+      out.push(walk(n));
+      drain();
+    }
   return out.filter((x) => x.nodes.length || x.from);
 }
 
@@ -148,7 +192,9 @@ function orientFor(c: Component, n: Node, flow: Dir): { rot: Rotation; flip: boo
   const port = def.ports.find((p) => p.id === (n.inPort ?? n.outPort));
   if (!port) return { rot: 0, flip: false };
   // The in-port must face against the flow; an out-port only end faces along the flow.
-  const want: Dir = n.inPort ? ({ E: 'W', W: 'E', N: 'S', S: 'N' } as const)[flow] : flow;
+  const outP = n.outPort ? def.ports.find((p) => p.id === n.outPort) : undefined;
+  const sameSide = !!outP && outP.dir === port.dir;
+  const want: Dir = n.inPort && !sameSide ? ({ E: 'W', W: 'E', N: 'S', S: 'N' } as const)[flow] : flow;
   const natural = port.dir;
   // Single-port terminals whose port is across the flow keep their orientation (they hang off the row).
   const axis = (d: Dir) => (d === 'E' || d === 'W' ? 'h' : 'v');
@@ -213,6 +259,20 @@ function layoutOnce(input: Schema, gap: number, opts: LayoutOptions, style: Styl
   // Main strand: longest; then strands anchored to placed components, branches, the rest.
   all.sort((a, b) => b.nodes.length - a.nodes.length);
   const done = new Set<Strand>();
+  /** Placed component a return strand flows into (with its outlet on the same side), e.g. a boiler. */
+  const returnInto = (st: Strand): { c: Component; out: Vec } | null => {
+    const last = st.nodes[st.nodes.length - 1];
+    if (!last?.outPort) return null;
+    const con = input.connections.find((c) => c.from[0] === last.id && c.from[1] === last.outPort);
+    if (!con || !isReturn(con.medium)) return null;
+    const c = byId.get(con.to[0]);
+    if (!c?.pos || c.type === 'junction') return null;
+    const pair = flowPairs(c.type).find(([i]) => i === con.to[1]);
+    const out = pair && portPlace(c, pair[1]);
+    return out ? { c, out: out.at } : null;
+  };
+  const returnish = (st: Strand) =>
+    st.nodes.some((n) => input.connections.some((c) => c.to[0] === n.id && isReturn(c.medium)));
   const extractish = (st: Strand) =>
     st.nodes.some((n) =>
       input.connections.some(
@@ -268,8 +328,10 @@ function layoutOnce(input: Schema, gap: number, opts: LayoutOptions, style: Styl
         const sv = DIR_VEC[side];
         center = H ? [alongPos, rowCoord + sv[1] * d] : [rowCoord + sv[0] * d, alongPos];
       } else {
-        // The flow port sits on the row line.
-        const pid = n.inPort ?? n.outPort;
+        // The flow port sits on the row line (the outlet for generators with both ports on one side).
+        const outSide = n.outPort && symbolOf(c.type).ports.find((p) => p.id === n.outPort)?.dir;
+        const inSide = n.inPort && symbolOf(c.type).ports.find((p) => p.id === n.inPort)?.dir;
+        const pid = inSide && inSide === outSide ? n.outPort : (n.inPort ?? n.outPort);
         const p = c.type === 'junction' || !pid ? null : portPlace({ ...c, pos: [0, 0] }, pid);
         const off = p ? (H ? p.at[1] : p.at[0]) : 0;
         center = H ? [alongPos, rowCoord - off] : [rowCoord - off, alongPos];
@@ -352,13 +414,27 @@ function layoutOnce(input: Schema, gap: number, opts: LayoutOptions, style: Styl
         progressed = true;
         break;
       }
+      // 2b. A hydraulic return ending at a placed generator: the row ends right of it, below the flow row.
+      const gen = returnInto(st);
+      if (gen) {
+        const last = st.nodes[st.nodes.length - 1]!;
+        const lc = byId.get(last.id)!;
+        const gb = componentBox(gen.c);
+        const half = lc.type === 'junction' ? branchGirth(lc.id) / 2 : extentAlong(lc, 'W') / 2;
+        const y = Math.max(gb.y + gb.h + gap, gen.out[1] + style.layout.rowGap * 0.6);
+        placeStrand(st, st.nodes.length - 1, [snap(gb.x + gb.w + gap + half, g), snap(y, g)], 'W');
+        done.add(st);
+        progressed = true;
+        break;
+      }
       // 3. A strand linked to a placed component by a side connection (e.g. KVS water pipes): align above/below it.
       const link = sideLink(st, s, byId);
       if (link) {
         const { k, partner } = link;
         const up = extractish(st);
-        const y = up ? partner.pos![1] - style.layout.rowGap : partner.pos![1] + style.layout.rowGap;
-        placeStrand(st, k, [partner.pos![0], y], up ? 'W' : 'E');
+        const ret = !up && returnish(st);
+        const y = up ? partner.pos![1] - style.layout.rowGap : partner.pos![1] + style.layout.rowGap * (ret ? 0.5 : 1);
+        placeStrand(st, k, [partner.pos![0], y], up || ret ? 'W' : 'E');
         done.add(st);
         progressed = true;
         break;
@@ -369,6 +445,17 @@ function layoutOnce(input: Schema, gap: number, opts: LayoutOptions, style: Styl
     const st = all.find((x) => !done.has(x))!;
     const first = done.size === 0;
     const up = !first && extractish(st);
+    if (!first && returnish(st)) {
+      const b = unionBox(comps.filter((c) => c.pos && !isBackground(c)).map(componentBox));
+      placeStrand(
+        st,
+        0,
+        [b ? b.x + b.w - 5 : area.x + area.w - 30, mainY + style.layout.rowGap * 0.5 * ++rowsBelow],
+        'W',
+      );
+      done.add(st);
+      continue;
+    }
     const y = first
       ? mainY
       : up

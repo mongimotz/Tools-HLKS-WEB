@@ -73,6 +73,8 @@ export const OP_SCHEMAS = {
     /** supply: AUL → ZUL, left → right. extract: ABL → FOL, right → left, above. */
     strand: z.enum(['supply', 'extract']),
     items: z.array(chainItem).min(1),
+    /** Medium of all lines (hydraulics, e.g. water.heat.flow); default: the air media of the strand. */
+    medium: z.string().optional(),
     /** Connect the first item's input to this port (e.g. a junction). */
     after: portRef.optional(),
   }),
@@ -389,6 +391,10 @@ export function applyOps(input: Schema, ops: Op[]): ApplyResult {
         const [m1, m2] = op.strand === 'supply' ? ['air.outdoor', 'air.supply'] : ['air.extract', 'air.exhaust'];
         let cur = switchAt < 0 || switchAt === -1 ? m2 : m1;
         if (switchAt === 0 && op.strand === 'supply') cur = m1;
+        if (op.medium) {
+          if (!medium(op.medium)) throw new OpError(i, `unbekanntes Medium "${op.medium}".`);
+          cur = op.medium;
+        }
         if (op.after) {
           const first = inline[0]!;
           if (!first.port.in) throw new OpError(i, `${first.c.id} hat keinen Eingang für "after".`);
@@ -397,7 +403,7 @@ export function applyOps(input: Schema, ops: Op[]): ApplyResult {
         for (let k = 0; k + 1 < inline.length; k++) {
           const a = inline[k]!,
             b = inline[k + 1]!;
-          if (k === switchAt) cur = m2;
+          if (k === switchAt && !op.medium) cur = m2;
           if (a.then) cur = a.then;
           if (!a.port.out) throw new OpError(i, `${a.c.id} hat keinen Ausgang, die Kette geht nicht weiter.`);
           if (!b.port.in) throw new OpError(i, `${b.c.id} hat keinen Eingang.`);

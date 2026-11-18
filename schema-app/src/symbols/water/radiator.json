@@ -1,0 +1,49 @@
+{
+  "id": "water.radiator",
+  "name": "Heizkörper",
+  "category": "water",
+  "norm": "",
+  "checked": false,
+  "size": [
+    10,
+    10
+  ],
+  "prefix": "HK",
+  "ports": [
+    {
+      "id": "in",
+      "at": [
+        0,
+        7.5
+      ],
+      "dir": "W",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "out",
+      "at": [
+        10,
+        7.5
+      ],
+      "dir": "E",
+      "media": [
+        "water.*"
+      ]
+    }
+  ],
+  "labelAnchor": [
+    5,
+    -1.5
+  ],
+  "props": [
+    "Q"
+  ],
+  "keywords": [
+    "Radiator",
+    "Konvektor",
+    "Raumheizfläche"
+  ],
+  "svg": "<rect x='0' y='0' width='10' height='10'/><path d='M2.5 1.5V8.5M5 1.5V8.5M7.5 1.5V8.5'/>"
+}

@@ -1,0 +1,82 @@
+{
+  "id": "water.heatpump",
+  "name": "Wärmepumpe",
+  "category": "water",
+  "norm": "",
+  "checked": false,
+  "size": [
+    15,
+    15
+  ],
+  "prefix": "WP",
+  "ports": [
+    {
+      "id": "src.in",
+      "at": [
+        0,
+        2.5
+      ],
+      "dir": "W",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "src.out",
+      "at": [
+        0,
+        12.5
+      ],
+      "dir": "W",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "in",
+      "at": [
+        15,
+        12.5
+      ],
+      "dir": "E",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "out",
+      "at": [
+        15,
+        2.5
+      ],
+      "dir": "E",
+      "media": [
+        "water.*"
+      ]
+    }
+  ],
+  "flow": [
+    [
+      "src.in",
+      "src.out"
+    ],
+    [
+      "in",
+      "out"
+    ]
+  ],
+  "labelAnchor": [
+    7.5,
+    -1.5
+  ],
+  "props": [
+    "Q",
+    "COP"
+  ],
+  "keywords": [
+    "WP",
+    "Sole",
+    "Luft-Wasser"
+  ],
+  "svg": "<rect x='0' y='0' width='15' height='15'/><path d='M0 15L15 0'/><text x='4.5' y='6' font-size='3.5' fill='currentColor' stroke='none' text-anchor='middle'>W</text><text x='10.5' y='12' font-size='3.5' fill='currentColor' stroke='none' text-anchor='middle'>P</text>"
+}

@@ -10,6 +10,7 @@
 | 5 Notes | done |
 | 6 OpenRouter assistant | done |
 | 7 Styles, polish, start page | done |
+| 8 Heating, cooling, plumbing | started (hydraulic symbols, circuit layout) |
 
 ## Phase 0
 - `npm run build` builds `dist/` (relative base). `npm run check:site [out]` assembles and checks the Pages artifact (old pages, `CNAME`, `.nojekyll`, `/schema/index.html`, no sources leaked).
@@ -67,3 +68,6 @@
 
 ## Phase 7
 - Start page tile (general section), README row. Export menu: «Schwarzweiss», «Stilvorlage laden …» / back to the default; CLI `render --style`. Checked by rendering a test template (own title block, colours).
+
+## Phase 8 (first part)
+- Hydraulic symbols and media, `add_chain` with `medium`, circuit layout (return row), example «Heizgruppe mit Beimischung». Symbols not yet checked against the norm PDFs.

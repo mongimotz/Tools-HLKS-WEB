@@ -1,0 +1,49 @@
+{
+  "id": "water.valve.check",
+  "name": "Rückflussverhinderer",
+  "category": "water",
+  "norm": "SN EN 806-1",
+  "checked": false,
+  "size": [
+    10,
+    5
+  ],
+  "prefix": "RV",
+  "ports": [
+    {
+      "id": "in",
+      "at": [
+        0,
+        2.5
+      ],
+      "dir": "W",
+      "media": [
+        "water.*"
+      ]
+    },
+    {
+      "id": "out",
+      "at": [
+        10,
+        2.5
+      ],
+      "dir": "E",
+      "media": [
+        "water.*"
+      ]
+    }
+  ],
+  "labelAnchor": [
+    5,
+    -1.5
+  ],
+  "props": [
+    "DN"
+  ],
+  "keywords": [
+    "Rückschlagventil",
+    "Rückschlagklappe",
+    "check valve"
+  ],
+  "svg": "<path d='M0 0L10 5V0L0 5Z'/><path d='M5 2.5L10 0V5Z' fill='currentColor'/>"
+}

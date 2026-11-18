@@ -5,6 +5,7 @@ import { SYMBOL_DEFS } from './index.generated.ts';
 
 export const CATEGORIES: { id: string; name: string }[] = [
   { id: 'air', name: 'Lüftung' },
+  { id: 'water', name: 'Heizung, Kälte, Sanitär' },
   { id: 'control', name: 'Mess- und Regeltechnik' },
   { id: 'common', name: 'Allgemein' },
 ];

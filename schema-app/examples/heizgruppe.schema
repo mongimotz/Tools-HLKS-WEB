@@ -1,0 +1,47 @@
+{
+  "format": "hlks-schema",
+  "version": 1,
+  "meta": {
+    "title": "Heizgruppe mit Beimischung",
+    "project": "Beispiel",
+    "author": "HLKS-Tools",
+    "date": "2026-11-18",
+    "revision": "A"
+  },
+  "sheet": {
+    "size": "A3",
+    "orientation": "landscape",
+    "grid": 2.5,
+    "titleBlock": "default",
+    "legend": true
+  },
+  "style": "default",
+  "components": [
+    { "id": "WE01", "type": "water.boiler", "label": "WE01", "props": { "Art": "Gas", "Q": "120 kW" }, "pos": [152.5, 127.5], "rot": 0, "flip": false, "pinned": false },
+    { "id": "AV01", "type": "water.valve", "label": "AV01", "props": {}, "pos": [175, 122.5], "rot": 0, "flip": false, "pinned": false },
+    { "id": "MV01", "type": "water.valve.3way", "label": "MV01", "props": {}, "pos": [195, 120], "rot": 0, "flip": false, "pinned": false },
+    { "id": "UP01", "type": "water.pump", "label": "UP01", "props": { "V": "5.2 m³/h" }, "pos": [215, 122.5], "rot": 0, "flip": false, "pinned": false },
+    { "id": "HK01", "type": "water.radiator", "label": "HK01", "props": { "Q": "120 kW" }, "pos": [235, 120], "rot": 0, "flip": false, "pinned": false },
+    { "id": "SR01", "type": "water.valve.balancing", "label": "SR01", "props": {}, "pos": [282.5, 150], "rot": 0, "flip": true, "pinned": false },
+    { "id": "AV02", "type": "water.valve", "label": "AV02", "props": {}, "pos": [220, 150], "rot": 0, "flip": true, "pinned": false },
+    { "id": "J01", "type": "junction", "label": "J01", "props": {}, "pos": [252.5, 150], "rot": 0, "flip": false, "pinned": false },
+    { "id": "AG01", "type": "water.expansion", "label": "AG01", "props": {}, "pos": [187.5, 135], "rot": 0, "flip": false, "pinned": false },
+    { "id": "J02", "type": "junction", "label": "J02", "props": {}, "pos": [187.5, 150], "rot": 0, "flip": false, "pinned": false }
+  ],
+  "connections": [
+    { "id": "L01", "from": ["WE01", "out"], "to": ["AV01", "in"], "medium": "water.heat.flow", "waypoints": [], "pinned": false },
+    { "id": "L02", "from": ["AV01", "out"], "to": ["MV01", "in"], "medium": "water.heat.flow", "waypoints": [], "pinned": false },
+    { "id": "L03", "from": ["MV01", "out"], "to": ["UP01", "in"], "medium": "water.heat.flow", "waypoints": [], "pinned": false },
+    { "id": "L04", "from": ["UP01", "out"], "to": ["HK01", "in"], "medium": "water.heat.flow", "waypoints": [], "pinned": false },
+    { "id": "L05", "from": ["HK01", "out"], "to": ["SR01", "in"], "medium": "water.heat.return", "waypoints": [], "pinned": false },
+    { "id": "L06", "from": ["SR01", "out"], "to": ["J01", "e"], "medium": "water.heat.return", "waypoints": [], "pinned": false },
+    { "id": "L90", "from": ["AV02", "out"], "to": ["J02", "e"], "medium": "water.heat.return", "waypoints": [], "pinned": false },
+    { "id": "L07", "from": ["J01", "w"], "to": ["AV02", "in"], "medium": "water.heat.return", "waypoints": [], "pinned": false },
+    { "id": "L08", "from": ["J01", "n"], "to": ["MV01", "b"], "medium": "water.heat.return", "waypoints": [], "pinned": false },
+    { "id": "L09", "from": ["J02", "w"], "to": ["WE01", "in"], "medium": "water.heat.return", "waypoints": [], "pinned": false },
+    { "id": "L10", "from": ["J02", "n"], "to": ["AG01", "p"], "medium": "water.heat.return", "waypoints": [], "pinned": false }
+  ],
+  "groups": [],
+  "texts": [],
+  "notes": []
+}
