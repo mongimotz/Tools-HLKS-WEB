@@ -105,7 +105,7 @@ Format: date | decision | alternatives | reason.
 
 ## 2026-11-22 | Owner feedback: symbols, properties, tabs
 - Ventilation and MSR symbols redrawn after the owner's sample sheet (`0.1_LUE.pdf`, from Nova). One row of the sheet = one symbol, its drawings = variants (Ausführungen). Proportions from the sheet (filter 5 × 10 mm, dampers 2.5 × 10, fire damper and «Absperr-/Drossel-/Rückschlagklappe» 5 × 10 as noted on the sheet). Sizes on 2.5 mm instead of 5 mm; ports of 2.5 and 7.5 mm wide symbols lie off the 2.5 mm sheet grid by 1.25 mm, which straight duct lines do not mind.
-- Exceptions to the sheet: WRG block 40 × 40 mm and rotor 15 × 40 mm (sheet: 2 × filter height), so supply and extract rows are 20 mm apart; at 15 mm the values of the extract row collided with the supply labels. Air cooler drawn with «\\» in all variants (the sheet's hydraulic variants show «/»). MSR symbols about 1.6 × the sheet's size, so their letters stay readable.
+- Exceptions to the sheet: rotor 15 × 40 mm (plate: see the second round) (sheet: 2 × filter height), so supply and extract rows are 20 mm apart; at 15 mm the values of the extract row collided with the supply labels. Air cooler drawn with «\\» in all variants (the sheet's hydraulic variants show «/»). MSR symbols about 1.6 × the sheet's size, so their letters stay readable.
 - Heater / cooler hydraulics (Beimisch-, Drosselschaltung) are part of the symbol drawing (no water ports); pipe colours follow the media colours via placeholders.
 - Variants live on the symbol (`variants`), the component stores `variant` and optional `text`. Alternative: separate types per drawing. Rejected: the owner wants to place a filter once and switch its Ausführung; search still lists every variant on its own.
 - Old types kept as hidden symbols (`control.sensor.t/.rh/.p/.co2/.voc`, `air.cav`) so older files draw; the palette offers `control.sensor` with variants.
@@ -115,7 +115,7 @@ Format: date | decision | alternatives | reason.
 - Display (`sheet.show`) is part of the file (it is how the drawing is printed); dark paper is a per-browser view setting and never exported.
 
 ## 2026-11-22 | Owner feedback, second round
-- Plate heat exchanger: the ducts end at the corner ticks of the drawing (ports 2.5 mm from top and bottom, rows 35 mm apart), so the internal paths continue the outside lines. Rotor stays at 10 / 30 mm.
+- Plate heat exchanger: the ducts end at the corner ticks of the drawing (ports 2.5 mm from top and bottom), so the internal paths continue the outside lines. Size 25 × 25 mm, so the rows are 20 mm apart as with the rotor (owner).
 - Deleting a component inside a line joins the two lines (upstream medium, unless the downstream port does not take it); notes on the removed line move to the joined one.
 - Setting a component into a line makes room: 6 mm to the neighbours; if the gap is too small, everything after it on the row (±12 mm) moves along. Between two members of a group it joins that group.
 - Groups («Monoblock») and rooms: a component dropped or moved into a group frame joins the group (Properties: «Gruppe» to change). Rooms stay drawing aids without membership in the file; moving a room moves what lies inside it.

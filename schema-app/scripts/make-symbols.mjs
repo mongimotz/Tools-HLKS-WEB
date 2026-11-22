@@ -385,7 +385,7 @@ const hrcFlow = [
   ['b.in', 'b.out'],
 ];
 {
-  const S = 40,
+  const S = 25,
     t = 2.5,
     e = 0.424 * S;
   const corner = (sx, sy) => {
@@ -403,7 +403,7 @@ const hrcFlow = [
     size: [S, S],
     prefix: 'WRG',
     // Ducts end at the corner ticks: supply bottom (in left, out right), extract top (in right, out left).
-    ports: [W('a.in', [0, 37.5]), E('a.out', [S, 37.5]), E('b.in', [S, 2.5]), W('b.out', [0, 2.5])],
+    ports: [W('a.in', [0, S - t]), E('a.out', [S, S - t]), E('b.in', [S, t]), W('b.out', [0, t])],
     flow: hrcFlow,
     labelAnchor: [S / 2, -1.5],
     props: ['eta'],

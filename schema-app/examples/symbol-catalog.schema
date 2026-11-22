@@ -50,7 +50,7 @@
     { "id": "S30", "type": "air.heater", "variant": "beimisch", "label": "", "props": {}, "pos": [782.5, 125], "rot": 0, "flip": false, "pinned": true },
     { "id": "S31", "type": "air.heater", "variant": "drossel", "label": "", "props": {}, "pos": [70, 172.5], "rot": 0, "flip": false, "pinned": true },
     { "id": "S32", "type": "air.hrc.coil", "label": "", "props": {}, "pos": [147.5, 172.5], "rot": 0, "flip": false, "pinned": true },
-    { "id": "S33", "type": "air.hrc.plate", "label": "", "props": {}, "pos": [227.5, 185], "rot": 0, "flip": false, "pinned": true },
+    { "id": "S33", "type": "air.hrc.plate", "label": "", "props": {}, "pos": [227.5, 177.5], "rot": 0, "flip": false, "pinned": true },
     { "id": "S34", "type": "air.hrc.rotor", "label": "", "props": {}, "pos": [307.5, 185], "rot": 0, "flip": false, "pinned": true },
     { "id": "S35", "type": "air.humidifier", "variant": "waescher", "label": "", "props": {}, "pos": [385, 172.5], "rot": 0, "flip": false, "pinned": true },
     { "id": "S36", "type": "air.humidifier", "variant": "dampf", "label": "", "props": {}, "pos": [465, 172.5], "rot": 0, "flip": false, "pinned": true },
