@@ -118,7 +118,7 @@ export const OP_SCHEMAS = {
     author: z.string().optional(),
     date: z.string().optional(),
     revision: z.string().optional(),
-    size: z.enum(['A4', 'A3', 'A2', 'A1']).optional(),
+    size: z.enum(['A4', 'A3', 'A2', 'A1', 'A0']).optional(),
     orientation: z.enum(['landscape', 'portrait']).optional(),
   }),
   relayout_unpinned: z.object({ op: z.literal('relayout_unpinned'), all: z.boolean().default(false) }),

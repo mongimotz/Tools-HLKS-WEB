@@ -243,7 +243,7 @@ def('air/filter.json', {
   labelAnchor: [2.5, -1.5],
   props: ['Klasse', 'dp'],
   keywords: ['Luftfilter', 'ePM1', 'ePM10', 'ISO 16890'],
-  text: { at: [2.5, 5], size: 1.5, align: 'middle', value: 'F7' },
+  text: { at: [1.9, 5], size: 1.5, align: 'middle', width: 2.9, value: 'F7' },
   variants: [
     { id: 'standard', name: 'Filter', svg: filterBox },
     {
@@ -386,7 +386,7 @@ const hrcFlow = [
 ];
 {
   const S = 40,
-    t = 0.062 * S,
+    t = 2.5,
     e = 0.424 * S;
   const corner = (sx, sy) => {
     const X = (v) => (sx ? S - v : v),
@@ -402,7 +402,8 @@ const hrcFlow = [
     name: 'WRG Plattenwärmeübertrager',
     size: [S, S],
     prefix: 'WRG',
-    ports: hrcPorts(S),
+    // Ducts end at the corner ticks: supply bottom (in left, out right), extract top (in right, out left).
+    ports: [W('a.in', [0, 37.5]), E('a.out', [S, 37.5]), E('b.in', [S, 2.5]), W('b.out', [0, 2.5])],
     flow: hrcFlow,
     labelAnchor: [S / 2, -1.5],
     props: ['eta'],

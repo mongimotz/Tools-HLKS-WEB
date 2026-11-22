@@ -3,7 +3,13 @@
 import type { Sheet, SheetSize } from './types.ts';
 import type { Box } from './geometry.ts';
 
-const ISO: Record<SheetSize, [number, number]> = { A4: [297, 210], A3: [420, 297], A2: [594, 420], A1: [841, 594] };
+const ISO: Record<SheetSize, [number, number]> = {
+  A4: [297, 210],
+  A3: [420, 297],
+  A2: [594, 420],
+  A1: [841, 594],
+  A0: [1189, 841],
+};
 
 export function paperSize(sheet: Pick<Sheet, 'size' | 'orientation'>): [number, number] {
   const [a, b] = ISO[sheet.size];

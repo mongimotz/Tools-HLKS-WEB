@@ -31,6 +31,8 @@ const KEYS: [string, string][] = [
   ['Ziehen von Anschluss zu Anschluss', 'Verbinden'],
   ['Symbol auf Leitung ziehen', 'In Leitung einsetzen (auch ein freies Symbol aus dem Schema)'],
   ['Leitung wählen, Symbol anklicken', 'In die Mitte der Leitung einsetzen'],
+  ['Symbol in einen Gruppenrahmen ziehen', 'Gehört zur Gruppe (z. B. Monoblock)'],
+  ['Raum verschieben', 'Verschiebt alles im Raum mit'],
   ['Leitungsabschnitt ziehen', 'Leitung verlegen'],
   ['Mausrad', 'Zoom'],
   ['Leertaste + Ziehen, mittlere Maustaste', 'Ansicht verschieben'],

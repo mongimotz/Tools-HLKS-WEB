@@ -13,7 +13,7 @@
   "labelAnchor": [2.5,-1.5],
   "props": ["Klasse","dp"],
   "keywords": ["Luftfilter","ePM1","ePM10","ISO 16890"],
-  "text": { "at": [2.5,5], "size": 1.5, "align": "middle", "value": "F7" },
+  "text": { "at": [1.9,5], "size": 1.5, "align": "middle", "width": 2.9, "value": "F7" },
   "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0 0L5 5L0 10'/>",
   "variants": [
     {

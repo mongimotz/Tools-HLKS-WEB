@@ -1240,3 +1240,25 @@ kbd {
   position: fixed;
   z-index: 20;
 }
+.membership {
+  margin: 4px 0;
+}
+
+/* Narrow windows: the toolbar keeps its tools, names give way. */
+@media (max-width: 1180px) {
+  .brand span,
+  .app-title {
+    display: none;
+  }
+  .tb-select {
+    max-width: 110px;
+  }
+  .tb-group {
+    padding: 0 3px;
+  }
+}
+@media (max-width: 960px) {
+  .app {
+    grid-template-columns: 190px 1fr 250px;
+  }
+}

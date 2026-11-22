@@ -21,7 +21,7 @@ JSON, 2-space indent, stable key order (one component per line). Coordinates are
 |---|---|
 | `format`, `version` | `"hlks-schema"`, `1` |
 | `meta` | `title`, `project`, `author`, `date`, `revision` (title block) |
-| `sheet` | `size` A4/A3/A2/A1, `orientation`, `grid`, `titleBlock`, `legend`, `show` `{ids, media, values}` (what the drawing shows) |
+| `sheet` | `size` A4/A3/A2/A1/A0, `orientation`, `grid`, `titleBlock`, `legend`, `show` `{ids, media, values}` (what the drawing shows) |
 | `components[]` | `id`, `type` (symbol id), `variant` (Ausführung, omitted = the first), `text` (text inside the symbol, omitted = the variant's default), `label`, `props` (strings), `pos` (symbol **centre**, `null` = place automatically), `rot` 0/90/180/270 (clockwise), `flip` (mirror left/right), `pinned` |
 | `connections[]` | `id`, `from` `[componentId, portId]`, `to`, `medium`, `waypoints` (corner points; empty = automatic route), `pinned`. **from → to is the flow direction.** |
 | `groups[]` | `id`, `label`, `members`, `frame` (dashed device frame, e.g. "Monoblock") |
@@ -35,7 +35,7 @@ Media: `air.outdoor` AUL, `air.supply` ZUL, `air.extract` ABL, `air.exhaust` FOL
 
 Hydraulics (`water.*` symbols, unchecked against the norms): build a circuit with `add_chain` and `medium`: the flow (Vorlauf) as `strand: "supply"` from the generator's `out`, the return as `strand: "extract"` with a `*.return` medium, then `connect` the last item to the generator's `in`. The layout draws the return as its own row below, right to left, ending at the generator. Example: `examples/heizgruppe.schema` (`scripts/make-examples.ts`).
 
-Symbols: `examples/symbol-catalog.schema` shows all of them with every variant; definitions in `src/symbols/<category>/*.json` (ports, props, prefix for new IDs, `variants`, `text`). A variant may change the drawing, size, ports, prefix and inner text (e.g. `air.damper` `gleich`/`gegen`/`einstell`/`jalousie`, `air.heater` `basis`/`beimisch`/`drossel`, `control.sensor` `t`/`rf`/`x`/`p`/`n`/`v`/`q`). Hidden symbols (`hidden: true`, e.g. `control.sensor.t`, `air.cav`) still draw older files but are not offered. WRG symbols (`air.hrc.plate`, `air.hrc.rotor`) have two sides: ports `a.in`/`a.out` (supply, bottom) and `b.in`/`b.out` (extract, top).
+Symbols: `examples/symbol-catalog.schema` shows all of them with every variant; definitions in `src/symbols/<category>/*.json` (ports, props, prefix for new IDs, `variants`, `text`). A variant may change the drawing, size, ports, prefix and inner text (e.g. `air.damper` `gleich`/`gegen`/`einstell`/`jalousie`, `air.heater` `basis`/`beimisch`/`drossel`, `control.sensor` `t`/`rf`/`x`/`p`/`n`/`v`/`q`). Hidden symbols (`hidden: true`, e.g. `control.sensor.t`, `air.cav`) still draw older files but are not offered. WRG symbols (`air.hrc.plate`, `air.hrc.rotor`) have two sides: ports `a.in`/`a.out` (supply, bottom) and `b.in`/`b.out` (extract, top). Plate: ports 2.5 mm from the top and bottom edge (at the drawing's corner ticks), rows 35 mm apart; rotor: 10 / 30 mm.
 
 ## Operations (CLI `ops` and assistant)
 

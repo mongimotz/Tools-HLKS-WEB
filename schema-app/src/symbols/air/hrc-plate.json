@@ -7,14 +7,14 @@
   "size": [40,40],
   "prefix": "WRG",
   "ports": [
-    { "id": "a.in", "at": [0,30], "dir": "W", "media": ["air.*"] },
-    { "id": "a.out", "at": [40,30], "dir": "E", "media": ["air.*"] },
-    { "id": "b.in", "at": [40,10], "dir": "E", "media": ["air.*"] },
-    { "id": "b.out", "at": [0,10], "dir": "W", "media": ["air.*"] }
+    { "id": "a.in", "at": [0,37.5], "dir": "W", "media": ["air.*"] },
+    { "id": "a.out", "at": [40,37.5], "dir": "E", "media": ["air.*"] },
+    { "id": "b.in", "at": [40,2.5], "dir": "E", "media": ["air.*"] },
+    { "id": "b.out", "at": [0,2.5], "dir": "W", "media": ["air.*"] }
   ],
   "flow": [["a.in","a.out"],["b.in","b.out"]],
   "labelAnchor": [20,-1.5],
   "props": ["eta"],
   "keywords": ["Wärmerückgewinnung","Wärmetauscher rekuperativ","Plattentauscher","Kreuzstrom","Gegenstrom","WRG"],
-  "svg": "<rect x='0' y='0' width='40' height='40'/><path d='M0 20L20 0L40 20L20 40Z'/><path d='M0 2.48L2.48 2.48L16.96 16.96M40 2.48L37.52 2.48L23.04 16.96M0 37.52L2.48 37.52L16.96 23.04M40 37.52L37.52 37.52L23.04 23.04'/>"
+  "svg": "<rect x='0' y='0' width='40' height='40'/><path d='M0 20L20 0L40 20L20 40Z'/><path d='M0 2.5L2.5 2.5L16.96 16.96M40 2.5L37.5 2.5L23.04 16.96M0 37.5L2.5 37.5L16.96 23.04M40 37.5L37.5 37.5L23.04 23.04'/>"
 }

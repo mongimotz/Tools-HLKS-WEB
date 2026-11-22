@@ -14,7 +14,7 @@ export interface Meta {
   revision: string;
 }
 
-export type SheetSize = 'A4' | 'A3' | 'A2' | 'A1';
+export type SheetSize = 'A4' | 'A3' | 'A2' | 'A1' | 'A0';
 
 export interface Sheet {
   size: SheetSize;
@@ -103,6 +103,8 @@ export interface SymbolText {
   at: Vec;
   size: number;
   align?: 'start' | 'middle' | 'end';
+  /** Room for the text (mm); a longer text shrinks. Default: symmetric room inside the box. */
+  width?: number;
   /** Default text. */
   value: string;
 }

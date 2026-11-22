@@ -6,7 +6,7 @@ import { serialize } from '../../src/model/serialize.ts';
 import { parseText } from '../../src/model/migrate.ts';
 import { renderSchema } from '../../src/render/render.ts';
 import { findSymbol, registerSymbols, unregisterSymbol } from '../../src/symbols/library.ts';
-import { copySelection, pasteClip, setVariant } from '../../src/editor/actions.ts';
+import { copySelection, deleteSelection, makeRoom, pasteClip, setVariant } from '../../src/editor/actions.ts';
 import { comp, con, schema } from './helpers.ts';
 
 describe('variants and inner text', () => {
@@ -97,5 +97,36 @@ describe('clipboard', () => {
     expect(r.schema.connections).toHaveLength(3);
     const ids = new Set([...r.schema.components, ...r.schema.connections, ...r.schema.texts].map((x) => x.id));
     expect(ids.size).toBe(5 + 3 + 2);
+  });
+});
+
+describe('editing a line', () => {
+  const row = () =>
+    schema({
+      components: [comp('A', 'air.fan', [20, 50]), comp('B', 'air.filter', [50, 50]), comp('C', 'air.fan', [80, 50])],
+      connections: [con('c1', ['A', 'out'], ['B', 'in'], 'air.outdoor'), con('c2', ['B', 'out'], ['C', 'in'])],
+    });
+
+  it('deleting a component inside a line keeps the line between its neighbours', () => {
+    const s = deleteSelection(row(), ['B']);
+    expect(s.connections).toEqual([
+      { id: 'c1', from: ['A', 'out'], to: ['C', 'in'], medium: 'air.outdoor', waypoints: [], pinned: false },
+    ]);
+  });
+
+  it('a component set into a tight gap pushes the rest of the row', () => {
+    const s = row();
+    s.components.push(comp('K', 'air.damper', [72, 50]));
+    s.connections = [
+      con('c1', ['A', 'out'], ['B', 'in']),
+      con('c2', ['B', 'out'], ['K', 'in']),
+      con('c3', ['K', 'out'], ['C', 'in']),
+    ];
+    const out = makeRoom(s, 'K');
+    const x = (id: string) => out.components.find((c) => c.id === id)!.pos![0];
+    // The damper stays where it was dropped; the fan moves right until there are 6 mm.
+    expect(Math.abs(x('K') - 72)).toBeLessThanOrEqual(1.25);
+    expect(x('C')).toBeGreaterThan(80);
+    expect(x('C') - 5 - (x('K') + 1.25)).toBeGreaterThanOrEqual(6 - 1e-9);
   });
 });

@@ -24,7 +24,7 @@ const meta = z.object({
 });
 
 const sheet = z.object({
-  size: z.enum(['A4', 'A3', 'A2', 'A1']).default('A3'),
+  size: z.enum(['A4', 'A3', 'A2', 'A1', 'A0']).default('A3'),
   orientation: z.enum(['landscape', 'portrait']).default('landscape'),
   grid: num.positive().default(2.5),
   titleBlock: z.string().default('default'),
@@ -60,6 +60,7 @@ const symText = z.object({
   at: vec,
   size: num.positive(),
   align: z.enum(['start', 'middle', 'end']).optional(),
+  width: num.positive().optional(),
   value: z.string().default(''),
 });
 const rect4 = z.tuple([num, num, num, num]);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Editing actions as pure functions Schema → Schema (no DOM). The editor commits their result as one undo step.
 import type { Component, Connection, Dir, Rotation, Schema, Vec } from '../model/types.ts';
-import { componentBox, portPlace, snap, snapVec, type Box } from '../model/geometry.ts';
+import { componentBox, flowPairs, portPlace, snap, snapVec, type Box } from '../model/geometry.ts';
 import { MEDIA, medium, mediumMatches } from '../model/media.ts';
 import { findSymbol, symbolFor, symbolVariant } from '../symbols/library.ts';
 import { nextId } from '../ops/ops.ts';
@@ -24,6 +24,13 @@ export function moveSelection(s: Schema, sel: string[], dx: number, dy: number):
   if (!dx && !dy) return s;
   const ids = new Set(componentIds(s, sel));
   const texts = new Set(sel.filter((id) => s.texts.some((t) => t.id === id)));
+  // A room (or zone) carries what lies inside it.
+  for (const room of s.components.filter((c) => ids.has(c.id) && isRoom(c))) {
+    const b = componentBox(room);
+    const inside = (p: Vec) => p[0] > b.x && p[0] < b.x + b.w && p[1] > b.y && p[1] < b.y + b.h;
+    for (const c of s.components) if (c.pos && c.id !== room.id && !isRoom(c) && inside(c.pos)) ids.add(c.id);
+    for (const t of s.texts) if (inside(t.pos)) texts.add(t.id);
+  }
   const g = s.sheet.grid;
   return {
     ...s,
@@ -41,6 +48,113 @@ export function moveSelection(s: Schema, sel: string[], dx: number, dy: number):
       return c;
     }),
   };
+}
+
+/** Background symbol that encloses others (room, zone); a fire compartment border is no room. */
+export function isRoom(c: Component): boolean {
+  const d = symbolFor(c);
+  return !!d.background && d.size[0] >= 15 && d.size[1] >= 15;
+}
+
+/** Room a component lies in (its centre inside the room's box), if any. */
+export function roomOf(s: Schema, id: string): Component | undefined {
+  const c = s.components.find((x) => x.id === id);
+  if (!c?.pos || isRoom(c)) return undefined;
+  return s.components.find((r) => {
+    if (!r.pos || !isRoom(r)) return false;
+    const b = componentBox(r);
+    return c.pos![0] > b.x && c.pos![0] < b.x + b.w && c.pos![1] > b.y && c.pos![1] < b.y + b.h;
+  });
+}
+
+/**
+ * Components placed or moved into a group frame (e.g. «Monoblock») join that group, unless they belong to a
+ * group already. `frames`: the group boxes of the drawing before the change.
+ */
+export function joinGroups(s: Schema, ids: string[], frames: { id: string; box: Box }[]): Schema {
+  let groups = s.groups;
+  for (const id of ids) {
+    const c = s.components.find((x) => x.id === id);
+    if (!c?.pos || isRoom(c) || groups.some((g) => g.members.includes(id))) continue;
+    const hit = frames
+      .filter(
+        (f) =>
+          c.pos![0] > f.box.x && c.pos![0] < f.box.x + f.box.w && c.pos![1] > f.box.y && c.pos![1] < f.box.y + f.box.h,
+      )
+      .sort((a, b) => a.box.w * a.box.h - b.box.w * b.box.h)[0];
+    if (hit) groups = groups.map((g) => (g.id === hit.id ? { ...g, members: [...g.members, id] } : g));
+  }
+  return groups === s.groups ? s : { ...s, groups };
+}
+
+/**
+ * After a component was set into a line: room on the line. It sits between its neighbours with `gap` mm on
+ * both sides; if the gap is too small, everything after it on the row moves along.
+ */
+export function makeRoom(s: Schema, id: string, gap = 6): Schema {
+  const c = s.components.find((x) => x.id === id);
+  if (!c?.pos) return s;
+  const inCon = s.connections.find((x) => x.to[0] === id && x.to[1] === 'in');
+  const outCon = s.connections.find((x) => x.from[0] === id && x.from[1] === 'out');
+  const up = inCon && s.components.find((x) => x.id === inCon.from[0]);
+  const down = outCon && s.components.find((x) => x.id === outCon.to[0]);
+  const horiz = c.rot === 0 || c.rot === 180;
+  const ax = horiz ? 0 : 1;
+  const lo = (b: Box) => (horiz ? b.x : b.y),
+    len = (b: Box) => (horiz ? b.w : b.h);
+  const cb = componentBox(c);
+  // Flow direction along the axis: +1 when the downstream neighbour lies after c.
+  const dir = down?.pos
+    ? Math.sign(down.pos[ax]! - c.pos[ax]!) || 1
+    : up?.pos
+      ? Math.sign(c.pos[ax]! - up.pos[ax]!) || 1
+      : 1;
+  const half = len(cb) / 2;
+  const off = c.pos[ax]! - (lo(cb) + half); // centre of the drawing box vs. pos (actuators, bounds)
+  const g = s.sheet.grid;
+  let center = c.pos[ax]! - off; // drawing-box centre along the axis
+  let shift = 0;
+  const edge = (o: Component | undefined, side: 1 | -1) => {
+    if (!o?.pos) return null;
+    const b = componentBox(o);
+    // side 1: the edge facing c from after it; -1: from before it
+    return side === 1 ? (dir > 0 ? lo(b) : lo(b) + len(b)) : dir > 0 ? lo(b) + len(b) : lo(b);
+  };
+  const before = edge(up, -1),
+    after = edge(down, 1);
+  if (before !== null) {
+    const min = before + dir * (gap + half);
+    if ((center - min) * dir < 0) center = min;
+  }
+  if (after !== null) {
+    const max = after - dir * (gap + half);
+    if ((center - max) * dir > 0) shift = (center - max) * dir;
+  }
+  shift = Math.ceil(shift / g - 1e-9) * g;
+  const newPos = snap(center + off, g / 2);
+  let out: Schema = {
+    ...s,
+    components: s.components.map((x) =>
+      x.id === id ? { ...x, pos: (horiz ? [newPos, x.pos![1]] : [x.pos![0], newPos]) as Vec } : x,
+    ),
+  };
+  if (shift > 0 && down?.pos) {
+    // Everything on the row from the downstream neighbour on.
+    const row = c.pos[1 - ax]!;
+    const from = down.pos[ax]!;
+    const ids = out.components
+      .filter(
+        (x) =>
+          x.pos &&
+          x.id !== id &&
+          !isRoom(x) &&
+          Math.abs(x.pos[1 - ax]! - row) <= 12 &&
+          (x.pos[ax]! - from) * dir >= -1e-6,
+      )
+      .map((x) => x.id);
+    out = moveSelection(out, ids, horiz ? dir * shift : 0, horiz ? 0 : dir * shift);
+  }
+  return out;
 }
 
 function touching(s: Schema, ids: Set<string>): Set<string> {
@@ -75,6 +189,7 @@ export function flipSelection(s: Schema, sel: string[]): Schema {
 }
 
 export function deleteSelection(s: Schema, sel: string[]): Schema {
+  s = bridgeDeleted(s, new Set(sel));
   const del = new Set(sel);
   const comps = new Set(s.components.filter((c) => del.has(c.id)).map((c) => c.id));
   const cons = new Set(
@@ -92,6 +207,45 @@ export function deleteSelection(s: Schema, sel: string[]): Schema {
     texts: s.texts.filter((t) => !del.has(t.id)),
     notes,
   };
+}
+
+/**
+ * Components to be deleted that sit inside a line (a line into a flow inlet and one out of the matching
+ * outlet): the two lines become one, so the line stays when the component goes.
+ */
+export function bridgeDeleted(s: Schema, del: Set<string>): Schema {
+  let cons = s.connections;
+  for (const c of s.components) {
+    if (!del.has(c.id)) continue;
+    for (const [pin, pout] of flowPairs(c)) {
+      const inc = cons.find((x) => x.to[0] === c.id && x.to[1] === pin);
+      const out = cons.find((x) => x.from[0] === c.id && x.from[1] === pout);
+      if (!inc || !out || inc.from[0] === out.to[0]) continue;
+      // Upstream medium, unless the downstream port does not take it.
+      const target = s.components.find((x) => x.id === out.to[0]);
+      const port =
+        target && findSymbol(target.type) ? symbolFor(target).ports.find((p) => p.id === out.to[1]) : undefined;
+      const medium = !port || port.media.some((m) => mediumMatches(m, inc.medium)) ? inc.medium : out.medium;
+      cons = cons
+        .filter((x) => x.id !== out.id)
+        .map((x) => (x.id === inc.id ? { ...x, to: out.to, medium, waypoints: [], pinned: false } : x));
+    }
+  }
+  if (cons === s.connections) return s;
+  // Notes on a line that was merged stay on the merged line.
+  const kept = new Set(cons.map((x) => x.id));
+  const merged = new Map<string, string>();
+  for (const x of s.connections)
+    if (!kept.has(x.id)) {
+      const into = cons.find((y) => y.to[0] === x.to[0] && y.to[1] === x.to[1]);
+      if (into) merged.set(x.id, into.id);
+    }
+  const notes = s.notes.map((n) =>
+    'connection' in n.anchor && merged.has(n.anchor.connection)
+      ? { ...n, anchor: { connection: merged.get(n.anchor.connection)! } }
+      : n,
+  );
+  return { ...s, connections: cons, notes };
 }
 
 /** Copies the selected components (and lines between them), offset by 4 grid steps. Returns the new IDs. */

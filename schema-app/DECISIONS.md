@@ -114,3 +114,10 @@ Format: date | decision | alternatives | reason.
 - Clipboard: the system clipboard (copy/cut/paste events) carries a JSON fragment, so pasting works across tabs and browser windows; paste goes to the pointer.
 - Display (`sheet.show`) is part of the file (it is how the drawing is printed); dark paper is a per-browser view setting and never exported.
 
+## 2026-11-22 | Owner feedback, second round
+- Plate heat exchanger: the ducts end at the corner ticks of the drawing (ports 2.5 mm from top and bottom, rows 35 mm apart), so the internal paths continue the outside lines. Rotor stays at 10 / 30 mm.
+- Deleting a component inside a line joins the two lines (upstream medium, unless the downstream port does not take it); notes on the removed line move to the joined one.
+- Setting a component into a line makes room: 6 mm to the neighbours; if the gap is too small, everything after it on the row (±12 mm) moves along. Between two members of a group it joins that group.
+- Groups («Monoblock») and rooms: a component dropped or moved into a group frame joins the group (Properties: «Gruppe» to change). Rooms stay drawing aids without membership in the file; moving a room moves what lies inside it.
+- Sheet size A0 added; format selector in the toolbar.
+

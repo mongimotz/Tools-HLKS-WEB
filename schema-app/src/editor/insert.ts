@@ -3,7 +3,7 @@
 // an unconnected component onto a line. One undo step.
 import type { Schema, Vec } from '../model/types.ts';
 import { useEditor } from './store.ts';
-import { placeOnSegment } from './actions.ts';
+import { makeRoom, placeOnSegment } from './actions.ts';
 
 /** Merges the last `n` undo steps into one. */
 export function mergeLastSteps(label: string, n = 2) {
@@ -68,11 +68,29 @@ export function insertIntoLine(
           },
         ],
   );
-  const steps = useEditor.getState().past.length - n0;
-  if (res && steps > 1) mergeLastSteps('In Leitung einsetzen', steps);
   if (!res) return null;
   const id =
     what.existing ?? res.added.find((x) => useEditor.getState().doc.components.some((c) => c.id === x)) ?? null;
+  // Room between the neighbours (the row after it moves along if needed), and the group it was set into.
+  if (id) {
+    const cur = useEditor.getState().doc;
+    let next = makeRoom(cur, id);
+    next = joinNeighbourGroup(next, id);
+    useEditor.getState().commit('Einsetzen', next);
+  }
+  const steps = useEditor.getState().past.length - n0;
+  if (steps > 1) mergeLastSteps('In Leitung einsetzen', steps);
   if (id) useEditor.getState().select([id]);
   return id;
+}
+
+/** A component set into a line between two members of a group (e.g. «Monoblock») joins that group. */
+function joinNeighbourGroup(s: Schema, id: string): Schema {
+  if (s.groups.some((g) => g.members.includes(id))) return s;
+  const near = s.connections
+    .filter((c) => c.from[0] === id || c.to[0] === id)
+    .map((c) => (c.from[0] === id ? c.to[0] : c.from[0]));
+  const g = s.groups.find((x) => near.length >= 2 && near.every((n) => x.members.includes(n)));
+  if (!g) return s;
+  return { ...s, groups: s.groups.map((x) => (x.id === g.id ? { ...x, members: [...x.members, id] } : x)) };
 }

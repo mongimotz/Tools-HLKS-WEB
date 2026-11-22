@@ -226,7 +226,7 @@ export function autoLayout(input: Schema, opts: LayoutOptions = {}): LayoutResul
   }
   let suggestion: string | null = null;
   if (!fits(result)) {
-    const next = { A4: 'A3', A3: 'A2', A2: 'A1', A1: 'A1' }[input.sheet.size];
+    const next = { A4: 'A3', A3: 'A2', A2: 'A1', A1: 'A0', A0: 'A0' }[input.sheet.size];
     suggestion =
       next === input.sheet.size
         ? 'Inhalt passt nicht aufs Blatt: auf zwei Blätter aufteilen.'

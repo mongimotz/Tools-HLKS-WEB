@@ -19,7 +19,9 @@ import {
   inRect,
   isSignal,
   moveSelection,
+  componentIds,
   insertable,
+  joinGroups,
   placeSensorOn,
   portAt,
   portBusy,
@@ -307,7 +309,12 @@ export function Canvas() {
           }
         }
         const prev = useEditor.getState().preview;
-        if (prev) commit(drag.kind === 'move' ? 'Verschieben' : 'Leitung verlegen', prev);
+        if (prev)
+          commit(
+            drag.kind === 'move' ? 'Verschieben' : 'Leitung verlegen',
+            // Moved into a group frame («Monoblock»): joins the group.
+            drag.kind === 'move' ? joinGroups(prev, componentIds(prev, drag.ids), r.groupBoxes) : prev,
+          );
         else st.setPreview(null);
         routeCache.current.clear();
         return;
@@ -362,7 +369,7 @@ export function Canvas() {
     const onDuct = near && placeSensorOn(type, near.a, near.b, p, g, variant);
     if (onDuct) at = onDuct;
     const res = addComponentAt(placed, type, at, variant);
-    st.commit('Symbol einfügen', res.schema);
+    st.commit('Symbol einfügen', joinGroups(res.schema, [res.id], r.groupBoxes));
     st.select([res.id]);
   };
 

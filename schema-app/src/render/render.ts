@@ -268,7 +268,7 @@ function symbolInnerText(c: Component, style: Style): string {
   // A centred text shrinks to fit the symbol's width (down to 60 %).
   let size = t.size;
   if (align === 'middle') {
-    const room = Math.min(t.at[0], def.size[0] - t.at[0]) * 2 * 0.92;
+    const room = t.width ?? Math.min(t.at[0], def.size[0] - t.at[0]) * 2 * 0.92;
     const w = textWidth(text, size);
     if (room > 0 && w > room) size = Math.max(t.size * 0.6, (t.size * room) / w);
   }

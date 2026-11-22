@@ -10,7 +10,7 @@ import { openSymbolTab } from './tabs.ts';
 import { draftFromDef } from '../io/symbols.ts';
 import { useEditor } from './store.ts';
 import { Icon } from './icons.tsx';
-import { flipSelection, rotateSelection, setVariant } from './actions.ts';
+import { flipSelection, newGroup, roomOf, rotateSelection, setVariant } from './actions.ts';
 import { NotesPanel } from './Notes.tsx';
 import { AssistantPanel } from './Assistant.tsx';
 
@@ -140,6 +140,19 @@ export function Properties({ issues }: { issues: Issue[] }) {
                 <button onClick={() => st.commit('Spiegeln', flipSelection(st.doc, sel))}>
                   <Icon name="flip" /> Spiegeln
                 </button>
+                <button
+                  title="Gruppe mit Rahmen, z. B. Monoblock (Strg+G)"
+                  data-testid="btn-group"
+                  onClick={() => {
+                    const r = newGroup(st.doc, sel);
+                    if (r) {
+                      st.commit('Gruppieren', r.schema);
+                      st.select([r.id]);
+                    }
+                  }}
+                >
+                  <Icon name="group" /> Gruppieren
+                </button>
               </div>
             </section>
           )}
@@ -217,6 +230,7 @@ export function Properties({ issues }: { issues: Issue[] }) {
                   <Icon name="pin" /> {comp.pinned ? 'Fixiert' : 'Frei'}
                 </button>
               </div>
+              <Membership id={comp.id} />
               <button
                 className="link-button"
                 onClick={() => openSymbolTab(draftFromDef(symbolFor(comp), !comp.type.startsWith('user.')))}
@@ -288,6 +302,46 @@ export function Properties({ issues }: { issues: Issue[] }) {
       )}
       <IssueList issues={issues} />
     </aside>
+  );
+}
+
+/** Group («Monoblock») and room the component belongs to; join or leave a group. */
+function Membership({ id }: { id: string }) {
+  const st = useEditor();
+  const doc = st.doc;
+  const group = doc.groups.find((g) => g.members.includes(id));
+  const room = roomOf(renderSchema(doc).placed, id);
+  return (
+    <div className="membership">
+      <label className="field">
+        <span>Gruppe</span>
+        <select
+          value={group?.id ?? ''}
+          data-testid="prop-group"
+          onChange={(e) => {
+            const to = e.target.value;
+            st.change('Gruppe', (d) => {
+              for (const g of d.groups) g.members = g.members.filter((m) => m !== id);
+              if (to) d.groups.find((g) => g.id === to)!.members.push(id);
+              d.groups = d.groups.filter((g) => g.members.length);
+            });
+          }}
+        >
+          <option value="">keine</option>
+          {doc.groups.map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.label || g.id}
+            </option>
+          ))}
+        </select>
+      </label>
+      {room && (
+        <p className="sub">
+          Im Raum {room.label || room.id}
+          {room.props.Nutzung ? ` (${room.props.Nutzung})` : ''}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -423,7 +477,7 @@ function SheetProps({ doc }: { doc: Schema }) {
               st.change('Format', (d) => void (d.sheet.size = e.target.value as Schema['sheet']['size']))
             }
           >
-            {['A4', 'A3', 'A2', 'A1'].map((s) => (
+            {['A4', 'A3', 'A2', 'A1', 'A0'].map((s) => (
               <option key={s}>{s}</option>
             ))}
           </select>

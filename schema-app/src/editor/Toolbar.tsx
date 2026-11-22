@@ -4,7 +4,7 @@ import { useEditor } from './store.ts';
 import { Icon } from './icons.tsx';
 import { EXAMPLES } from '../io/examples.ts';
 import { currentTheme, loadStyleFile, resetStyle, setMono, setPaperDark, toggleTheme } from '../io/style.ts';
-import type { SheetShow } from '../model/types.ts';
+import type { Schema, SheetShow } from '../model/types.ts';
 
 const SOURCE_URL = 'https://github.com/mongimotz/Tools-HLKS-WEB';
 
@@ -203,6 +203,33 @@ export function Toolbar({ a, symbolTab }: { a: ToolbarActions; symbolTab: boolea
             </details>
           </div>
           <div className="tb-group">
+            <select
+              className="tb-select sheet-size"
+              aria-label="Blattformat"
+              title="Blattformat"
+              data-testid="sheet-size"
+              value={`${st.doc.sheet.size} ${st.doc.sheet.orientation}`}
+              onChange={(e) => {
+                const [size, orientation] = e.target.value.split(' ') as [
+                  Schema['sheet']['size'],
+                  Schema['sheet']['orientation'],
+                ];
+                st.change('Format', (d) => {
+                  d.sheet.size = size;
+                  d.sheet.orientation = orientation;
+                });
+                // Show the whole new sheet.
+                setTimeout(a.fit, 0);
+              }}
+            >
+              {(['A4', 'A3', 'A2', 'A1', 'A0'] as const).flatMap((z) =>
+                (['landscape', 'portrait'] as const).map((o) => (
+                  <option key={`${z}${o}`} value={`${z} ${o}`}>
+                    {z} {o === 'landscape' ? 'quer' : 'hoch'}
+                  </option>
+                )),
+              )}
+            </select>
             <B icon="minus" label="Verkleinern" onClick={() => a.zoom(1 / 1.25)} keys="-" />
             <B icon="fit" label="Blatt einpassen" onClick={a.fit} keys="0" />
             <B icon="plus" label="Vergrössern" onClick={() => a.zoom(1.25)} keys="+" />
