@@ -3,7 +3,7 @@
 // A list of operations is atomic: the first invalid one aborts the whole list and nothing changes.
 import { z } from 'zod';
 import type { Component, Connection, Note, Schema, Vec } from '../model/types.ts';
-import { findSymbol, symbolOf } from '../symbols/library.ts';
+import { findSymbol, symbolFor, symbolVariant } from '../symbols/library.ts';
 import { MEDIUM_IDS, medium } from '../model/media.ts';
 import { portPlace, snapVec } from '../model/geometry.ts';
 import { autoLayout } from '../layout/auto.ts';
@@ -22,6 +22,8 @@ const chainItem = z.union([
   z.object({
     id: z.string().optional(),
     type: z.string().optional(),
+    variant: z.string().optional(),
+    text: z.string().optional(),
     label: z.string().optional(),
     props: props.optional(),
     /** Medium of the connection leaving this item (default: continues). */
@@ -34,6 +36,10 @@ export const OP_SCHEMAS = {
     op: z.literal('add_component'),
     id: z.string().optional(),
     type: z.string(),
+    /** Variant (Ausführung) of the symbol, e.g. "gegen" for a damper; default the first. */
+    variant: z.string().optional(),
+    /** Text inside the symbol (filter class, sensor letter …). */
+    text: z.string().optional(),
     label: z.string().optional(),
     props: props.optional(),
     pos: vec.optional(),
@@ -55,6 +61,8 @@ export const OP_SCHEMAS = {
     connection: z.string(),
     id: z.string().optional(),
     type: z.string().optional(),
+    variant: z.string().optional(),
+    text: z.string().optional(),
     label: z.string().optional(),
     props: props.optional(),
     in: z.string().default('in'),
@@ -66,6 +74,13 @@ export const OP_SCHEMAS = {
   }),
   set_props: z.object({ op: z.literal('set_props'), id: z.string(), props, replace: z.boolean().default(false) }),
   set_label: z.object({ op: z.literal('set_label'), id: z.string(), label: z.string() }),
+  set_variant: z.object({
+    op: z.literal('set_variant'),
+    id: z.string(),
+    variant: z.string().optional(),
+    /** Text inside the symbol; "" shows none, omitted keeps it. */
+    text: z.string().optional(),
+  }),
   set_medium: z.object({ op: z.literal('set_medium'), id: z.string(), medium: z.string() }),
   move: z.object({ op: z.literal('move'), id: z.string(), pos: vec, force: z.boolean().default(false) }),
   add_chain: z.object({
@@ -186,7 +201,7 @@ export function applyOps(input: Schema, ops: Op[]): ApplyResult {
   };
   const checkPort = (i: number, [cid, pid]: [string, string]) => {
     const c = comp(i, cid);
-    const def = findSymbol(c.type);
+    const def = findSymbol(c.type) && symbolFor(c);
     if (def && !def.ports.some((p) => p.id === pid))
       throw new OpError(
         i,
@@ -197,6 +212,16 @@ export function applyOps(input: Schema, ops: Op[]): ApplyResult {
     );
     if (busy) throw new OpError(i, `Anschluss ${cid}.${pid} ist schon belegt (${busy.id}).`);
   };
+  const checkVariant = (i: number, type: string, v: string | undefined) => {
+    const vs = findSymbol(type)?.variants ?? [];
+    if (v && !vs.some((x) => x.id === v))
+      throw new OpError(
+        i,
+        vs.length
+          ? `${type} hat keine Ausführung "${v}" (vorhanden: ${vs.map((x) => x.id).join(', ')}).`
+          : `${type} hat keine Ausführungen.`,
+      );
+  };
   const checkMedium = (i: number, m: string) => {
     if (!medium(m)) throw new OpError(i, `unbekanntes Medium "${m}" (erlaubt: ${MEDIUM_IDS.join(', ')}).`);
   };
@@ -205,6 +230,8 @@ export function applyOps(input: Schema, ops: Op[]): ApplyResult {
     o: {
       id?: string;
       type: string;
+      variant?: string;
+      text?: string;
       label?: string;
       props?: Record<string, string>;
       pos?: Vec;
@@ -213,13 +240,17 @@ export function applyOps(input: Schema, ops: Op[]): ApplyResult {
       pinned?: boolean;
     },
   ): Component => {
-    const def = findSymbol(o.type);
-    if (!def) throw new OpError(i, `unbekannter Symboltyp "${o.type}".`);
+    const base = findSymbol(o.type);
+    if (!base) throw new OpError(i, `unbekannter Symboltyp "${o.type}".`);
+    checkVariant(i, o.type, o.variant);
+    const def = symbolVariant(o.type, o.variant);
     const id = o.id ?? nextId(s, def.prefix);
     if (allIds(s).has(id)) throw new OpError(i, `ID "${id}" gibt es schon.`);
     const c: Component = {
       id,
       type: o.type,
+      ...(o.variant ? { variant: o.variant } : {}),
+      ...(o.text !== undefined ? { text: o.text } : {}),
       label: o.label ?? id,
       props: o.props ?? {},
       pos: o.pos ? snapVec(o.pos, s.sheet.grid) : null,
@@ -289,6 +320,8 @@ export function applyOps(input: Schema, ops: Op[]): ApplyResult {
           c = newComponent(i, {
             id: op.id,
             type: op.type,
+            variant: op.variant,
+            text: op.text,
             label: op.label,
             props: op.props,
             pos: op.pos,
@@ -297,7 +330,7 @@ export function applyOps(input: Schema, ops: Op[]): ApplyResult {
           });
         else if (op.id) c = comp(i, op.id);
         else throw new OpError(i, 'type (neue Komponente) oder id (bestehende) angeben.');
-        const def = symbolOf(c.type);
+        const def = symbolFor(c);
         for (const p of [op.in, op.out])
           if (!def.ports.some((x) => x.id === p)) throw new OpError(i, `${c.id} hat keinen Anschluss "${p}".`);
         const to = con.to;
@@ -332,6 +365,26 @@ export function applyOps(input: Schema, ops: Op[]): ApplyResult {
         if (!el) throw new OpError(i, `"${op.id}" gibt es nicht.`);
         el.label = op.label;
         changed.push(op.id);
+        break;
+      }
+      case 'set_variant': {
+        const c = comp(i, op.id);
+        if (op.variant !== undefined) {
+          checkVariant(i, c.type, op.variant);
+          const before = symbolFor(c).ports.map((p) => p.id);
+          c.variant = op.variant;
+          const after = new Set(symbolFor(c).ports.map((p) => p.id));
+          // Lines on ports the new variant does not have go away.
+          const lost = before.filter((p) => !after.has(p));
+          const gone = s.connections.filter(
+            (x) => (x.from[0] === c.id && lost.includes(x.from[1])) || (x.to[0] === c.id && lost.includes(x.to[1])),
+          );
+          s.connections = s.connections.filter((x) => !gone.includes(x));
+          removed.push(...gone.map((x) => x.id));
+          for (const x of s.connections) if (x.from[0] === c.id || x.to[0] === c.id) x.waypoints = [];
+        }
+        if (op.text !== undefined) c.text = op.text;
+        changed.push(c.id);
         break;
       }
       case 'set_medium': {
@@ -370,9 +423,16 @@ export function applyOps(input: Schema, ops: Op[]): ApplyResult {
           if (!it.type) throw new OpError(i, `Kettenelement ohne type (${JSON.stringify(it)}).`);
           const def = findSymbol(it.type);
           if (!def) throw new OpError(i, `unbekannter Symboltyp "${it.type}".`);
-          const c = newComponent(i, { id: it.id, type: it.type, label: it.label, props: it.props });
+          const c = newComponent(i, {
+            id: it.id,
+            type: it.type,
+            variant: it.variant,
+            text: it.text,
+            label: it.label,
+            props: it.props,
+          });
           const sensor = def.category === 'control';
-          const ids = def.ports.map((p) => p.id);
+          const ids = symbolFor(c).ports.map((p) => p.id);
           const port = sensor
             ? { in: null, out: null }
             : { in: ids.includes('in') ? 'in' : null, out: ids.includes('out') ? 'out' : null };
@@ -513,12 +573,12 @@ function placeSensorGroup(s: Schema, hosts: (Component & { _after?: string })[])
     const pa = portPlace(a, con.from[1]),
       pb = portPlace(b, con.to[1]);
     if (!pa || !pb) continue;
-    const def = symbolOf(c.type);
+    const def = symbolFor(c);
     // The row line is the downstream port (a hanging terminal's port is off the row). Sensors share the gap evenly.
-    const aOnRow = symbolOf(a.type).ports.length > 1;
+    const aOnRow = symbolFor(a).ports.length > 1;
     const y = aOnRow ? pa.at[1] : pb.at[1];
     const x0 = aOnRow ? pa.at[0] : a.pos[0];
-    const bOnRow = symbolOf(b.type).ports.length > 1;
+    const bOnRow = symbolFor(b).ports.length > 1;
     const x1 = bOnRow ? pb.at[0] : b.pos[0];
     // From the host side: 12.5 mm after an inline host's port, 15 mm from a hanging terminal's centre, 15 mm apart.
     const dir = Math.sign(x1 - x0) || 1;

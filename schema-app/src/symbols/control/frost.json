@@ -1,0 +1,18 @@
+{
+  "id": "control.frost",
+  "name": "Frostschutzthermostat",
+  "category": "control",
+  "norm": "",
+  "checked": false,
+  "size": [2.5,15],
+  "prefix": "TSA",
+  "ports": [
+    { "id": "sig", "at": [2.5,12.5], "dir": "E", "media": ["signal"], "optional": true }
+  ],
+  "labelAnchor": [3,1],
+  "labelAlign": "start",
+  "props": [],
+  "keywords": ["Frostschutz","FS","Frostwächter"],
+  "text": { "at": [1.25,13.75], "size": 1.1, "align": "middle", "value": "FS" },
+  "svg": "<rect x='0' y='0' width='2.5' height='10'/><path d='M1.25 1V12.5'/><rect x='0' y='12.5' width='2.5' height='2.5'/>"
+}

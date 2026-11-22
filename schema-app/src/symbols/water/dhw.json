@@ -2,6 +2,7 @@
   "id": "water.dhw",
   "name": "Wassererwärmer",
   "category": "water",
+  "disciplines": ["sanitary"],
   "norm": "",
   "checked": false,
   "size": [

@@ -22,11 +22,23 @@ export interface Sheet {
   grid: number;
   titleBlock: string;
   legend: boolean;
+  /** What the drawing shows: component IDs, medium codes (AUL, ZUL …), property values. */
+  show: SheetShow;
+}
+
+export interface SheetShow {
+  ids: boolean;
+  media: boolean;
+  values: boolean;
 }
 
 export interface Component {
   id: string;
   type: string;
+  /** Variant of the symbol (Ausführung), '' = the first one. */
+  variant?: string;
+  /** Text inside the symbol (e.g. filter class, sensor letter); undefined = the variant's default. */
+  text?: string;
   label: string;
   props: Record<string, string>;
   pos: Vec | null;
@@ -82,7 +94,36 @@ export interface Schema {
   groups: Group[];
   texts: TextItem[];
   notes: Note[];
+  /** Own symbols used in this file (copied in on save, so the file opens on any device). */
+  symbols: SymbolDef[];
 }
+
+/** Editable text inside a symbol, in symbol-local mm (drawn upright, also on turned symbols). */
+export interface SymbolText {
+  at: Vec;
+  size: number;
+  align?: 'start' | 'middle' | 'end';
+  /** Default text. */
+  value: string;
+}
+
+/** A variant (Ausführung) of a symbol: other drawing, optionally other size, ports or text. */
+export interface SymbolVariant {
+  id: string;
+  name: string;
+  svg: string;
+  size?: Vec;
+  ports?: PortDef[];
+  labelAnchor?: Vec;
+  labelAlign?: 'start' | 'middle' | 'end';
+  obstacle?: [number, number, number, number];
+  bounds?: [number, number, number, number];
+  prefix?: string;
+  text?: SymbolText | null;
+  keywords?: string[];
+}
+
+export type Discipline = 'air' | 'heat' | 'sanitary';
 
 /** One port of a symbol, in symbol-local coordinates (origin top left of the symbol box). */
 export interface PortDef {
@@ -118,8 +159,21 @@ export interface SymbolDef {
   background?: boolean;
   /** Part of the box that lines must avoid, local [x, y, w, h]; default the whole box (a sensor's stem may touch a duct). */
   obstacle?: [number, number, number, number];
-  /** SVG body in symbol-local mm, without stroke widths or colours (they come from the style). */
+  /** SVG body in symbol-local mm, without stroke widths or colours (they come from the style).
+   *  Medium colours as placeholders, e.g. stroke='{{water.heat.flow}}'. */
   svg: string;
+  /** Drawing extent beyond the size box, local [x, y, w, h] (selection, overlap); default the size box. */
+  bounds?: [number, number, number, number];
+  /** Editable text inside the symbol. */
+  text?: SymbolText;
+  /** Variants (Ausführungen); the first is the default. */
+  variants?: SymbolVariant[];
+  /** Palette tabs the symbol appears in (default from the category). */
+  disciplines?: Discipline[];
+  /** Not offered in the palette (kept so older files still draw). */
+  hidden?: boolean;
+  /** Own symbol (made in the symbol editor). */
+  custom?: boolean;
 }
 
 export type Severity = 'error' | 'warning';

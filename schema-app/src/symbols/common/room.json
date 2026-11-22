@@ -1,4 +1,4 @@
-{ "id": "air.room", "name": "Raum / Zone", "category": "air", "norm": "", "checked": false,
+{ "id": "air.room", "name": "Raum / Zone", "category": "common", "norm": "", "checked": false,
   "size": [40, 25], "prefix": "R", "ports": [], "background": true,
   "labelAnchor": [1.5, 4], "labelAlign": "start", "props": ["Nutzung", "V"], "keywords": ["Raum", "Zone", "Büro", "Versorgungsbereich"],
   "svg": "<rect x='0' y='0' width='40' height='25' stroke-dasharray='3 1.5'/>" }

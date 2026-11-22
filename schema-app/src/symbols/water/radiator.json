@@ -2,6 +2,7 @@
   "id": "water.radiator",
   "name": "Heizkörper",
   "category": "water",
+  "disciplines": ["heat"],
   "norm": "",
   "checked": false,
   "size": [

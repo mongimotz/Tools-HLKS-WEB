@@ -1,0 +1,28 @@
+{
+  "id": "air.arrow.in",
+  "name": "Lufteinlass (Pfeil)",
+  "category": "air",
+  "norm": "",
+  "checked": false,
+  "size": [15,10],
+  "prefix": "LE",
+  "ports": [
+    { "id": "out", "at": [15,5], "dir": "E", "media": ["air.*"] }
+  ],
+  "labelAnchor": [7.5,-1.5],
+  "props": ["V"],
+  "keywords": ["Pfeil Einlass","Einlass","Abluft","Raum"],
+  "svg": "<path d='M0 5H4.1L4.75 1.4L6 8.7L6.6 5H11.25'/><path d='M15 5L11.25 6.85L11.25 3.15Z'/>",
+  "variants": [
+    {
+      "id": "offen",
+      "name": "Pfeil Einlass",
+      "svg": "<path d='M0 5H4.1L4.75 1.4L6 8.7L6.6 5H11.25'/><path d='M15 5L11.25 6.85L11.25 3.15Z'/>"
+    },
+    {
+      "id": "voll",
+      "name": "Pfeil Einlass gefüllt",
+      "svg": "<path d='M0 5H4.1L4.75 1.4L6 8.7L6.6 5H11.25'/><path d='M15 5L11.25 6.85L11.25 3.15Z' fill='currentColor'/>"
+    }
+  ]
+}

@@ -3,10 +3,14 @@
 import { useRef, useState } from 'react';
 import type { Issue, Schema } from '../model/types.ts';
 import { MEDIA, mediumMatches } from '../model/media.ts';
-import { findSymbol, symbolOf } from '../symbols/library.ts';
+import { findSymbol, innerText, symbolFor, symbolVariant } from '../symbols/library.ts';
+import { SymbolPreview } from './SymbolPreview.tsx';
+import { renderSchema } from '../render/render.ts';
+import { openSymbolTab } from './tabs.ts';
+import { draftFromDef } from '../io/symbols.ts';
 import { useEditor } from './store.ts';
 import { Icon } from './icons.tsx';
-import { flipSelection, rotateSelection } from './actions.ts';
+import { flipSelection, rotateSelection, setVariant } from './actions.ts';
 import { NotesPanel } from './Notes.tsx';
 import { AssistantPanel } from './Assistant.tsx';
 
@@ -71,6 +75,9 @@ const PROP_NAMES: Record<string, string> = {
   Art: 'Art',
   x: 'Feuchte',
   Nutzung: 'Nutzung',
+  H: 'Förderhöhe',
+  DN: 'Nennweite',
+  kvs: 'kvs-Wert',
 };
 
 export function Properties({ issues }: { issues: Issue[] }) {
@@ -138,11 +145,26 @@ export function Properties({ issues }: { issues: Issue[] }) {
           )}
           {comp && (
             <section>
-              <h2>{symbolOf(comp.type).name}</h2>
+              <h2>{findSymbol(comp.type)?.name ?? comp.type}</h2>
               <p className="sub">
                 {comp.type}
-                {symbolOf(comp.type).norm ? ` | ${symbolOf(comp.type).norm}` : ''}
+                {symbolFor(comp).norm ? ` | ${symbolFor(comp).norm}` : ''}
               </p>
+              <VariantPicker id={comp.id} type={comp.type} variant={comp.variant ?? ''} text={comp.text} />
+              {symbolFor(comp).text && (
+                <Field
+                  label="Text im Symbol"
+                  value={innerText(comp)}
+                  testid="prop-inner-text"
+                  onCommit={(v) =>
+                    st.change('Text im Symbol', (d) => {
+                      const c = d.components.find((x) => x.id === comp.id)!;
+                      if (v === symbolFor(c).text?.value) delete c.text;
+                      else c.text = v;
+                    })
+                  }
+                />
+              )}
               <Field
                 label="Bezeichnung"
                 value={comp.label}
@@ -151,7 +173,7 @@ export function Properties({ issues }: { issues: Issue[] }) {
                   st.change('Bezeichnung', (d) => void (d.components.find((c) => c.id === comp.id)!.label = v))
                 }
               />
-              {[...new Set([...symbolOf(comp.type).props, ...Object.keys(comp.props)])].map((k) => (
+              {[...new Set([...symbolFor(comp).props, ...Object.keys(comp.props)])].map((k) => (
                 <Field
                   key={k}
                   label={PROP_NAMES[k] ? `${PROP_NAMES[k]} (${k})` : k}
@@ -195,7 +217,13 @@ export function Properties({ issues }: { issues: Issue[] }) {
                   <Icon name="pin" /> {comp.pinned ? 'Fixiert' : 'Frei'}
                 </button>
               </div>
-              <p className="sub">ID {comp.id}</p>
+              <button
+                className="link-button"
+                onClick={() => openSymbolTab(draftFromDef(symbolFor(comp), !comp.type.startsWith('user.')))}
+              >
+                <Icon name="pen" size={14} />{' '}
+                {comp.type.startsWith('user.') ? 'Bauteil bearbeiten' : 'Als Vorlage für eigenes Bauteil'}
+              </button>
             </section>
           )}
           {con && <ConnectionProps doc={doc} id={con.id} />}
@@ -232,6 +260,7 @@ export function Properties({ issues }: { issues: Issue[] }) {
               <h2>Text</h2>
               <Field
                 label="Text"
+                testid="prop-text"
                 value={text.text}
                 onCommit={(v) => st.change('Text', (d) => void (d.texts.find((x) => x.id === text.id)!.text = v))}
               />
@@ -262,6 +291,35 @@ export function Properties({ issues }: { issues: Issue[] }) {
   );
 }
 
+/** Variants of the selected component as small drawings; a click switches (one undo step). */
+function VariantPicker({ id, type, variant, text }: { id: string; type: string; variant: string; text?: string }) {
+  const st = useEditor();
+  const vs = findSymbol(type)?.variants ?? [];
+  if (vs.length < 2) return null;
+  const cur = vs.find((v) => v.id === variant) ?? vs[0]!;
+  return (
+    <div className="variants" role="radiogroup" aria-label="Ausführung">
+      <span className="variants-label">Ausführung: {cur.name}</span>
+      <div className="variant-grid">
+        {vs.map((v) => (
+          <button
+            key={v.id}
+            role="radio"
+            aria-checked={v.id === cur.id}
+            title={`${v.name} (V)`}
+            data-testid={`variant-${v.id}`}
+            onClick={() =>
+              v.id !== cur.id && st.commit('Ausführung', setVariant(renderSchema(st.doc).placed, id, v.id))
+            }
+          >
+            <SymbolPreview def={symbolVariant(type, v.id)} size={40} text={text} />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function NewProp({ onAdd }: { onAdd: (k: string, v: string) => void }) {
   const [k, setK] = useState('');
   const [v, setV] = useState('');
@@ -289,7 +347,7 @@ function ConnectionProps({ doc, id }: { doc: Schema; id: string }) {
   const con = doc.connections.find((c) => c.id === id)!;
   const ports = [con.from, con.to].map(([cid, pid]) => {
     const c = doc.components.find((x) => x.id === cid);
-    return c ? findSymbol(c.type)?.ports.find((p) => p.id === pid) : undefined;
+    return c && findSymbol(c.type) ? symbolFor(c).ports.find((p) => p.id === pid) : undefined;
   });
   return (
     <section>

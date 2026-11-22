@@ -13,27 +13,28 @@
     "orientation": "landscape",
     "grid": 2.5,
     "titleBlock": "default",
-    "legend": true
+    "legend": true,
+    "show": { "ids": true, "media": true, "values": true }
   },
   "style": "default",
   "components": [
-    { "id": "WRG01", "type": "air.hrc.rotor", "label": "WRG01", "props": { "eta": "η 80 %" }, "pos": [182.5, 132.5], "rot": 0, "flip": false, "pinned": false },
-    { "id": "AF01", "type": "air.intake", "label": "AF01", "props": {}, "pos": [127.5, 150], "rot": 0, "flip": false, "pinned": false },
-    { "id": "KL01", "type": "air.damper.motor", "label": "KL01", "props": {}, "pos": [142.5, 150], "rot": 0, "flip": false, "pinned": false },
-    { "id": "FI01", "type": "air.filter", "label": "FI01", "props": { "Klasse": "ePM1 55%" }, "pos": [160, 150], "rot": 0, "flip": false, "pinned": false },
-    { "id": "ER01", "type": "air.heater", "label": "ER01", "props": {}, "pos": [202.5, 150], "rot": 0, "flip": false, "pinned": false },
-    { "id": "KU01", "type": "air.cooler", "label": "KU01", "props": {}, "pos": [217.5, 150], "rot": 0, "flip": false, "pinned": false },
-    { "id": "TA01", "type": "air.droplet", "label": "TA01", "props": {}, "pos": [232.5, 150], "rot": 0, "flip": false, "pinned": false },
-    { "id": "VE01", "type": "air.fan", "label": "VE01", "props": { "V": "6000 m³/h" }, "pos": [250, 150], "rot": 0, "flip": false, "pinned": false },
-    { "id": "TT01", "type": "control.sensor.t", "label": "TT01", "props": {}, "pos": [267.5, 142.5], "rot": 0, "flip": false, "pinned": false },
-    { "id": "MT01", "type": "control.sensor.rh", "label": "MT01", "props": {}, "pos": [282.5, 142.5], "rot": 0, "flip": false, "pinned": false },
-    { "id": "ZD01", "type": "air.terminal.supply", "label": "ZD01", "props": {}, "pos": [300, 165], "rot": 0, "flip": false, "pinned": false },
-    { "id": "AD01", "type": "air.terminal.extract", "label": "AD01", "props": {}, "pos": [300, 100], "rot": 180, "flip": false, "pinned": false },
-    { "id": "QT01", "type": "control.sensor.co2", "label": "QT01", "props": {}, "pos": [285, 107.5], "rot": 0, "flip": false, "pinned": false },
-    { "id": "FI02", "type": "air.filter", "label": "FI02", "props": { "Klasse": "ePM10 50%" }, "pos": [225, 115], "rot": 0, "flip": true, "pinned": false },
-    { "id": "VE02", "type": "air.fan", "label": "VE02", "props": { "V": "6000 m³/h" }, "pos": [205, 115], "rot": 0, "flip": true, "pinned": false },
-    { "id": "KL02", "type": "air.damper.motor", "label": "KL02", "props": {}, "pos": [162.5, 115], "rot": 0, "flip": true, "pinned": false },
-    { "id": "FA01", "type": "air.outlet", "label": "FA01", "props": {}, "pos": [147.5, 115], "rot": 0, "flip": true, "pinned": false }
+    { "id": "WRG01", "type": "air.hrc.rotor", "label": "WRG01", "props": { "eta": "η 80 %" }, "pos": [177.5, 132.5], "rot": 0, "flip": false, "pinned": false },
+    { "id": "AF01", "type": "air.intake", "label": "AF01", "props": {}, "pos": [130, 142.5], "rot": 0, "flip": false, "pinned": false },
+    { "id": "KL01", "type": "air.damper.motor", "label": "KL01", "props": {}, "pos": [142.5, 142.5], "rot": 0, "flip": false, "pinned": false },
+    { "id": "FI01", "type": "air.filter", "text": "ePM1", "label": "FI01", "props": { "Klasse": "ePM1 55%" }, "pos": [157.5, 142.5], "rot": 0, "flip": false, "pinned": false },
+    { "id": "ER01", "type": "air.heater", "variant": "beimisch", "label": "ER01", "props": {}, "pos": [197.5, 142.5], "rot": 0, "flip": false, "pinned": false },
+    { "id": "KU01", "type": "air.cooler", "variant": "drossel", "label": "KU01", "props": {}, "pos": [215, 142.5], "rot": 0, "flip": false, "pinned": false },
+    { "id": "TA01", "type": "air.droplet", "label": "TA01", "props": {}, "pos": [230, 142.5], "rot": 0, "flip": false, "pinned": false },
+    { "id": "VE01", "type": "air.fan", "label": "VE01", "props": { "V": "6000 m³/h" }, "pos": [247.5, 142.5], "rot": 0, "flip": false, "pinned": false },
+    { "id": "TT01", "type": "control.sensor", "variant": "t", "label": "TT01", "props": {}, "pos": [265, 140], "rot": 0, "flip": false, "pinned": false },
+    { "id": "MT01", "type": "control.sensor", "variant": "rf", "label": "MT01", "props": {}, "pos": [280, 140], "rot": 0, "flip": false, "pinned": false },
+    { "id": "ZD01", "type": "air.terminal.supply", "label": "ZD01", "props": {}, "pos": [297.5, 157.5], "rot": 0, "flip": false, "pinned": false },
+    { "id": "AD01", "type": "air.terminal.extract", "label": "AD01", "props": {}, "pos": [297.5, 107.5], "rot": 180, "flip": false, "pinned": false },
+    { "id": "QT01", "type": "control.sensor", "variant": "q", "text": "CO₂", "label": "QT01", "props": {}, "pos": [282.5, 120], "rot": 0, "flip": false, "pinned": false },
+    { "id": "FI02", "type": "air.filter", "text": "ePM10", "label": "FI02", "props": { "Klasse": "ePM10 50%" }, "pos": [217.5, 122.5], "rot": 0, "flip": true, "pinned": false },
+    { "id": "VE02", "type": "air.fan", "label": "VE02", "props": { "V": "6000 m³/h" }, "pos": [200, 122.5], "rot": 0, "flip": true, "pinned": false },
+    { "id": "KL02", "type": "air.damper.motor", "label": "KL02", "props": {}, "pos": [160, 122.5], "rot": 0, "flip": true, "pinned": false },
+    { "id": "FA01", "type": "air.outlet", "label": "FA01", "props": {}, "pos": [147.5, 122.5], "rot": 0, "flip": true, "pinned": false }
   ],
   "connections": [
     { "id": "L01", "from": ["AF01", "out"], "to": ["KL01", "in"], "medium": "air.outdoor", "waypoints": [], "pinned": false },
@@ -54,5 +55,6 @@
     { "id": "G1", "label": "Monoblock", "members": ["KL01", "FI01", "WRG01", "ER01", "KU01", "TA01", "VE01", "FI02", "VE02", "KL02"], "frame": true }
   ],
   "texts": [],
-  "notes": []
+  "notes": [],
+  "symbols": []
 }

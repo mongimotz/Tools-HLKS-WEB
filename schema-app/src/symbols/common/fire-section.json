@@ -1,4 +1,4 @@
-{ "id": "air.fire.section", "name": "Brandabschnitt (Grenze)", "category": "air", "norm": "", "checked": false,
+{ "id": "air.fire.section", "name": "Brandabschnitt (Grenze)", "category": "common", "norm": "", "checked": false,
   "size": [5, 30], "prefix": "BA", "ports": [], "background": true,
   "labelAnchor": [4, -1.5], "labelAlign": "start", "props": ["EI"], "keywords": ["Brandabschnitt", "Brandmauer", "Brandschutz", "EI 30", "EI 60"],
   "svg": "<path d='M2.5 0V30' stroke-dasharray='6 1.5 1 1.5'/><path d='M1 0H4M1 30H4'/>" }

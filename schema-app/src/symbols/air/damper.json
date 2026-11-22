@@ -1,4 +1,39 @@
-{ "id": "air.damper", "name": "Klappe (Hand)", "category": "air", "norm": "SN EN 12792 T4/9", "checked": true,
-  "size": [5, 10], "prefix": "KL", "ports": [ { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] }, { "id": "out", "at": [5, 5], "dir": "E", "media": ["air.*"] } ],
-  "labelAnchor": [2.5, -1.5], "props": ["Funktion"], "keywords": ["Drosselklappe", "Handklappe", "Regulierklappe"],
-  "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M1 9.5L4 0.5'/><circle cx='2.5' cy='5' r='0.7'/>" }
+{
+  "id": "air.damper",
+  "name": "Klappe",
+  "category": "air",
+  "norm": "",
+  "checked": false,
+  "size": [2.5,10],
+  "prefix": "KL",
+  "ports": [
+    { "id": "in", "at": [0,5], "dir": "W", "media": ["air.*"] },
+    { "id": "out", "at": [2.5,5], "dir": "E", "media": ["air.*"] }
+  ],
+  "labelAnchor": [1.25,-1.5],
+  "props": ["Funktion"],
+  "keywords": ["Gliederklappe","Jalousieklappe","Einstellklappe","Regulierklappe","Handklappe"],
+  "svg": "<rect x='0' y='0' width='2.5' height='10'/><path d='M0 3.75L2.5 1.25M0 8.75L2.5 6.25'/><circle cx='1.25' cy='2.5' r='0.5'/><circle cx='1.25' cy='2.5' r='0.2'/><circle cx='1.25' cy='7.5' r='0.5'/><circle cx='1.25' cy='7.5' r='0.2'/>",
+  "variants": [
+    {
+      "id": "gleich",
+      "name": "Gliederklappe gleichläufig",
+      "svg": "<rect x='0' y='0' width='2.5' height='10'/><path d='M0 3.75L2.5 1.25M0 8.75L2.5 6.25'/><circle cx='1.25' cy='2.5' r='0.5'/><circle cx='1.25' cy='2.5' r='0.2'/><circle cx='1.25' cy='7.5' r='0.5'/><circle cx='1.25' cy='7.5' r='0.2'/>"
+    },
+    {
+      "id": "gegen",
+      "name": "Gliederklappe gegenläufig",
+      "svg": "<rect x='0' y='0' width='2.5' height='10'/><path d='M0 3.75L2.5 1.25M0 6.25L2.5 8.75'/><circle cx='1.25' cy='2.5' r='0.5'/><circle cx='1.25' cy='2.5' r='0.2'/><circle cx='1.25' cy='7.5' r='0.5'/><circle cx='1.25' cy='7.5' r='0.2'/>"
+    },
+    {
+      "id": "einstell",
+      "name": "Einstellklappe",
+      "svg": "<rect x='0' y='0' width='2.5' height='10'/><path d='M0.3 4.05L2.2 5.95'/><circle cx='1.25' cy='5' r='0.5'/><circle cx='1.25' cy='5' r='0.2'/>"
+    },
+    {
+      "id": "jalousie",
+      "name": "Jalousieklappe",
+      "svg": "<rect x='0' y='0' width='2.5' height='10'/><path d='M0.95 2.35L1.95 4.05M0.95 7.35L1.95 9.05'/><circle cx='0.65' cy='1.9' r='0.5'/><circle cx='0.65' cy='1.9' r='0.2'/><circle cx='0.65' cy='6.9' r='0.5'/><circle cx='0.65' cy='6.9' r='0.2'/>"
+    }
+  ]
+}

@@ -2,6 +2,7 @@
   "id": "water.consumer",
   "name": "Verbraucher",
   "category": "water",
+  "disciplines": ["heat"],
   "norm": "",
   "checked": false,
   "size": [

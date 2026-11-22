@@ -1,4 +1,38 @@
-{ "id": "air.heater", "name": "Lufterhitzer", "category": "air", "norm": "SN EN 12792 T5/3", "checked": true,
-  "size": [5, 10], "prefix": "ER", "ports": [ { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] }, { "id": "out", "at": [5, 5], "dir": "E", "media": ["air.*"] } ],
-  "labelAnchor": [2.5, -1.5], "props": ["Q", "t"], "keywords": ["Erhitzer", "Heizregister", "Lufterwärmer", "Nacherhitzer", "Vorerhitzer"],
-  "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0 10L5 0'/>" }
+{
+  "id": "air.heater",
+  "name": "Lufterhitzer",
+  "category": "air",
+  "norm": "",
+  "checked": false,
+  "size": [5,10],
+  "prefix": "ER",
+  "ports": [
+    { "id": "in", "at": [0,5], "dir": "W", "media": ["air.*"] },
+    { "id": "out", "at": [5,5], "dir": "E", "media": ["air.*"] }
+  ],
+  "labelAnchor": [2.5,-1.5],
+  "props": ["Q","t"],
+  "keywords": ["Erhitzer","Heizregister","Lufterwärmer","Nacherhitzer","Vorerhitzer"],
+  "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0 10L5 0M2.5 0.6V1.8M1.9 1.2H3.1'/>",
+  "variants": [
+    {
+      "id": "basis",
+      "name": "Lufterhitzer",
+      "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0 10L5 0M2.5 0.6V1.8M1.9 1.2H3.1'/>"
+    },
+    {
+      "id": "beimisch",
+      "name": "Lufterhitzer mit Beimischschaltung",
+      "bounds": [-2.4,0,7.4,26],
+      "keywords": ["Beimischschaltung","Hydraulik","Dreiwegeventil","Pumpe"],
+      "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0 10L5 0M2.5 0.6V1.8M1.9 1.2H3.1'/><path d='M0.4 10V12.5M0.4 16.1V18.6M0.4 21.2V25.4M1.7 19.9H4.6' stroke='{{water.heat.flow}}'/><path d='M4.6 10V21.2' stroke='{{water.heat.return}}'/><circle cx='0.4' cy='14.3' r='1.8'/><path d='M-1.4 14.3L0.4 12.5L2.2 14.3Z' fill='currentColor'/><path d='M-0.45 18.6L1.25 18.6L0.4 19.9ZM-0.45 21.2L1.25 21.2L0.4 19.9Z'/><rect x='-2' y='19.25' width='1.3' height='1.3'/><circle cx='-1.35' cy='19.9' r='0.5'/><path d='M-0.7 19.9H-0.45'/><path d='M1.7 19.05L1.7 20.75L0.4 19.9Z'/><path d='M0 25.8L5 20.8'/>"
+    },
+    {
+      "id": "drossel",
+      "name": "Lufterhitzer mit Drosselschaltung",
+      "bounds": [-2.4,0,7.4,26],
+      "keywords": ["Drosselschaltung","Hydraulik","Zweiwegeventil"],
+      "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0 10L5 0M2.5 0.6V1.8M1.9 1.2H3.1'/><path d='M0.4 10V14.3M0.4 16.9V25.4' stroke='{{water.heat.flow}}'/><path d='M4.6 10V21.2' stroke='{{water.heat.return}}'/><path d='M-0.45 14.3L1.25 14.3L0.4 15.6ZM-0.45 16.9L1.25 16.9L0.4 15.6Z'/><rect x='-2' y='14.95' width='1.3' height='1.3'/><circle cx='-1.35' cy='15.6' r='0.5'/><path d='M-0.7 15.6H-0.45'/><path d='M0 25.8L5 20.8'/>"
+    }
+  ]
+}

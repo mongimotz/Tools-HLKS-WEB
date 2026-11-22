@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Topology rules on a parsed schema: unique IDs, valid references, port use, media, overlaps.
 import type { Issue, Schema } from './types.ts';
-import { findSymbol, symbolOf } from '../symbols/library.ts';
+import { findSymbol, symbolFor } from '../symbols/library.ts';
 import { medium, mediumMatches } from './media.ts';
 import { boxesOverlap, componentBox, isBackground } from './geometry.ts';
 
@@ -45,7 +45,7 @@ export function validate(s: Schema): Issue[] {
         add('error', 'unknown-component', path, `Komponente "${cid}" gibt es nicht.`, [con.id]);
         continue;
       }
-      const def = findSymbol(c.type);
+      const def = findSymbol(c.type) && symbolFor(c);
       if (!def) continue;
       const port = def.ports.find((p) => p.id === pid);
       if (!port) {
@@ -82,7 +82,7 @@ export function validate(s: Schema): Issue[] {
 
   // Open ports: every non-optional port of a known symbol should be connected.
   s.components.forEach((c, i) => {
-    const def = findSymbol(c.type);
+    const def = findSymbol(c.type) && symbolFor(c);
     if (!def) return;
     const open = def.ports.filter((p) => !p.optional && !used.has(`${c.id}:${p.id}`)).map((p) => p.id);
     if (open.length)
@@ -92,7 +92,7 @@ export function validate(s: Schema): Issue[] {
   // Junctions need at least 3 connections (otherwise they are no branch).
   s.components.forEach((c, i) => {
     if (c.type !== 'junction') return;
-    const n = symbolOf(c.type).ports.filter((p) => used.has(`${c.id}:${p.id}`)).length;
+    const n = symbolFor(c).ports.filter((p) => used.has(`${c.id}:${p.id}`)).length;
     if (n < 3)
       add('warning', 'junction-degree', `components[${i}]`, `Abzweig ${c.id} hat nur ${n} Verbindung(en).`, [c.id]);
   });

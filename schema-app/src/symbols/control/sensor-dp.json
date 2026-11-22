@@ -1,6 +1,32 @@
-{ "id": "control.sensor.dp", "name": "Differenzdruckfühler", "category": "control", "norm": "SN EN 12792 T6/1", "checked": true,
-  "size": [10, 15], "prefix": "PDT",
-  "ports": [ { "id": "sig", "at": [10, 5], "dir": "E", "media": ["signal"], "optional": true } ],
-  "obstacle": [0, 0, 10, 9.5],
-  "labelAnchor": [6, -1.5], "labelAlign": "start", "props": [], "keywords": ["Fühler", "Sensor", "Messfühler", "Δp"],
-  "svg": "<circle cx='5' cy='5' r='4'/><path d='M5 9V15'/><text x='5' y='5.9' font-size='2.5' text-anchor='middle' fill='currentColor' stroke='none'>Δp</text>" }
+{
+  "id": "control.sensor.dp",
+  "name": "Differenzdruckfühler",
+  "category": "control",
+  "norm": "",
+  "checked": false,
+  "size": [10,10],
+  "prefix": "PDT",
+  "ports": [
+    { "id": "sig", "at": [5,0], "dir": "N", "media": ["signal"], "optional": true }
+  ],
+  "obstacle": [0,0,10,4.5],
+  "labelAnchor": [7,-0.5],
+  "labelAlign": "start",
+  "props": [],
+  "keywords": ["Differenzdruck","Δp","Filterüberwachung"],
+  "text": { "at": [5,2.5], "size": 1.4, "align": "middle", "value": "Δp" },
+  "svg": "<circle cx='5' cy='2.5' r='1.75'/><path d='M0 10V2.5H3.25M6.75 2.5H10V10'/>",
+  "variants": [
+    {
+      "id": "fuehler",
+      "name": "Differenzdruckfühler",
+      "svg": "<circle cx='5' cy='2.5' r='1.75'/><path d='M0 10V2.5H3.25M6.75 2.5H10V10'/>"
+    },
+    {
+      "id": "waechter",
+      "name": "Differenzdruckwächter",
+      "prefix": "PDS",
+      "svg": "<rect x='3.25' y='0.75' width='3.5' height='3.5'/><path d='M0 10V2.5H3.25M6.75 2.5H10V10'/>"
+    }
+  ]
+}

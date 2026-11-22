@@ -7,23 +7,48 @@ import { renderSchema } from '../render/render.ts';
 import { checkDrawing } from '../layout/check.ts';
 import { snap } from '../model/geometry.ts';
 import { useEditor } from './store.ts';
-import { Canvas, fitView } from './Canvas.tsx';
+import { Canvas, fitView, pointer } from './Canvas.tsx';
 import { Palette } from './Palette.tsx';
 import { Properties } from './Properties.tsx';
 import { Toolbar } from './Toolbar.tsx';
 import { Help } from './Help.tsx';
 import {
   addComponentAt,
+  componentIds,
+  copySelection,
   deleteSelection,
   duplicateSelection,
   flipSelection,
+  insertable,
+  lineMiddle,
   moveSelection,
   newGroup,
+  nextVariant,
+  parseClip,
+  pasteClip,
   rotateSelection,
+  type Clip,
 } from './actions.ts';
-import { loadDraft, saveDraft } from '../io/files.ts';
+import { loadDrafts, saveDrafts } from '../io/files.ts';
+import { SymbolEditor } from './SymbolEditor.tsx';
+import { TabBar } from './TabBar.tsx';
+import { insertIntoLine } from './insert.ts';
 import {
-  closeFile,
+  activeKind,
+  closeTab,
+  initTabs,
+  newSchemaTab,
+  openSymbolTab,
+  restoreTabs,
+  schemaTabs,
+  switchTab,
+  tabForOpen,
+} from './tabs.ts';
+import { draftFromDef, emptyDraft, initOwnSymbols } from '../io/symbols.ts';
+import { findSymbol, registerSymbols, symbolVariant } from '../symbols/library.ts';
+import { initPaper } from '../io/style.ts';
+import { nextId } from '../ops/ops.ts';
+import {
   initAutosave,
   openFile,
   reopenLast,
@@ -43,19 +68,31 @@ export function App() {
   const [help, setHelp] = useState(false);
   const canvasSize = useRef({ w: 1000, h: 700 });
 
-  // Restore the browser draft, then the last file (live sync) if permission is still granted.
+  // Own symbols, then the browser draft (all tabs), then the last file (live sync) if permission is still granted.
   useEffect(() => {
-    const d = loadDraft();
-    if (d) useEditor.getState().load(d.doc, d.fileName);
+    initOwnSymbols();
+    initTabs();
+    const d = loadDrafts();
+    if (d) restoreTabs(d.tabs, d.active);
     initStyle();
+    initPaper();
     initAutosave();
     void restoreLastFile();
   }, []);
-  // Keep the draft current (debounced).
+  // Keep the draft of all schema tabs current (debounced).
   useEffect(() => {
-    const t = setTimeout(() => saveDraft(st.doc, st.fileName), 400);
+    const t = setTimeout(() => {
+      const list = schemaTabs();
+      saveDrafts(
+        list,
+        Math.max(
+          0,
+          list.findIndex((x) => x.active),
+        ),
+      );
+    }, 400);
     return () => clearTimeout(t);
-  }, [st.doc, st.fileName]);
+  }, [st.doc, st.fileName, st.tabs]);
   // Messages disappear after a while.
   useEffect(() => {
     if (!st.message) return;
@@ -76,10 +113,7 @@ export function App() {
   // Actions read the current state when they run (keyboard handlers outlive renders).
   const actions = {
     newDoc() {
-      const st = useEditor.getState();
-      if (st.dirty && !confirm('Ungespeicherte Änderungen verwerfen?')) return;
-      closeFile();
-      st.load(emptySchema(), 'prinzipschema.schema');
+      newSchemaTab(emptySchema(), 'prinzipschema.schema');
     },
     async open() {
       await openFile();
@@ -124,11 +158,44 @@ export function App() {
       setHelp(true);
     },
     async example(id: string) {
-      const st = useEditor.getState();
-      if (st.dirty && !confirm('Ungespeicherte Änderungen verwerfen?')) return;
-      closeFile();
-      st.load(await loadExample(id), `${id}.schema`);
+      const doc = await loadExample(id);
+      tabForOpen();
+      useEditor.getState().load(doc, `${id}.schema`);
     },
+    newSymbol() {
+      openSymbolTab(emptyDraft());
+    },
+    editSymbol(id: string) {
+      const d = findSymbol(id);
+      if (d) openSymbolTab(draftFromDef(d, false));
+    },
+  };
+
+  /** Palette pick: symbol tab → template; selected line → into it; else in the middle of the view. */
+  const pick = (type: string, variant: string) => {
+    const s = useEditor.getState();
+    if (s.proposal) return;
+    if (activeKind() === 'symbol') {
+      const d = s.symbolDraft!;
+      const def = symbolVariant(type, variant);
+      if (d.svg && !confirm(`Zeichnung durch «${def.name}» ersetzen?`)) return;
+      const t = draftFromDef(def, true);
+      useEditor.setState({
+        symbolDraft: { ...t, id: d.id, name: d.saved ? d.name : t.name, saved: d.saved },
+        dirty: true,
+      });
+      return;
+    }
+    const placed: Schema = renderSchema(s.doc).placed;
+    const one = s.selection.length === 1 ? placed.connections.find((c) => c.id === s.selection[0]) : undefined;
+    if (one && insertable(type, variant)) {
+      const route = renderSchema(placed).routes.get(one.id);
+      const mid = route && lineMiddle(route);
+      if (mid && insertIntoLine(placed, one.id, mid, mid.p, { type, variant })) return;
+    }
+    const r = addComponentAt(placed, type, viewCenter(), variant);
+    s.commit('Symbol einfügen', r.schema);
+    s.select([r.id]);
   };
 
   const onKey = useCallback(
@@ -138,6 +205,22 @@ export function App() {
       const typing = t.closest('input, textarea, select, [contenteditable]');
       const mod = e.ctrlKey || e.metaKey;
       const k = e.key.toLowerCase();
+      // Tabs: Alt+1 … 9 switch, Alt+N new schema, Alt+W close (also in the symbol editor).
+      if (e.altKey && !mod) {
+        const digit = /^Digit([1-9])$/.exec(e.code);
+        if (digit) {
+          const tab = s.tabs[Number(digit[1]) - 1];
+          if (tab) {
+            e.preventDefault();
+            switchTab(tab.key);
+          }
+          return;
+        }
+        if (e.code === 'KeyN') return (e.preventDefault(), actions.newDoc());
+        if (e.code === 'KeyW') return (e.preventDefault(), closeTab(s.active));
+      }
+      // The symbol editor has its own keys.
+      if (activeKind() === 'symbol') return;
       if (mod && k === 's') {
         e.preventDefault();
         if (e.shiftKey) actions.saveAs();
@@ -167,6 +250,15 @@ export function App() {
         }
         return;
       }
+      if (mod && k === 'g' && e.shiftKey) {
+        e.preventDefault();
+        const groups = new Set(sel.filter((id) => s.doc.groups.some((g) => g.id === id)));
+        if (groups.size) {
+          s.change('Gruppe auflösen', (d) => void (d.groups = d.groups.filter((g) => !groups.has(g.id))));
+          s.select([...s.doc.groups.filter((g) => groups.has(g.id)).flatMap((g) => g.members)]);
+        }
+        return;
+      }
       if (mod && k === 'g') {
         e.preventDefault();
         const r = newGroup(s.doc, sel);
@@ -189,7 +281,52 @@ export function App() {
         s.select([]);
         return;
       }
-      if (k === 'r' && sel.length) return s.commit('Drehen', rotateSelection(renderSchema(s.doc).placed, sel));
+      if (k === 'r' && sel.length) {
+        // Shift+R: back (three quarter turns).
+        let next = rotateSelection(renderSchema(s.doc).placed, sel);
+        if (e.shiftKey) next = rotateSelection(rotateSelection(next, sel), sel);
+        return s.commit('Drehen', next);
+      }
+      if (k === 'v' && sel.length)
+        return s.commit('Ausführung', nextVariant(renderSchema(s.doc).placed, sel, e.shiftKey));
+      if (k === 'p' && sel.length) {
+        const ids = new Set(componentIds(s.doc, sel));
+        const pin = s.doc.components.some((c) => ids.has(c.id) && !c.pinned);
+        return s.change(pin ? 'Fixieren' : 'Lösen', (d) => {
+          for (const c of d.components) if (ids.has(c.id)) c.pinned = pin;
+        });
+      }
+      if (k === 't') {
+        // New text at the pointer (or the middle of the view), selected for editing.
+        e.preventDefault();
+        const at = pointer.at ?? viewCenter();
+        const id = nextId(s.doc, 'T');
+        s.change(
+          'Text',
+          (d) => void d.texts.push({ id, pos: [snap(at[0], g), snap(at[1], g)], text: 'Text', size: 3.5 }),
+        );
+        s.select([id]);
+        s.setPanel('props');
+        setTimeout(() => (document.querySelector('[data-testid="prop-text"]') as HTMLInputElement | null)?.select(), 0);
+        return;
+      }
+      if (k === 'enter' && sel.length === 1) {
+        // Edit the label (or text) of the selection.
+        e.preventDefault();
+        s.setPanel('props');
+        setTimeout(() => {
+          const el = document.querySelector(
+            '[data-testid="prop-label"], [data-testid="prop-text"]',
+          ) as HTMLInputElement | null;
+          el?.focus();
+          el?.select();
+        }, 0);
+        return;
+      }
+      if (k === 'h') {
+        // Show or hide component IDs.
+        return s.change('Anzeige', (d) => void (d.sheet.show = { ...d.sheet.show, ids: !d.sheet.show.ids }));
+      }
       if (k === 'f' && sel.length) return s.commit('Spiegeln', flipSelection(renderSchema(s.doc).placed, sel));
       const arrows: Record<string, [number, number]> = {
         arrowleft: [-1, 0],
@@ -218,6 +355,55 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [onKey]);
 
+  // Clipboard: Ctrl+C / Ctrl+X / Ctrl+V with the system clipboard (also between tabs and browser windows).
+  useEffect(() => {
+    let internal: Clip | null = null;
+    let pastes = 0;
+    const editing = (e: Event) =>
+      !!(e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable]') ||
+      activeKind() === 'symbol' ||
+      !!useEditor.getState().proposal;
+    const copy = (e: ClipboardEvent, cut: boolean) => {
+      if (editing(e)) return;
+      const s = useEditor.getState();
+      const placed = renderSchema(s.doc).placed;
+      const clip = copySelection(placed, s.selection);
+      if (!clip) return;
+      e.preventDefault();
+      internal = clip;
+      pastes = 0;
+      e.clipboardData?.setData('text/plain', JSON.stringify(clip));
+      if (cut) {
+        s.commit('Ausschneiden', deleteSelection(placed, s.selection));
+        s.select([]);
+      }
+    };
+    const onCopy = (e: ClipboardEvent) => copy(e, false);
+    const onCut = (e: ClipboardEvent) => copy(e, true);
+    const onPaste = (e: ClipboardEvent) => {
+      if (editing(e)) return;
+      const text = e.clipboardData?.getData('text/plain') ?? '';
+      const clip = (text && parseClip(text)) || (!text ? internal : null);
+      if (!clip) return;
+      e.preventDefault();
+      registerSymbols(clip.symbols, false);
+      const s = useEditor.getState();
+      const placed = renderSchema(s.doc).placed;
+      pastes++;
+      const r = pasteClip(placed, clip, pointer.at, s.doc.sheet.grid * 4 * pastes);
+      s.commit('Einfügen', r.schema);
+      s.select(r.ids);
+    };
+    document.addEventListener('copy', onCopy);
+    document.addEventListener('cut', onCut);
+    document.addEventListener('paste', onPaste);
+    return () => {
+      document.removeEventListener('copy', onCopy);
+      document.removeEventListener('cut', onCut);
+      document.removeEventListener('paste', onPaste);
+    };
+  }, []);
+
   // Warn before leaving with unsaved changes.
   useEffect(() => {
     const h = (e: BeforeUnloadEvent) => {
@@ -227,49 +413,52 @@ export function App() {
     return () => window.removeEventListener('beforeunload', h);
   }, []);
 
+  const symbolTab = st.tabs.find((t) => t.key === st.active)?.kind === 'symbol';
   return (
-    <div className="app">
-      <Toolbar a={actions} />
-      <Palette
-        onPick={(type) => {
-          if (st.proposal) return;
-          const placed: Schema = renderSchema(st.doc).placed;
-          const r = addComponentAt(placed, type, viewCenter());
-          st.commit('Symbol einfügen', r.schema);
-          st.select([r.id]);
-        }}
-      />
-      <main
-        className="stage"
-        ref={(el) => {
-          if (el) canvasSize.current = { w: el.clientWidth, h: el.clientHeight };
-        }}
-      >
-        <Canvas />
-        {st.reopen && (
-          <div className="banner" role="status">
-            Zuletzt geöffnet: <b>{st.reopen.name}</b>
-            <button onClick={() => void reopenLast()} data-testid="reopen">
-              Wieder öffnen
-            </button>
-            <button className="tb" aria-label="Schliessen" onClick={() => useEditor.setState({ reopen: null })}>
-              <Icon name="close" />
-            </button>
-          </div>
-        )}
-        {st.syncError && (
-          <div className="banner error" role="alert" data-testid="sync-error">
-            Externe Änderung nicht geladen: {st.syncError} Neuer Versuch in 1 s.
-          </div>
-        )}
-        {st.conflict && <ConflictDialog />}
-        {st.message && (
-          <div className={`toast ${st.message.kind}`} role="status" data-testid="toast">
-            {st.message.text}
-          </div>
-        )}
-      </main>
-      <Properties issues={issues} />
+    <div className={`app${symbolTab ? ' symbol-mode' : ''}`}>
+      <Toolbar a={actions} symbolTab={symbolTab} />
+      <Palette onPick={pick} onNewSymbol={actions.newSymbol} onEditSymbol={actions.editSymbol} />
+      <TabBar onNew={actions.newDoc} />
+      {symbolTab ? (
+        <SymbolEditor key={st.active} />
+      ) : (
+        <main
+          className="stage"
+          ref={(el) => {
+            if (el) canvasSize.current = { w: el.clientWidth, h: el.clientHeight };
+          }}
+        >
+          <Canvas />
+          {st.reopen && (
+            <div className="banner" role="status">
+              Zuletzt geöffnet: <b>{st.reopen.name}</b>
+              <button onClick={() => void reopenLast()} data-testid="reopen">
+                Wieder öffnen
+              </button>
+              <button className="tb" aria-label="Schliessen" onClick={() => useEditor.setState({ reopen: null })}>
+                <Icon name="close" />
+              </button>
+            </div>
+          )}
+          {st.syncError && (
+            <div className="banner error" role="alert" data-testid="sync-error">
+              Externe Änderung nicht geladen: {st.syncError} Neuer Versuch in 1 s.
+            </div>
+          )}
+          {st.conflict && <ConflictDialog />}
+          {st.message && (
+            <div className={`toast ${st.message.kind}`} role="status" data-testid="toast">
+              {st.message.text}
+            </div>
+          )}
+        </main>
+      )}
+      {!symbolTab && <Properties issues={issues} />}
+      {symbolTab && st.message && (
+        <div className="toast floating" role="status" data-testid="toast">
+          {st.message.text}
+        </div>
+      )}
       {help && <Help onClose={() => setHelp(false)} />}
     </div>
   );

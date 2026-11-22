@@ -13,7 +13,8 @@
     "orientation": "landscape",
     "grid": 2.5,
     "titleBlock": "default",
-    "legend": true
+    "legend": true,
+    "show": { "ids": true, "media": true, "values": true }
   },
   "style": "default",
   "components": [
@@ -43,5 +44,6 @@
   ],
   "groups": [],
   "texts": [],
-  "notes": []
+  "notes": [],
+  "symbols": []
 }

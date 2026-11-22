@@ -1,0 +1,17 @@
+{
+  "id": "control.sensor.outdoor",
+  "name": "Aussentemperaturfühler",
+  "category": "control",
+  "norm": "",
+  "checked": false,
+  "size": [7.5,10],
+  "prefix": "TT",
+  "ports": [
+    { "id": "sig", "at": [7.5,5], "dir": "E", "media": ["signal"], "optional": true }
+  ],
+  "labelAnchor": [4.75,1],
+  "props": [],
+  "keywords": ["Aussenfühler","AT","Witterung"],
+  "text": { "at": [4.85,5], "size": 1.8, "align": "middle", "value": "AT" },
+  "svg": "<path d='M2.5 0V10'/><path d='M0 8.75L1.25 10M0 7.5L2.5 10M0 6.25L2.5 8.75M0 5L2.5 7.5M0 3.75L2.5 6.25M0 2.5L2.5 5M0 1.25L2.5 3.75M0 0L2.5 2.5M1.25 0L2.5 1.25'/><circle cx='4.85' cy='5' r='2.3'/>"
+}

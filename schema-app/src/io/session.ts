@@ -7,6 +7,7 @@ import { SchemaError } from '../model/schema.ts';
 import { serialize } from '../model/serialize.ts';
 import type { Schema } from '../model/types.ts';
 import { saveAsDownload, pickFile, readSchemaFile } from './files.ts';
+import { switchTab, tabForOpen } from '../editor/tabs.ts';
 import {
   ensurePermission,
   fsaSupported,
@@ -34,6 +35,31 @@ function errText(e: unknown): string {
   return e instanceof SchemaError ? e.message : `Datei nicht lesbar: ${(e as Error).message}`;
 }
 
+/** Live-sync state of the active tab (parked with the tab when another one is activated). */
+export interface SyncSnapshot {
+  known: number;
+  knownText: string;
+}
+export function syncSnapshot(): SyncSnapshot {
+  return { known, knownText };
+}
+export function syncRestore(s: SyncSnapshot, watching: boolean) {
+  known = s.known;
+  knownText = s.knownText;
+  if (watching) {
+    startWatching();
+    void poll();
+  } else stopWatching();
+}
+
+/** Opens a file in a tab: the tab that already shows it (same name), else the blank active tab or a new one. */
+function prepareTab(name: string) {
+  const s = st();
+  const same = s.tabs.find((t) => t.kind === 'schema' && t.title === name.replace(/\.schema$/, ''));
+  if (same && same.key !== s.active) switchTab(same.key);
+  else if (!same) tabForOpen();
+}
+
 export async function openHandle(h: Handle, ask = true): Promise<boolean> {
   if (!(await ensurePermission(h, ask))) return false;
   const f = await h.getFile();
@@ -45,6 +71,7 @@ export async function openHandle(h: Handle, ask = true): Promise<boolean> {
     st().notify(errText(e), 'error');
     return false;
   }
+  prepareTab(f.name);
   st().load(doc, f.name);
   useEditor.setState({ handle: h, syncError: null, conflict: null, reopen: null });
   known = f.lastModified;
@@ -56,7 +83,6 @@ export async function openHandle(h: Handle, ask = true): Promise<boolean> {
 }
 
 export async function openFile() {
-  if (st().dirty && !confirm('Ungespeicherte Änderungen verwerfen?')) return;
   if (fsaSupported) {
     const h = await pickOpen();
     if (h) await openHandle(h);
@@ -65,7 +91,9 @@ export async function openFile() {
   const f = await pickFile();
   if (!f) return;
   try {
-    st().load(await readSchemaFile(f), f.name);
+    const doc = await readSchemaFile(f);
+    prepareTab(f.name);
+    st().load(doc, f.name);
     useEditor.setState({ handle: null });
     if (!hintShown) {
       hintShown = true;

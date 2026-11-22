@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Schema → SVG string. Pure (no DOM): used by the editor, the CLI and the exports, so all show the same drawing.
-import type { Component, Schema, Vec } from '../model/types.ts';
+import type { Component, Schema, SheetShow, Vec } from '../model/types.ts';
 import { componentBox, isBackground, localToSheet, r, symbolTransform, unionBox, type Box } from '../model/geometry.ts';
 import { MEDIA, medium } from '../model/media.ts';
 import { frameBox, paperSize, titleBlockBox } from '../model/sheet.ts';
-import { symbolOf } from '../symbols/library.ts';
+import { innerText, symbolFor } from '../symbols/library.ts';
 import { placeMissing } from '../layout/place.ts';
 import { routeAll, type Route } from '../layout/route.ts';
 import { getActiveStyle, type Style } from './style.ts';
@@ -21,6 +21,8 @@ export interface RenderOptions {
   notes?: boolean;
   /** Black and white: media differ by dash pattern and code. */
   mono?: boolean;
+  /** Editor only: dark paper (light ink). Never in exports. */
+  dark?: boolean;
   highlight?: Record<string, Highlight>;
 }
 
@@ -50,10 +52,14 @@ const HL_COLOR: Record<Highlight, string> = {
 const f = (n: number) => String(r(n));
 
 export function renderSchema(input: Schema, opts: RenderOptions = {}): RenderResult {
-  const base = opts.style ?? getActiveStyle();
+  const base0 = opts.style ?? getActiveStyle();
+  const base = opts.dark ? darkPaper(base0) : base0;
   // Black and white: device frames and IDs in ink as well.
-  const style = opts.mono ? { ...base, colors: { ...base.colors, unit: base.colors.ink, label: base.colors.ink } } : base;
+  const style = opts.mono
+    ? { ...base, colors: { ...base.colors, unit: base.colors.ink, label: base.colors.ink } }
+    : base;
   const s = placeMissing(input, style);
+  const show = s.sheet.show ?? { ids: true, media: true, values: true };
   const [W, H] = paperSize(s.sheet);
   const { routes, failed } = routeAll(s);
   const ink = style.colors.ink;
@@ -100,7 +106,7 @@ export function renderSchema(input: Schema, opts: RenderOptions = {}): RenderRes
 
   // Component markup first: group frames need the label extents.
   const cmpMarkup = new Map<string, string>();
-  for (const c of s.components) if (c.pos) cmpMarkup.set(c.id, componentGroup(c, style, textBoxes));
+  for (const c of s.components) if (c.pos) cmpMarkup.set(c.id, componentGroup(c, style, textBoxes, show, !!opts.mono));
 
   // Group frames: around members and their labels, with the group name above the content.
   for (const gr of s.groups) {
@@ -133,9 +139,9 @@ export function renderSchema(input: Schema, opts: RenderOptions = {}): RenderRes
 
   // Sensor stem tips: flow arrows keep clear of them.
   const stems: Vec[] = s.components
-    .filter((c) => c.pos && symbolOf(c.type).obstacle)
+    .filter((c) => c.pos && symbolFor(c).obstacle)
     .map((c) => {
-      const d = symbolOf(c.type);
+      const d = symbolFor(c);
       return localToSheet(d, c, [d.size[0] / 2, d.size[1]]);
     });
 
@@ -152,13 +158,11 @@ export function renderSchema(input: Schema, opts: RenderOptions = {}): RenderRes
     const color = opts.mono ? ink : (style.colors.media[con.medium] ?? m?.color ?? ink);
     const dash = opts.mono ? m?.dash || '' : signal ? m?.dash || '' : '';
     const d = pathWithCrossings(pts, crossings.get(con.id) ?? [], style.crossings);
-    out.push(
-      `<g class="con" data-id="${esc(con.id)}">` + linePaths(d, con.medium, color, dash, style, !!opts.mono),
-    );
+    out.push(`<g class="con" data-id="${esc(con.id)}">` + linePaths(d, con.medium, color, dash, style, !!opts.mono));
     if (!signal) {
       const seg = longestSegment(pts);
       if (seg && seg.len >= 15) out.push(arrowAvoiding(seg.a, seg.b, color, stems));
-      if (seg && startsMediumRun(s, con.id) && m) {
+      if (seg && show.media && startsMediumRun(s, con.id) && m) {
         const horiz = Math.abs(seg.a[1] - seg.b[1]) < 1e-6;
         const size = style.font.small;
         const tw = textWidth(m.code, size, 600);
@@ -228,18 +232,69 @@ function titleBlockStyle(_style: Style): string {
   return '';
 }
 
-function componentGroup(c: Component, style: Style, textBoxes: RenderResult['textBoxes']): string {
-  const def = symbolOf(c.type);
+function componentGroup(
+  c: Component,
+  style: Style,
+  textBoxes: RenderResult['textBoxes'],
+  show: SheetShow,
+  mono: boolean,
+): string {
+  const def = symbolFor(c);
   const ink = style.colors.ink;
   return (
-    `<g class="cmp" data-id="${esc(c.id)}"><g transform="${symbolTransform(def, c)}" fill="none" stroke="${ink}" color="${ink}" stroke-width="${style.stroke.symbol}" font-family="${esc(style.font.family)}">${def.svg}</g>` +
-    componentText(c, style, textBoxes) +
+    `<g class="cmp" data-id="${esc(c.id)}"><g transform="${symbolTransform(def, c)}" fill="none" stroke="${ink}" color="${ink}" stroke-width="${style.stroke.symbol}" font-family="${esc(style.font.family)}">${mediaColors(def.svg, style, mono)}</g>` +
+    symbolInnerText(c, style) +
+    componentText(c, style, textBoxes, show) +
     '</g>'
   );
 }
 
-function componentText(c: Component, style: Style, boxes: RenderResult['textBoxes']): string {
-  const def = symbolOf(c.type);
+/** Medium colour placeholders in a drawing ({{water.heat.flow}}) → the style's colour (ink in black and white). */
+function mediaColors(svg: string, style: Style, mono: boolean): string {
+  if (!svg.includes('{{')) return svg;
+  return svg.replace(/\{\{([a-z.-]+)\}\}/g, (_, id: string) =>
+    mono ? style.colors.ink : (style.colors.media[id] ?? medium(id)?.color ?? style.colors.ink),
+  );
+}
+
+/** Text inside the symbol (filter class, sensor letter …), upright also on turned symbols. */
+function symbolInnerText(c: Component, style: Style): string {
+  const def = symbolFor(c);
+  const t = def.text;
+  const text = innerText(c);
+  if (!t || !text) return '';
+  const at = localToSheet(def, c, t.at);
+  let align = t.align ?? 'middle';
+  // A centred text shrinks to fit the symbol's width (down to 60 %).
+  let size = t.size;
+  if (align === 'middle') {
+    const room = Math.min(t.at[0], def.size[0] - t.at[0]) * 2 * 0.92;
+    const w = textWidth(text, size);
+    if (room > 0 && w > room) size = Math.max(t.size * 0.6, (t.size * room) / w);
+  }
+  if (c.flip && c.rot % 180 === 0 && align !== 'middle') align = align === 'start' ? 'end' : 'start';
+  return `<text class="inner" x="${f(at[0])}" y="${f(at[1] + baseline(size) / 2)}" font-size="${f(size)}"${align !== 'start' ? ` text-anchor="${align}"` : ''} fill="${style.colors.ink}" stroke="none">${esc(text)}</text>`;
+}
+
+/** Dark paper for the editor: light ink on a dark sheet; media and highlight colours stay. */
+export function darkPaper(st: Style): Style {
+  return {
+    ...st,
+    colors: {
+      ...st.colors,
+      ink: '#d8dce0',
+      paper: '#1d1c19',
+      grid: '#34322f',
+      frame: '#9e9b93',
+      group: '#9e9b93',
+      label: '#7fb6e6',
+      unit: '#e07ac4',
+    },
+  };
+}
+
+function componentText(c: Component, style: Style, boxes: RenderResult['textBoxes'], show: SheetShow): string {
+  const def = symbolFor(c);
   const size = style.font.label;
   // A symbol turned by 180° keeps its label on the same side horizontally (anchor mirrored vertically only).
   const anchor =
@@ -260,7 +315,7 @@ function componentText(c: Component, style: Style, boxes: RenderResult['textBoxe
     }
   }
   const lines: { text: string; weight: 400 | 600 }[] = [];
-  if (c.label) lines.push({ text: c.label, weight: 600 });
+  if (c.label && show.ids) lines.push({ text: c.label, weight: 600 });
   const out: string[] = [];
   const put = (text: string, x: number, yy: number, weight: 400 | 600, a: typeof align) => {
     const w = textWidth(text, size, weight);
@@ -277,7 +332,7 @@ function componentText(c: Component, style: Style, boxes: RenderResult['textBoxe
     .filter((k) => !def.props.includes(k))
     .map((k) => c.props[k]!)
     .filter(Boolean);
-  const all = [...values, ...extra];
+  const all = show.values ? [...values, ...extra] : [];
   const lh = size * 1.25;
   if (align === 'middle' || c.type === 'junction') {
     let yy = box.y + box.h + 1 + baseline(size);

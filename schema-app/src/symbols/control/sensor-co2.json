@@ -1,6 +1,20 @@
-{ "id": "control.sensor.co2", "name": "CO₂-Fühler", "category": "control", "norm": "SN EN 12792 T6/1", "checked": true,
-  "size": [10, 15], "prefix": "QT",
-  "ports": [ { "id": "sig", "at": [10, 5], "dir": "E", "media": ["signal"], "optional": true } ],
-  "obstacle": [0, 0, 10, 9.5],
-  "labelAnchor": [6, -1.5], "labelAlign": "start", "props": [], "keywords": ["Fühler", "Sensor", "Messfühler", "CO₂"],
-  "svg": "<circle cx='5' cy='5' r='4'/><path d='M5 9V15'/><text x='5' y='5.9' font-size='2.5' text-anchor='middle' fill='currentColor' stroke='none'>CO₂</text>" }
+{
+  "id": "control.sensor.co2",
+  "name": "CO₂-Fühler",
+  "category": "control",
+  "norm": "",
+  "checked": false,
+  "hidden": true,
+  "size": [5,7.5],
+  "prefix": "QT",
+  "ports": [
+    { "id": "sig", "at": [5,2.5], "dir": "E", "media": ["signal"], "optional": true }
+  ],
+  "obstacle": [0,0,5,4.5],
+  "labelAnchor": [4.5,-0.5],
+  "labelAlign": "start",
+  "props": [],
+  "keywords": ["Fühler"],
+  "text": { "at": [2.5,2.5], "size": 1.1, "align": "middle", "value": "CO₂" },
+  "svg": "<circle cx='2.5' cy='2.5' r='1.75'/><path d='M2.5 4.25V7.5'/>"
+}

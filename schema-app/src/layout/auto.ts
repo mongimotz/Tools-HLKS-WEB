@@ -22,7 +22,7 @@ import {
 } from '../model/geometry.ts';
 import { drawingArea } from '../model/sheet.ts';
 import { medium } from '../model/media.ts';
-import { symbolOf } from '../symbols/library.ts';
+import { symbolFor, symbolOf } from '../symbols/library.ts';
 import { DEFAULT_STYLE, type Style } from '../render/style.ts';
 import { placeMissing } from './place.ts';
 
@@ -55,7 +55,7 @@ export interface LayoutResult {
 }
 
 const FLOW_DIR: Record<Dir, Dir> = { W: 'E', E: 'W', N: 'S', S: 'N' }; // in-port facing W → flow towards E
-const IS_SENSOR = (c: Component) => symbolOf(c.type).category === 'control' && !!symbolOf(c.type).obstacle;
+const IS_SENSOR = (c: Component) => symbolFor(c).category === 'control' && !!symbolFor(c).obstacle;
 
 function portIndex(s: Schema) {
   const m = new Map<string, { con: string; other: [string, string]; role: 'from' | 'to' }>();
@@ -70,9 +70,9 @@ function nodesOf(c: Component, s: Schema): Node[] {
   if (c.type === 'junction') {
     return [];
   }
-  const pairs = flowPairs(c.type);
+  const pairs = flowPairs(c);
   if (pairs.length) return pairs.map(([a, b]) => ({ id: c.id, inPort: a, outPort: b }));
-  const def = symbolOf(c.type);
+  const def = symbolFor(c);
   const ports = def.ports.filter(
     (p) => p.media.some((m) => m.startsWith('air') || m.startsWith('water')) || p.media.includes('*'),
   );
@@ -188,7 +188,7 @@ export function strands(s: Schema): Strand[] {
 }
 
 function orientFor(c: Component, n: Node, flow: Dir): { rot: Rotation; flip: boolean } {
-  const def = symbolOf(c.type);
+  const def = symbolFor(c);
   const port = def.ports.find((p) => p.id === (n.inPort ?? n.outPort));
   if (!port) return { rot: 0, flip: false };
   // The in-port must face against the flow; an out-port only end faces along the flow.
@@ -267,7 +267,7 @@ function layoutOnce(input: Schema, gap: number, opts: LayoutOptions, style: Styl
     if (!con || !isReturn(con.medium)) return null;
     const c = byId.get(con.to[0]);
     if (!c?.pos || c.type === 'junction') return null;
-    const pair = flowPairs(c.type).find(([i]) => i === con.to[1]);
+    const pair = flowPairs(c).find(([i]) => i === con.to[1]);
     const out = pair && portPlace(c, pair[1]);
     return out ? { c, out: out.at } : null;
   };
@@ -303,7 +303,7 @@ function layoutOnce(input: Schema, gap: number, opts: LayoutOptions, style: Styl
     const along = (c: Component) => extentAlong(c, flow);
     const isHanging = (n: Node) => {
       const c = byId.get(n.id)!;
-      const def = symbolOf(c.type);
+      const def = symbolFor(c);
       if (def.ports.length !== 1) return false;
       return horizontal(def.ports[0]!.dir) !== H;
     };
@@ -320,7 +320,7 @@ function layoutOnce(input: Schema, gap: number, opts: LayoutOptions, style: Styl
         // (outside the space between supply and extract), right of a downward column, left of an upward one.
         const side: Dir = ({ E: 'S', W: 'N', S: 'E', N: 'W' } as const)[flow];
         const want = ({ S: 'N', N: 'S', E: 'W', W: 'E' } as const)[side];
-        const natural = symbolOf(c.type).ports[0]!.dir;
+        const natural = symbolFor(c).ports[0]!.dir;
         c.flip = false;
         c.rot = ([0, 90, 180, 270] as Rotation[]).find((r) => rotateDir(natural, r, false) === want) ?? 0;
         // Left ↔ right only: mirror instead of turning upside down (e.g. a tap keeps its spout down).
@@ -334,8 +334,8 @@ function layoutOnce(input: Schema, gap: number, opts: LayoutOptions, style: Styl
         center = H ? [alongPos, rowCoord + sv[1] * d] : [rowCoord + sv[0] * d, alongPos];
       } else {
         // The flow port sits on the row line (the outlet for generators with both ports on one side).
-        const outSide = n.outPort && symbolOf(c.type).ports.find((p) => p.id === n.outPort)?.dir;
-        const inSide = n.inPort && symbolOf(c.type).ports.find((p) => p.id === n.inPort)?.dir;
+        const outSide = n.outPort && symbolFor(c).ports.find((p) => p.id === n.outPort)?.dir;
+        const inSide = n.inPort && symbolFor(c).ports.find((p) => p.id === n.inPort)?.dir;
         const pid = inSide && inSide === outSide ? n.outPort : (n.inPort ?? n.outPort);
         const p = c.type === 'junction' || !pid ? null : portPlace({ ...c, pos: [0, 0] }, pid);
         const off = p ? (H ? p.at[1] : p.at[0]) : 0;
@@ -486,8 +486,8 @@ function layoutOnce(input: Schema, gap: number, opts: LayoutOptions, style: Styl
     for (const n of [last, first]) {
       if (!n) continue;
       const c = flowOf(n);
-      if (!c || !placedNow.has(c.id) || symbolOf(c.type).ports.length !== 1) continue;
-      const p = portPlace(c, symbolOf(c.type).ports[0]!.id)!;
+      if (!c || !placedNow.has(c.id) || symbolFor(c).ports.length !== 1) continue;
+      const p = portPlace(c, symbolFor(c).ports[0]!.id)!;
       if (p.dir === 'N' || p.dir === 'S') {
         // Only terminals right of their neighbour (right-hand end of a row).
         const con = input.connections.find((x) => x.from[0] === c.id || x.to[0] === c.id);
@@ -512,7 +512,7 @@ function layoutOnce(input: Schema, gap: number, opts: LayoutOptions, style: Styl
     if (!a?.pos || !b?.pos) continue;
     const pa = portPlace(a, con.from[1])!,
       pb = portPlace(b, con.to[1])!;
-    const def = symbolOf(sc.type);
+    const def = symbolFor(sc);
     sc.rot = 0;
     sc.flip = false;
     sc.pos = [snap((pa.at[0] + pb.at[0]) / 2, g), snap(pa.at[1] - def.size[1] / 2, g)];
@@ -524,8 +524,8 @@ function layoutOnce(input: Schema, gap: number, opts: LayoutOptions, style: Styl
 }
 
 function preferRot180(c: Component, s: Schema, byId: Map<string, Component>, rowY: number) {
-  const def = symbolOf(c.type);
-  const flowPorts = new Set(flowPairs(c.type).flat());
+  const def = symbolFor(c);
+  const flowPorts = new Set(flowPairs(c).flat());
   for (const p of def.ports) {
     if (flowPorts.has(p.id)) continue;
     const con = s.connections.find(
@@ -546,7 +546,7 @@ function preferRot180(c: Component, s: Schema, byId: Map<string, Component>, row
 function sideLink(st: Strand, s: Schema, byId: Map<string, Component>): { k: number; partner: Component } | null {
   for (let k = 0; k < st.nodes.length; k++) {
     const id = st.nodes[k]!.id;
-    const flowPorts = new Set(flowPairs(byId.get(id)!.type).flat());
+    const flowPorts = new Set(flowPairs(byId.get(id)!).flat());
     for (const con of s.connections) {
       const mine = con.from[0] === id ? con.from : con.to[0] === id ? con.to : null;
       if (!mine || flowPorts.has(mine[1])) continue;
@@ -563,7 +563,7 @@ function sensorsOnDucts(s: Schema): Map<string, string> {
   const byId = new Map(s.components.map((c) => [c.id, c]));
   for (const sc of s.components) {
     if (!IS_SENSOR(sc) || !sc.pos) continue;
-    const def = symbolOf(sc.type);
+    const def = symbolFor(sc);
     const tip: Vec = [sc.pos[0], sc.pos[1] + def.size[1] / 2];
     for (const con of s.connections) {
       if (medium(con.medium)?.kind === 'signal') continue;

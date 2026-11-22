@@ -21,12 +21,13 @@ JSON, 2-space indent, stable key order (one component per line). Coordinates are
 |---|---|
 | `format`, `version` | `"hlks-schema"`, `1` |
 | `meta` | `title`, `project`, `author`, `date`, `revision` (title block) |
-| `sheet` | `size` A4/A3/A2/A1, `orientation`, `grid`, `titleBlock`, `legend` |
-| `components[]` | `id`, `type` (symbol id), `label`, `props` (strings), `pos` (symbol **centre**, `null` = place automatically), `rot` 0/90/180/270 (clockwise), `flip` (mirror left/right), `pinned` |
+| `sheet` | `size` A4/A3/A2/A1, `orientation`, `grid`, `titleBlock`, `legend`, `show` `{ids, media, values}` (what the drawing shows) |
+| `components[]` | `id`, `type` (symbol id), `variant` (Ausführung, omitted = the first), `text` (text inside the symbol, omitted = the variant's default), `label`, `props` (strings), `pos` (symbol **centre**, `null` = place automatically), `rot` 0/90/180/270 (clockwise), `flip` (mirror left/right), `pinned` |
 | `connections[]` | `id`, `from` `[componentId, portId]`, `to`, `medium`, `waypoints` (corner points; empty = automatic route), `pinned`. **from → to is the flow direction.** |
 | `groups[]` | `id`, `label`, `members`, `frame` (dashed device frame, e.g. "Monoblock") |
 | `texts[]` | `id`, `pos` (top left), `text`, `size` (mm) |
 | `notes[]` | `id`, `anchor` `{component}` / `{connection}` / `{pos}`, `text`, `status` open/done, `created`, `reply` |
+| `symbols[]` | own symbols (`user.*`) the file uses, written on every save from the browser library; opening the file makes them known (a local symbol of the same ID wins). Drawings are sanitised (plain shapes and text only). |
 
 Branches always go through a `junction` component (ports `n`, `e`, `s`, `w`). A port takes one connection.
 
@@ -34,7 +35,7 @@ Media: `air.outdoor` AUL, `air.supply` ZUL, `air.extract` ABL, `air.exhaust` FOL
 
 Hydraulics (`water.*` symbols, unchecked against the norms): build a circuit with `add_chain` and `medium`: the flow (Vorlauf) as `strand: "supply"` from the generator's `out`, the return as `strand: "extract"` with a `*.return` medium, then `connect` the last item to the generator's `in`. The layout draws the return as its own row below, right to left, ending at the generator. Example: `examples/heizgruppe.schema` (`scripts/make-examples.ts`).
 
-Symbols: `examples/symbol-catalog.schema` shows all of them; definitions in `src/symbols/<category>/*.json` (ports, props, prefix for new IDs). WRG symbols (`air.hrc.plate`, `air.hrc.rotor`) have two sides: ports `a.in`/`a.out` (supply, bottom) and `b.in`/`b.out` (extract, top).
+Symbols: `examples/symbol-catalog.schema` shows all of them with every variant; definitions in `src/symbols/<category>/*.json` (ports, props, prefix for new IDs, `variants`, `text`). A variant may change the drawing, size, ports, prefix and inner text (e.g. `air.damper` `gleich`/`gegen`/`einstell`/`jalousie`, `air.heater` `basis`/`beimisch`/`drossel`, `control.sensor` `t`/`rf`/`x`/`p`/`n`/`v`/`q`). Hidden symbols (`hidden: true`, e.g. `control.sensor.t`, `air.cav`) still draw older files but are not offered. WRG symbols (`air.hrc.plate`, `air.hrc.rotor`) have two sides: ports `a.in`/`a.out` (supply, bottom) and `b.in`/`b.out` (extract, top).
 
 ## Operations (CLI `ops` and assistant)
 
@@ -42,11 +43,12 @@ A list (or `{ "ops": [...] }`); the first invalid op aborts everything. Ports ma
 
 | op | fields |
 |---|---|
-| `add_component` | `type`, `id?`, `label?`, `props?`, `pos?` (given pos ⇒ pinned), `rot?`, `flip?` |
+| `add_component` | `type`, `variant?`, `text?`, `id?`, `label?`, `props?`, `pos?` (given pos ⇒ pinned), `rot?`, `flip?` |
 | `remove` | `id` (component with its connections, connection, group, text or note) |
 | `connect` / `disconnect` | `from`, `to`, `medium`, `id?` / `id` |
 | `insert_into_connection` | `connection`, new `type` (+ `id?`, `props?`) or existing `id`, `in`/`out` ports (default in/out) |
 | `set_props` (`replace?`), `set_label`, `set_medium` | `id` + value |
+| `set_variant` | `id`, `variant?`, `text?` (lines on ports the new variant lacks are removed) |
 | `move` | `id`, `pos`, `force?` |
 | `add_chain` | `strand` supply/extract, `medium?` (all lines, e.g. `water.heat.flow`), `items` (`{type, id?, props?, then?}` or existing `"WRG01.a"`), `after?` (port to start from). Supply: AUL → ZUL, left → right, ZUL from the first treatment (WRG, heater, cooler, fan). Extract: ABL → FOL, right → left above, FOL after the WRG (else after the fan). `then` sets the medium of the line leaving an item. Sensors (`control.sensor.*`) in a chain sit on the duct after the previous item. |
 | `group` | `label`, `members`, `id?`, `frame?` |
@@ -71,5 +73,7 @@ The editor's assistant (OpenRouter, user's own key) uses the same operations thr
 - `npm test` (Vitest: model, ops, layout, symbols, examples, PNG references in `tests/visual/`), `npm run test:e2e` (Playwright), `npm run lint`, `npm run build`.
 - PNG references change only deliberately: `UPDATE_VISUAL=1 npx vitest run tests/unit/visual.test.ts`, and say so in the commit message.
 - Examples are generated: `npx tsx scripts/make-examples.ts`, `npx tsx scripts/make-catalog.ts`. New symbols: add the JSON, run `npm run symbols`.
-- Symbols: drawn from scratch in SVG following the norm descriptions; size multiple of 5 mm, ports on the 2.5 mm grid and on the box edge, no stroke widths or colours (`currentColor` only). Norm PDFs live only in `_local/normen/` (git-ignored). Never copy norm graphics or text into the repo.
+- Ventilation (`air/`) and MSR (`control/`) symbols are generated by `node scripts/make-symbols.mjs` after the owner's sample sheet (2026-11-22, one row = one symbol, the row's drawings = its variants). Change them there, not in the JSON, then `npm run symbols`.
+- Symbols: drawn from scratch in SVG; size and ports on the 2.5 mm grid, ports on the box edge, no stroke widths or colours (`currentColor`; medium colours only as placeholders `stroke='{{water.heat.flow}}'`, black in black and white). Drawings beyond the size box declare `bounds`; editable text inside a symbol is `text` (drawn upright, shrinks to fit). Norm PDFs live only in `_local/normen/` (git-ignored). Never copy norm graphics or text into the repo.
+- Editor: document tabs (`src/editor/tabs.ts` parks inactive tabs with history, view, file handle and live-sync state), symbol editor tab (`SymbolEditor.tsx`, own symbols in `localStorage` `hlks-schema:symbols`), clipboard via the system clipboard (`hlks-schema-clip` JSON), dark paper per browser (`hlks-schema:paper-dark`, never in exports), page theme shared with the site (`hlks-tools:theme`).
 - No company data (logos, title blocks, example schemas) in the repo.

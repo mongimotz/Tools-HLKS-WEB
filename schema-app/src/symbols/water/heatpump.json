@@ -2,6 +2,7 @@
   "id": "water.heatpump",
   "name": "Wärmepumpe",
   "category": "water",
+  "disciplines": ["heat"],
   "norm": "",
   "checked": false,
   "size": [

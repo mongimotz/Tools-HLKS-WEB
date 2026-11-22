@@ -1,0 +1,48 @@
+{
+  "id": "air.arrow.out",
+  "name": "Luftauslass (Pfeil)",
+  "category": "air",
+  "norm": "",
+  "checked": false,
+  "size": [15,5],
+  "prefix": "LA",
+  "ports": [
+    { "id": "in", "at": [0,2.5], "dir": "W", "media": ["air.*"] }
+  ],
+  "labelAnchor": [7.5,-1.5],
+  "props": ["V"],
+  "keywords": ["Pfeil Auslass","Auslass","Zuluft","Raum"],
+  "svg": "<path d='M0 2.5H11.25'/><path d='M15 2.5L11.25 3.75L11.25 1.25Z'/>",
+  "variants": [
+    {
+      "id": "einzel",
+      "name": "Pfeil Auslass einzel",
+      "svg": "<path d='M0 2.5H11.25'/><path d='M15 2.5L11.25 3.75L11.25 1.25Z'/>"
+    },
+    {
+      "id": "einzel-voll",
+      "name": "Pfeil Auslass einzel gefüllt",
+      "svg": "<path d='M0 2.5H11.25'/><path d='M15 2.5L11.25 3.75L11.25 1.25Z' fill='currentColor'/>"
+    },
+    {
+      "id": "drei",
+      "name": "Pfeil Auslass dreifach",
+      "size": [15,20],
+      "ports": [
+        { "id": "in", "at": [0,10], "dir": "W", "media": ["air.*"] }
+      ],
+      "labelAnchor": [7.5,-1.5],
+      "svg": "<path d='M0 10L10.575 3.733'/><path d='M13.5 2L11.161 4.723L9.989 2.744Z'/><path d='M0 10L11.6 10'/><path d='M15 10L11.6 11.15L11.6 8.85Z'/><path d='M0 10L10.575 16.267'/><path d='M13.5 18L9.989 17.256L11.161 15.277Z'/>"
+    },
+    {
+      "id": "drei-voll",
+      "name": "Pfeil Auslass dreifach gefüllt",
+      "size": [15,20],
+      "ports": [
+        { "id": "in", "at": [0,10], "dir": "W", "media": ["air.*"] }
+      ],
+      "labelAnchor": [7.5,-1.5],
+      "svg": "<path d='M0 10L10.575 3.733'/><path d='M13.5 2L11.161 4.723L9.989 2.744Z' fill='currentColor'/><path d='M0 10L11.6 10'/><path d='M15 10L11.6 11.15L11.6 8.85Z' fill='currentColor'/><path d='M0 10L10.575 16.267'/><path d='M13.5 18L9.989 17.256L11.161 15.277Z' fill='currentColor'/>"
+    }
+  ]
+}

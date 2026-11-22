@@ -1,0 +1,70 @@
+{
+  "id": "control.sensor",
+  "name": "Fühler",
+  "category": "control",
+  "norm": "",
+  "checked": false,
+  "size": [5,7.5],
+  "prefix": "TT",
+  "ports": [
+    { "id": "sig", "at": [5,2.5], "dir": "E", "media": ["signal"], "optional": true }
+  ],
+  "obstacle": [0,0,5,4.5],
+  "labelAnchor": [4.5,-0.5],
+  "labelAlign": "start",
+  "props": [],
+  "keywords": ["Fühler","Sensor","Messfühler"],
+  "text": { "at": [2.5,2.5], "size": 1.6, "align": "middle", "value": "T" },
+  "svg": "<circle cx='2.5' cy='2.5' r='1.75'/><path d='M2.5 4.25V7.5'/>",
+  "variants": [
+    {
+      "id": "t",
+      "name": "Temperaturfühler",
+      "prefix": "TT",
+      "svg": "<circle cx='2.5' cy='2.5' r='1.75'/><path d='M2.5 4.25V7.5'/>",
+      "text": { "at": [2.5,2.5], "size": 1.6, "align": "middle", "value": "T" }
+    },
+    {
+      "id": "rf",
+      "name": "Feuchtefühler (relativ)",
+      "prefix": "MT",
+      "svg": "<circle cx='2.5' cy='2.5' r='1.75'/><path d='M2.5 4.25V7.5'/>",
+      "text": { "at": [2.5,2.5], "size": 1.2, "align": "middle", "value": "r.F." }
+    },
+    {
+      "id": "x",
+      "name": "Feuchtefühler (absolut)",
+      "prefix": "MT",
+      "svg": "<circle cx='2.5' cy='2.5' r='1.75'/><path d='M2.5 4.25V7.5'/>",
+      "text": { "at": [2.5,2.5], "size": 1.6, "align": "middle", "value": "X" }
+    },
+    {
+      "id": "p",
+      "name": "Druckfühler",
+      "prefix": "PT",
+      "svg": "<circle cx='2.5' cy='2.5' r='1.75'/><path d='M2.5 4.25V7.5'/>",
+      "text": { "at": [2.5,2.5], "size": 1.6, "align": "middle", "value": "p" }
+    },
+    {
+      "id": "n",
+      "name": "Drehzahlmesser",
+      "prefix": "ST",
+      "svg": "<circle cx='2.5' cy='2.5' r='1.75'/><path d='M2.5 4.25V7.5'/>",
+      "text": { "at": [2.5,2.5], "size": 1.6, "align": "middle", "value": "n" }
+    },
+    {
+      "id": "v",
+      "name": "Luftgeschwindigkeitsfühler",
+      "prefix": "FT",
+      "svg": "<circle cx='2.5' cy='2.5' r='1.75'/><path d='M2.5 4.25V7.5'/>",
+      "text": { "at": [2.5,2.5], "size": 1.6, "align": "middle", "value": "V" }
+    },
+    {
+      "id": "q",
+      "name": "Luftqualitätsfühler",
+      "prefix": "QT",
+      "svg": "<circle cx='2.5' cy='2.5' r='1.75'/><path d='M2.5 4.25V7.5'/>",
+      "text": { "at": [2.5,2.5], "size": 1.6, "align": "middle", "value": "Q" }
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "id": "air.damper.single",
+  "name": "Absperr-, Drossel-, Rückschlagklappe",
+  "category": "air",
+  "norm": "",
+  "checked": false,
+  "size": [5,10],
+  "prefix": "KL",
+  "ports": [
+    { "id": "in", "at": [0,5], "dir": "W", "media": ["air.*"] },
+    { "id": "out", "at": [5,5], "dir": "E", "media": ["air.*"] }
+  ],
+  "labelAnchor": [2.5,-1.5],
+  "props": ["Funktion"],
+  "keywords": ["Absperrklappe","Drosselklappe","Rückschlagklappe","DLK"],
+  "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0 10L5 0'/><circle cx='2.5' cy='5' r='0.45' fill='currentColor' stroke='none'/>",
+  "variants": [
+    {
+      "id": "absperr",
+      "name": "Absperrklappe",
+      "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0 10L5 0'/><circle cx='2.5' cy='5' r='0.45' fill='currentColor' stroke='none'/>"
+    },
+    {
+      "id": "drossel",
+      "name": "Drosselklappe",
+      "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0.3 7.3L4.7 2.8'/><circle cx='2.5' cy='5.05' r='0.3' fill='currentColor' stroke='none'/>",
+      "text": { "at": [0.4,1.1], "size": 1.2, "align": "start", "value": "DLK" }
+    },
+    {
+      "id": "rueck",
+      "name": "Rückschlagklappe",
+      "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0 10L5 0'/><circle cx='0' cy='10' r='0.4' fill='currentColor' stroke='none'/>"
+    }
+  ]
+}

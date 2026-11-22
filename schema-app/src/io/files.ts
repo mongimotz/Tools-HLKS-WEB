@@ -43,6 +43,41 @@ export async function readSchemaFile(file: File): Promise<Schema> {
 }
 
 const DRAFT = 'hlks-schema:draft';
+const DRAFTS = 'hlks-schema:drafts';
+
+/** Browser draft of all open schema tabs (this device only). */
+export function saveDrafts(list: { doc: Schema; fileName: string }[], active: number) {
+  try {
+    localStorage.setItem(
+      DRAFTS,
+      JSON.stringify({ active, tabs: list.map((t) => ({ fileName: t.fileName, text: serialize(t.doc) })) }),
+    );
+  } catch {
+    /* storage full or blocked: no draft */
+  }
+}
+
+export function loadDrafts(): { tabs: { doc: Schema; fileName: string }[]; active: number } | null {
+  try {
+    const raw = localStorage.getItem(DRAFTS);
+    if (!raw) {
+      const one = loadDraft();
+      return one ? { tabs: [one], active: 0 } : null;
+    }
+    const d = JSON.parse(raw) as { active: number; tabs: { fileName: string; text: string }[] };
+    const tabs: { doc: Schema; fileName: string }[] = [];
+    for (const t of d.tabs) {
+      try {
+        tabs.push({ doc: parseText(t.text), fileName: t.fileName });
+      } catch {
+        /* a broken tab is skipped */
+      }
+    }
+    return tabs.length ? { tabs, active: d.active } : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Browser draft (this device only), so a reload does not lose work. */
 export function saveDraft(doc: Schema, fileName: string) {

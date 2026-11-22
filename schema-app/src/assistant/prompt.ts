@@ -7,9 +7,12 @@ import { allSymbols } from '../symbols/library.ts';
 
 export function symbolLines(): string {
   return allSymbols()
+    .filter((s) => !s.hidden)
     .map((s) => {
       const ports = s.ports.map((p) => `${p.id}[${p.media.join('|')}]`).join(' ');
-      return `${s.id} | ${s.name} | prefix ${s.prefix} | ports ${ports}${s.props.length ? ` | props ${s.props.join(', ')}` : ''}`;
+      const variants = s.variants?.length ? ` | variant ${s.variants.map((v) => `${v.id}=${v.name}`).join(', ')}` : '';
+      const text = s.text ? ` | text "${s.text.value}"` : '';
+      return `${s.id} | ${s.name} | prefix ${s.prefix} | ports ${ports}${s.props.length ? ` | props ${s.props.join(', ')}` : ''}${variants}${text}`;
     })
     .join('\n');
 }
@@ -24,7 +27,7 @@ export function compactSchema(s: Schema): string {
       .map(([k, v]) => `${k}=${v}`)
       .join(', ');
     out.push(
-      `- ${c.id} ${c.type}${c.label !== c.id ? ` "${c.label}"` : ''}${props ? ` {${props}}` : ''}` +
+      `- ${c.id} ${c.type}${c.variant ? `#${c.variant}` : ''}${c.text !== undefined ? ` text "${c.text}"` : ''}${c.label !== c.id ? ` "${c.label}"` : ''}${props ? ` {${props}}` : ''}` +
         (c.pinned && c.pos ? ` pinned pos=[${c.pos.join(',')}] rot=${c.rot}${c.flip ? ' flip' : ''}` : ''),
     );
   }
@@ -58,6 +61,7 @@ Du änderst es nur mit dem Werkzeug apply_operations. Schreibe Bezeichnungen und
 Regeln:
 - Die Zuluft läuft unten von links (AUL) nach rechts (ZUL), die Abluft oben von rechts (ABL) nach links (FOL).
 - Baue Anlagen mit add_chain (strand supply/extract); das Layout setzt die Positionen. Gib keine Positionen an, ausser du wirst darum gebeten.
+- Ausführungen (variant) wählst du bei add_component / add_chain (Feld variant) oder später mit set_variant; text setzt den Text im Symbol (z. B. Filterklasse, Fühlerbuchstabe).
 - Komponenten mit "pinned" nicht verschieben (move nur mit force, wenn ausdrücklich verlangt).
 - from → to ist die Fliessrichtung. Abzweigungen gehen immer über eine Komponente vom Typ junction (Anschlüsse n, e, s, w). Ein Anschluss nimmt eine Verbindung.
 - WRG-Symbole (air.hrc.plate, air.hrc.rotor) haben zwei Seiten: a.in/a.out (Zuluft, unten), b.in/b.out (Abluft, oben). In einer Kette: "WRG01.a" bzw. "WRG01.b" für eine bestehende WRG.

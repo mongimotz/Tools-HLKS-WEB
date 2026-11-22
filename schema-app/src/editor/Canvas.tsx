@@ -7,9 +7,10 @@ import type { NoteAnchor, Schema, Vec } from '../model/types.ts';
 import { componentBox, portPlace, snap, type Box } from '../model/geometry.ts';
 import { paperSize } from '../model/sheet.ts';
 import { PIN_HEAD, renderSchema, type Highlight } from '../render/render.ts';
-import { symbolOf } from '../symbols/library.ts';
+import { symbolFor } from '../symbols/library.ts';
 import { validate } from '../model/validate.ts';
 import { checkDrawing } from '../layout/check.ts';
+import { routeAll } from '../layout/route.ts';
 import { shownDoc, useEditor, type View } from './store.ts';
 import {
   addComponentAt,
@@ -18,19 +19,27 @@ import {
   inRect,
   isSignal,
   moveSelection,
-  placeOnSegment,
+  insertable,
+  placeSensorOn,
   portAt,
   portBusy,
   segmentAt,
 } from './actions.ts';
-import { DND_TYPE } from './Palette.tsx';
+import { DND_TYPE, paletteDrag, parseDnd } from './Palette.tsx';
+import { insertIntoLine } from './insert.ts';
+
+/** Last pointer position over the sheet (sheet mm), for paste and new texts. */
+export const pointer: { at: Vec | null } = { at: null };
 
 type Drag =
-  | { kind: 'move'; start: Vec; ids: string[]; base: Schema; moved: boolean }
+  | { kind: 'move'; start: Vec; ids: string[]; base: Schema; moved: boolean; into?: Target | null }
   | { kind: 'connect'; from: [string, string]; at: Vec; cur: Vec }
   | { kind: 'segment'; id: string; seg: number; start: Vec; base: Schema; horiz: boolean; moved: boolean }
   | { kind: 'rubber'; start: Vec; cur: Vec; add: boolean }
   | { kind: 'pan'; sx: number; sy: number; view: View };
+
+/** Line segment a symbol would be set into. */
+type Target = { id: string; a: Vec; b: Vec };
 
 export function fitView(doc: Schema, w: number, h: number): View {
   const [W, H] = paperSize(doc.sheet);
@@ -47,6 +56,8 @@ export function Canvas() {
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   // Note being written (note tool): anchor and pin position in sheet mm.
   const [noteDraft, setNoteDraft] = useState<{ anchor: NoteAnchor; at: Vec } | null>(null);
+  // Line under a symbol dragged from the palette.
+  const [dropTarget, setDropTarget] = useState<Target | null>(null);
 
   const highlight = useMemo(() => {
     const h: Record<string, Highlight> = {};
@@ -69,7 +80,10 @@ export function Canvas() {
       .map((c) => ({ id: c.id, box: componentBox(c) }));
   }, [st.proposal]);
   // styleRev: re-render when a style template is loaded.
-  const r = useMemo(() => renderSchema(doc, { grid: true, notes: true, highlight }), [doc, highlight, st.styleRev]);
+  const r = useMemo(
+    () => renderSchema(doc, { grid: true, notes: true, highlight, dark: st.paperDark }),
+    [doc, highlight, st.styleRev, st.paperDark],
+  );
   const inner = useMemo(() => r.svg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>\s*$/, ''), [r.svg]);
   const issues = useMemo(() => (st.preview ? [] : [...validate(st.doc), ...checkDrawing(r)]), [st.doc, st.preview, r]);
   const placed = r.placed;
@@ -134,6 +148,27 @@ export function Canvas() {
   }, []);
 
   const g = doc.sheet.grid;
+  // Snap distance to a line: 2.5 mm, at least 10 screen pixels.
+  const lineTol = Math.max(2.5, 10 / view.zoom);
+
+  // Lines as routed without a moved component (it must not bend the line it is dropped on).
+  const routesWithout = useRef<{ base: Schema; id: string; routes: Map<string, Vec[]> } | null>(null);
+  const routesFor = (exclude?: string, base?: Schema): Map<string, Vec[]> => {
+    if (!exclude || !base) return r.routes;
+    const c = routesWithout.current;
+    if (c && c.base === base && c.id === exclude) return c.routes;
+    const without = { ...base, components: base.components.filter((x) => x.id !== exclude) };
+    const routes = routeAll(without).routes;
+    routesWithout.current = { base, id: exclude, routes };
+    return routes;
+  };
+
+  /** Line a symbol of `type` would go into at p (null: none, or the symbol has no in/out). */
+  const targetAt = (p: Vec, type: string, variant: string, exclude?: string, base?: Schema): Target | null => {
+    if (!insertable(type, variant)) return null;
+    const seg = segmentAt(routesFor(exclude, base), p, lineTol, signalIds);
+    return seg && { id: seg.id, a: seg.a, b: seg.b };
+  };
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.button === 2) return;
@@ -192,6 +227,7 @@ export function Canvas() {
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
+    pointer.at = toSheet(e.clientX, e.clientY);
     if (!drag) return;
     const p = toSheet(e.clientX, e.clientY);
     switch (drag.kind) {
@@ -207,7 +243,14 @@ export function Canvas() {
           dy = snap(p[1] - drag.start[1], g);
         if (!dx && !dy && !drag.moved) return;
         st.setPreview(moveSelection(drag.base, drag.ids, dx, dy));
-        if (!drag.moved) setDrag({ ...drag, moved: true });
+        // A single unconnected component moved onto a line is set into it on release.
+        let into: Target | null = null;
+        if (drag.ids.length === 1) {
+          const c = drag.base.components.find((x) => x.id === drag.ids[0]);
+          const free = c && !drag.base.connections.some((x) => x.from[0] === c.id || x.to[0] === c.id);
+          if (c && free) into = targetAt(p, c.type, c.variant ?? '', c.id, drag.base);
+        }
+        if (!drag.moved || into?.id !== drag.into?.id) setDrag({ ...drag, moved: true, into });
         return;
       }
       case 'segment': {
@@ -252,8 +295,19 @@ export function Canvas() {
     switch (drag.kind) {
       case 'move':
       case 'segment': {
+        if (drag.kind === 'move' && (drag.moved || useEditor.getState().preview) && drag.ids.length === 1) {
+          // Released on a line: set the (unconnected) component into it.
+          const c = drag.base.components.find((x) => x.id === drag.ids[0]);
+          const free = c && !drag.base.connections.some((x) => x.from[0] === c.id || x.to[0] === c.id);
+          const into = c && free ? targetAt(p, c.type, c.variant ?? '', c.id, drag.base) : null;
+          if (c && into) {
+            st.setPreview(null);
+            if (insertIntoLine(drag.base, into.id, into, p, { type: c.type, variant: c.variant, existing: c.id }))
+              return;
+          }
+        }
         const prev = useEditor.getState().preview;
-        if (drag.moved && prev) commit(drag.kind === 'move' ? 'Verschieben' : 'Leitung verlegen', prev);
+        if (prev) commit(drag.kind === 'move' ? 'Verschieben' : 'Leitung verlegen', prev);
         else st.setPreview(null);
         routeCache.current.clear();
         return;
@@ -263,7 +317,7 @@ export function Canvas() {
         if (!to) return;
         if (portBusy(placed, drag.from[0], drag.from[1])) return;
         // Draw from an output-like port: keep from → to as flow direction when the start port is an input.
-        const fromDef = symbolOf(placed.components.find((c) => c.id === drag.from[0])!.type).ports.find(
+        const fromDef = symbolFor(placed.components.find((c) => c.id === drag.from[0])!).ports.find(
           (x) => x.id === drag.from[1],
         )!;
         const startIsInput = fromDef.id === 'in' || fromDef.id.endsWith('.in') || fromDef.id === 'rec';
@@ -292,36 +346,22 @@ export function Canvas() {
 
   const commit = (label: string, next: Schema) => st.commit(label, next);
 
-  // Drop from the palette: on a line → insert into it, else add at the drop point.
+  // Drop from the palette: on a line → insert into it; a sensor near a duct sits on it; else at the drop point.
   const onDrop = (e: React.DragEvent) => {
-    const type = e.dataTransfer.getData(DND_TYPE);
-    if (!type || st.proposal) return;
+    const raw = e.dataTransfer.getData(DND_TYPE);
+    setDropTarget(null);
+    paletteDrag.value = '';
+    if (!raw || st.proposal) return;
     e.preventDefault();
+    const { type, variant } = parseDnd(raw);
     const p = toSheet(e.clientX, e.clientY);
-    const seg = segmentAt(r.routes, p, 2.5, signalIds);
-    const place = seg && placeOnSegment(type, seg.a, seg.b, p, g);
-    if (seg && place) {
-      // Keep auto-placed positions, then split the line.
-      const n0 = useEditor.getState().past.length;
-      st.commit('Einsetzen', placed);
-      const res = st.ops('Einsetzen', [
-        {
-          op: 'insert_into_connection',
-          connection: seg.id,
-          type,
-          pos: place.pos,
-          rot: place.rot,
-          flip: place.flip,
-          in: 'in',
-          out: 'out',
-        },
-      ]);
-      // The two edits form one step for the user: merge them.
-      if (res && useEditor.getState().past.length === n0 + 2) mergeLastSteps('In Leitung einsetzen');
-      if (res) st.select(res.added.filter((id) => useEditor.getState().doc.components.some((c) => c.id === id)));
-      return;
-    }
-    const res = addComponentAt(placed, type, p);
+    const t = targetAt(p, type, variant);
+    if (t && insertIntoLine(placed, t.id, t, p, { type, variant })) return;
+    let at = p;
+    const near = segmentAt(r.routes, p, Math.max(6, 16 / view.zoom), signalIds);
+    const onDuct = near && placeSensorOn(type, near.a, near.b, p, g, variant);
+    if (onDuct) at = onDuct;
+    const res = addComponentAt(placed, type, at, variant);
     st.commit('Symbol einfügen', res.schema);
     st.select([res.id]);
   };
@@ -340,8 +380,12 @@ export function Canvas() {
         if (e.dataTransfer.types.includes(DND_TYPE)) {
           e.preventDefault();
           e.dataTransfer.dropEffect = 'copy';
+          const { type, variant } = parseDnd(paletteDrag.value);
+          const t = type ? targetAt(toSheet(e.clientX, e.clientY), type, variant) : null;
+          if (t?.id !== dropTarget?.id || t?.a !== dropTarget?.a) setDropTarget(t);
         }
       }}
+      onDragLeave={() => setDropTarget(null)}
       onDrop={onDrop}
       data-testid="canvas"
     >
@@ -351,6 +395,7 @@ export function Canvas() {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
+        onPointerLeave={() => (pointer.at = null)}
         onContextMenu={(e) => e.preventDefault()}
       >
         <g transform={t}>
@@ -401,7 +446,7 @@ export function Canvas() {
               if (!c.pos) return null;
               const b = componentBox(c);
               const pad = c.type === 'junction' ? 1.5 : 0.5;
-              const def = symbolOf(c.type);
+              const def = symbolFor(c);
               return (
                 <g
                   key={c.id}
@@ -464,6 +509,10 @@ export function Canvas() {
             {removedBoxes.map(({ id, box }) => (
               <rect key={id} className="removed" x={box.x - 1} y={box.y - 1} width={box.w + 2} height={box.h + 2} />
             ))}
+            {(() => {
+              const t = dropTarget ?? (drag?.kind === 'move' ? drag.into : null);
+              return t ? <path className="drop-target" d={`M${t.a[0]} ${t.a[1]}L${t.b[0]} ${t.b[1]}`} /> : null;
+            })()}
             {drag?.kind === 'connect' && (
               <path
                 className="connect-preview"
@@ -577,15 +626,4 @@ function nextConId(s: Schema): string {
     const id = `L${String(n).padStart(2, '0')}`;
     if (!used.has(id)) return id;
   }
-}
-
-/** Merges the last two undo steps into one. */
-function mergeLastSteps(label: string) {
-  useEditor.setState((s) => {
-    const n = s.past.length;
-    if (n < 2) return s;
-    const a = s.past[n - 2]!,
-      b = s.past[n - 1]!;
-    return { past: [...s.past.slice(0, -2), { label, redo: [...a.redo, ...b.redo], undo: [...b.undo, ...a.undo] }] };
-  });
 }

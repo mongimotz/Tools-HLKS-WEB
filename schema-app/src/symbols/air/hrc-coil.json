@@ -1,6 +1,21 @@
-{ "id": "air.hrc.coil", "name": "KVS-Register", "category": "air", "norm": "", "checked": false,
-  "size": [10, 10], "prefix": "KVS",
-  "ports": [ { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] }, { "id": "out", "at": [10, 5], "dir": "E", "media": ["air.*"] }, { "id": "p1", "at": [2.5, 0], "dir": "N", "media": ["water.*"] }, { "id": "p2", "at": [7.5, 0], "dir": "N", "media": ["water.*"] } ],
-  "flow": [["in", "out"]],
-  "labelAnchor": [11, 9.5], "labelAlign": "start", "props": ["eta"], "keywords": ["Kreislaufverbundsystem", "WRG", "Wärmerückgewinnung"],
-  "svg": "<rect x='0' y='0' width='10' height='10'/><path d='M2.5 0V2.5L7.5 5L2.5 7.5L7.5 9M7.5 0V2.5'/>" }
+{
+  "id": "air.hrc.coil",
+  "name": "KVS-WRG",
+  "category": "air",
+  "norm": "",
+  "checked": false,
+  "size": [5,10],
+  "prefix": "KVS",
+  "ports": [
+    { "id": "in", "at": [0,5], "dir": "W", "media": ["air.*"] },
+    { "id": "out", "at": [5,5], "dir": "E", "media": ["air.*"] },
+    { "id": "p1", "at": [0,0], "dir": "N", "media": ["water.*"] },
+    { "id": "p2", "at": [5,0], "dir": "N", "media": ["water.*"] }
+  ],
+  "flow": [["in","out"]],
+  "labelAnchor": [6,9.5],
+  "labelAlign": "start",
+  "props": ["eta"],
+  "keywords": ["Kreislaufverbundsystem","KVS-Register","WRG","Wärmerückgewinnung"],
+  "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0 0L5 10M5 0L0 10'/>"
+}

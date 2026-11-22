@@ -1,0 +1,17 @@
+{
+  "id": "air.dehumidifier",
+  "name": "Entfeuchter (Sorption)",
+  "category": "air",
+  "norm": "",
+  "checked": false,
+  "size": [10,10],
+  "prefix": "EF",
+  "ports": [
+    { "id": "in", "at": [0,5], "dir": "W", "media": ["air.*"] },
+    { "id": "out", "at": [10,5], "dir": "E", "media": ["air.*"] }
+  ],
+  "labelAnchor": [5,-1.5],
+  "props": ["x"],
+  "keywords": ["Absorptions-Entfeuchter","Sorptionsentfeuchter","Entfeuchtung"],
+  "svg": "<rect x='0' y='0' width='10' height='10'/><path d='M0 2.75L2.75 0M7.25 0L10 2.75M0 7.25L2.75 10M7.25 10L10 7.25'/><path d='M4.1 0V10M5.8 0V10' stroke-dasharray='1.4 0.9'/>"
+}

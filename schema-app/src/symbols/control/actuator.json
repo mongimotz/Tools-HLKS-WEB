@@ -1,0 +1,44 @@
+{
+  "id": "control.actuator",
+  "name": "Antrieb",
+  "category": "control",
+  "norm": "",
+  "checked": false,
+  "size": [5,7.5],
+  "prefix": "M",
+  "ports": [
+    { "id": "sig", "at": [5,2.5], "dir": "E", "media": ["signal"], "optional": true }
+  ],
+  "labelAnchor": [4.5,-0.5],
+  "labelAlign": "start",
+  "props": [],
+  "keywords": ["Motor","Stellantrieb","Klappenantrieb","Ventilantrieb"],
+  "text": { "at": [5,2.5], "size": 1.4, "align": "start", "value": "" },
+  "svg": "<rect x='0.75' y='0.75' width='3.5' height='3.5'/><circle cx='2.5' cy='2.5' r='1.6'/><text x='2.5' y='3.025' font-size='1.5' text-anchor='middle' fill='currentColor' stroke='none'>M</text><path d='M2.5 4.25V7.5'/>",
+  "variants": [
+    {
+      "id": "motor",
+      "name": "Motor",
+      "svg": "<rect x='0.75' y='0.75' width='3.5' height='3.5'/><circle cx='2.5' cy='2.5' r='1.6'/><text x='2.5' y='3.025' font-size='1.5' text-anchor='middle' fill='currentColor' stroke='none'>M</text><path d='M2.5 4.25V7.5'/>"
+    },
+    {
+      "id": "auf-zu",
+      "name": "Motor 1/0",
+      "svg": "<rect x='0.75' y='0.75' width='3.5' height='3.5'/><circle cx='2.5' cy='2.5' r='1.6'/><text x='2.5' y='3.025' font-size='1.5' text-anchor='middle' fill='currentColor' stroke='none'>M</text><path d='M2.5 4.25V7.5'/>",
+      "text": { "at": [5,2.5], "size": 1.4, "align": "start", "value": "1/0" }
+    },
+    {
+      "id": "stetig",
+      "name": "Motor stetig",
+      "svg": "<rect x='0.75' y='0.75' width='3.5' height='3.5'/><circle cx='2.5' cy='2.5' r='1.6'/><text x='2.5' y='3.025' font-size='1.5' text-anchor='middle' fill='currentColor' stroke='none'>M</text><path d='M2.5 4.25V7.5'/>",
+      "text": { "at": [5,2.5], "size": 1.4, "align": "start", "value": "Stetig" }
+    },
+    {
+      "id": "hand",
+      "name": "Antrieb von Hand",
+      "prefix": "HA",
+      "text": null,
+      "svg": "<path d='M0.75 1H4.25M2.5 1V7.5'/>"
+    }
+  ]
+}

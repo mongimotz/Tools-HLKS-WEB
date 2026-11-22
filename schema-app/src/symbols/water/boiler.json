@@ -2,6 +2,7 @@
   "id": "water.boiler",
   "name": "Wärmeerzeuger",
   "category": "water",
+  "disciplines": ["heat"],
   "norm": "",
   "checked": false,
   "size": [

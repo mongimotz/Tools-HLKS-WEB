@@ -2,7 +2,7 @@
 // Placement maths: symbol-local mm → sheet mm. pos = symbol centre; flip mirrors on the local vertical axis
 // before the clockwise rotation.
 import type { Component, Dir, PortDef, Rotation, Schema, SymbolDef, Vec } from './types.ts';
-import { symbolOf } from '../symbols/library.ts';
+import { symbolFor } from '../symbols/library.ts';
 
 export interface Box {
   x: number;
@@ -59,37 +59,47 @@ export interface PortPlace {
 }
 
 export function portPlace(c: Component, portId: string): PortPlace | undefined {
-  const def = symbolOf(c.type);
+  const def = symbolFor(c);
   const p = def.ports.find((x) => x.id === portId);
   if (!p) return undefined;
   return { def: p, at: localToSheet(def, c, p.at), dir: rotateDir(p.dir, c.rot, c.flip) };
 }
 
-/** Bounding box of the symbol drawing (the size box, which all symbols fill), in sheet mm. */
+/** Bounding box of the symbol drawing (the size box, or `bounds` for drawings beyond it), in sheet mm. */
 export function componentBox(c: Component): Box {
-  const def = symbolOf(c.type);
+  const def = symbolFor(c);
+  if (def.bounds) return localBox(def, c, def.bounds);
   const [w, h] = c.rot === 90 || c.rot === 270 ? [def.size[1], def.size[0]] : def.size;
   const [cx, cy] = c.pos ?? [0, 0];
   return { x: cx - w / 2, y: cy - h / 2, w, h };
 }
 
-/** Box that routed lines must avoid (symbol obstacle or the whole box). */
-export function obstacleBox(c: Component): Box {
-  const def = symbolOf(c.type);
-  if (!def.obstacle) return componentBox(c);
-  const [x, y, w, h] = def.obstacle;
+/** The size box alone (ports sit on its edge), in sheet mm. */
+export function sizeBox(c: Component): Box {
+  const def = symbolFor(c);
+  return localBox(def, c, [0, 0, def.size[0], def.size[1]]);
+}
+
+function localBox(def: SymbolDef, c: Component, [x, y, w, h]: [number, number, number, number]): Box {
   const a = localToSheet(def, c, [x, y]),
     b = localToSheet(def, c, [x + w, y + h]);
   return { x: Math.min(a[0], b[0]), y: Math.min(a[1], b[1]), w: Math.abs(a[0] - b[0]), h: Math.abs(a[1] - b[1]) };
 }
 
+/** Box that routed lines must avoid (symbol obstacle or the whole box). */
+export function obstacleBox(c: Component): Box {
+  const def = symbolFor(c);
+  if (!def.obstacle) return componentBox(c);
+  return localBox(def, c, def.obstacle);
+}
+
 export function isBackground(c: Component): boolean {
-  return !!symbolOf(c.type).background;
+  return !!symbolFor(c).background;
 }
 
 /** Flow pairs of a component's symbol. */
-export function flowPairs(type: string): [string, string][] {
-  const def = symbolOf(type);
+export function flowPairs(c: Pick<Component, 'type' | 'variant'>): [string, string][] {
+  const def = symbolFor(c);
   if (def.flow) return def.flow;
   const ids = def.ports.map((p) => p.id);
   return ids.includes('in') && ids.includes('out') ? [['in', 'out']] : [];

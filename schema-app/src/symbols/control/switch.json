@@ -1,0 +1,56 @@
+{
+  "id": "control.switch",
+  "name": "Wächter",
+  "category": "control",
+  "norm": "",
+  "checked": false,
+  "size": [5,7.5],
+  "prefix": "TS",
+  "ports": [
+    { "id": "sig", "at": [5,2.5], "dir": "E", "media": ["signal"], "optional": true }
+  ],
+  "obstacle": [0,0,5,4.5],
+  "labelAnchor": [4.5,-0.5],
+  "labelAlign": "start",
+  "props": [],
+  "keywords": ["Wächter","Schalter","Grenzwertgeber"],
+  "text": { "at": [2.5,2.5], "size": 1.6, "align": "middle", "value": "T" },
+  "svg": "<rect x='0.75' y='0.75' width='3.5' height='3.5'/><path d='M2.5 4.25V7.5'/>",
+  "variants": [
+    {
+      "id": "t",
+      "name": "Thermostat",
+      "prefix": "TS",
+      "svg": "<rect x='0.75' y='0.75' width='3.5' height='3.5'/><path d='M2.5 4.25V7.5'/>",
+      "text": { "at": [2.5,2.5], "size": 1.6, "align": "middle", "value": "T" }
+    },
+    {
+      "id": "rf",
+      "name": "Hygrostat",
+      "prefix": "MS",
+      "svg": "<rect x='0.75' y='0.75' width='3.5' height='3.5'/><path d='M2.5 4.25V7.5'/>",
+      "text": { "at": [2.5,2.5], "size": 1.2, "align": "middle", "value": "r.F." }
+    },
+    {
+      "id": "p",
+      "name": "Pressostat",
+      "prefix": "PS",
+      "svg": "<rect x='0.75' y='0.75' width='3.5' height='3.5'/><path d='M2.5 4.25V7.5'/>",
+      "text": { "at": [2.5,2.5], "size": 1.6, "align": "middle", "value": "p" }
+    },
+    {
+      "id": "n",
+      "name": "Drehzahlwächter",
+      "prefix": "SS",
+      "svg": "<rect x='0.75' y='0.75' width='3.5' height='3.5'/><path d='M2.5 4.25V7.5'/>",
+      "text": { "at": [2.5,2.5], "size": 1.6, "align": "middle", "value": "n" }
+    },
+    {
+      "id": "sw",
+      "name": "Strömungswächter",
+      "prefix": "FS",
+      "svg": "<rect x='0.75' y='0.75' width='3.5' height='3.5'/><path d='M2.5 4.25V7.5'/>",
+      "text": { "at": [2.5,2.5], "size": 1.4, "align": "middle", "value": "Sw" }
+    }
+  ]
+}

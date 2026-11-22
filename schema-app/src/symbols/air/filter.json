@@ -1,4 +1,39 @@
-{ "id": "air.filter", "name": "Filter", "category": "air", "norm": "SN EN 12792 T4/24", "checked": true,
-  "size": [10, 10], "prefix": "FI", "ports": [ { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] }, { "id": "out", "at": [10, 5], "dir": "E", "media": ["air.*"] } ],
-  "labelAnchor": [5, -1.5], "props": ["Klasse", "dp"], "keywords": ["Luftfilter", "ePM1", "ePM10", "ISO 16890"],
-  "svg": "<rect x='0' y='0' width='10' height='10'/><path d='M6.5 0L10 5L6.5 10'/>" }
+{
+  "id": "air.filter",
+  "name": "Filter",
+  "category": "air",
+  "norm": "",
+  "checked": false,
+  "size": [5,10],
+  "prefix": "FI",
+  "ports": [
+    { "id": "in", "at": [0,5], "dir": "W", "media": ["air.*"] },
+    { "id": "out", "at": [5,5], "dir": "E", "media": ["air.*"] }
+  ],
+  "labelAnchor": [2.5,-1.5],
+  "props": ["Klasse","dp"],
+  "keywords": ["Luftfilter","ePM1","ePM10","ISO 16890"],
+  "text": { "at": [2.5,5], "size": 1.5, "align": "middle", "value": "F7" },
+  "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0 0L5 5L0 10'/>",
+  "variants": [
+    {
+      "id": "standard",
+      "name": "Filter",
+      "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0 0L5 5L0 10'/>"
+    },
+    {
+      "id": "elektro",
+      "name": "Elektrostatischer Filter",
+      "text": null,
+      "keywords": ["Elektrofilter","E-Filter"],
+      "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0 0L5 5L0 10'/><path d='M2.4 3.3L1.4 5.6L2.4 5L1.358 7.048'/><path d='M0.95 7.85L1.046 6.889L1.67 7.207Z' fill='currentColor'/>"
+    },
+    {
+      "id": "fett",
+      "name": "Fettfilter",
+      "text": null,
+      "keywords": ["Küchenabluft","Fettabscheider"],
+      "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0 0L5 5L0 10'/><path d='M2.3 3.4C1 3.6 1 5 2 5.1C1 5.2 1 6.6 2.3 6.8'/>"
+    }
+  ]
+}

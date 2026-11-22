@@ -34,7 +34,7 @@ describe('layout', () => {
   });
 
   it('a chain too long for A4 shrinks its gaps, then suggests a larger sheet; symbols keep their size', () => {
-    const items = Array.from({ length: 30 }, () => ({ type: 'air.silencer' }));
+    const items = Array.from({ length: 30 }, () => ({ type: 'air.fan' }));
     const s = schema();
     s.sheet.size = 'A4';
     const r = applyOps(s, parseOps([{ op: 'add_chain', strand: 'supply', items }]));

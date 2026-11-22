@@ -2,7 +2,7 @@
 // Editor state: the document (the .schema model), selection, view, undo/redo with Immer patches.
 import { create } from 'zustand';
 import { applyPatches, enablePatches, produceWithPatches, type Draft, type Patch } from 'immer';
-import type { Schema } from '../model/types.ts';
+import type { PortDef, Schema, SymbolText, Vec } from '../model/types.ts';
 import { emptySchema } from '../model/create.ts';
 import { applyOps, type Op } from '../ops/ops.ts';
 
@@ -34,7 +34,39 @@ export interface View {
   zoom: number;
 }
 
+/** One open document tab: a schema or an own symbol being drawn. */
+export interface TabInfo {
+  key: string;
+  kind: 'schema' | 'symbol';
+  title: string;
+  dirty: boolean;
+}
+
+/** Own symbol in the symbol editor. */
+export interface SymbolDraft {
+  /** "user.…"; set when saved the first time. */
+  id: string;
+  name: string;
+  /** Palette tab: Lüftung, Heizung, Sanitär, or MSR / general (all tabs). */
+  area: 'air' | 'heat' | 'sanitary' | 'control' | 'common';
+  prefix: string;
+  size: Vec;
+  ports: PortDef[];
+  svg: string;
+  text: SymbolText | null;
+  props: string[];
+  /** Already in the library (saving replaces it). */
+  saved: boolean;
+}
+
 export interface EditorState {
+  /** Open tabs (the active one's content lives in the fields below). */
+  tabs: TabInfo[];
+  active: string;
+  /** Active symbol tab's drawing (null for a schema tab). */
+  symbolDraft: SymbolDraft | null;
+  /** Editor view of the paper: dark (per browser, never in exports). */
+  paperDark: boolean;
   doc: Schema;
   /** Uncommitted preview while dragging (rendered instead of doc). */
   preview: Schema | null;
@@ -95,6 +127,10 @@ function push(past: Step[], step: Step): Step[] {
 }
 
 export const useEditor = create<EditorState>((set, get) => ({
+  tabs: [{ key: 't1', kind: 'schema', title: 'prinzipschema', dirty: false }],
+  active: 't1',
+  symbolDraft: null,
+  paperDark: false,
   doc: emptySchema(),
   preview: null,
   selection: [],

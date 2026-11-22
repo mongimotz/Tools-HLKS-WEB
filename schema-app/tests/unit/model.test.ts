@@ -16,7 +16,14 @@ const codes = (s: ReturnType<typeof schema>) =>
 describe('file parsing and migration', () => {
   it('fills defaults for a minimal hand-written file', () => {
     const s = migrate({ format: 'hlks-schema', version: 1, components: [{ id: 'VE01', type: 'air.fan' }] });
-    expect(s.sheet).toEqual({ size: 'A3', orientation: 'landscape', grid: 2.5, titleBlock: 'default', legend: true });
+    expect(s.sheet).toEqual({
+      size: 'A3',
+      orientation: 'landscape',
+      grid: 2.5,
+      titleBlock: 'default',
+      legend: true,
+      show: { ids: true, media: true, values: true },
+    });
     expect(s.components[0]).toMatchObject({ label: 'VE01', pos: null, rot: 0, flip: false, pinned: false, props: {} });
   });
   it('rejects a foreign format, an unknown and a newer version with a clear message', () => {

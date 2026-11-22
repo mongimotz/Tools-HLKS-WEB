@@ -61,3 +61,43 @@ export function setMono(on: boolean) {
     // ignore
   }
 }
+
+const PAPER_KEY = 'hlks-schema:paper-dark';
+
+/** Dark paper in the editor (per browser; exports stay white). Default light. */
+export function initPaper() {
+  try {
+    useEditor.setState({ paperDark: localStorage.getItem(PAPER_KEY) === '1' });
+  } catch {
+    // ignore
+  }
+}
+
+export function setPaperDark(on: boolean) {
+  useEditor.setState({ paperDark: on });
+  try {
+    localStorage.setItem(PAPER_KEY, on ? '1' : '0');
+  } catch {
+    // ignore
+  }
+}
+
+const THEME_KEY = 'hlks-tools:theme';
+
+/** Page theme, shared with the other HLKS tools: stored choice, else the system setting. */
+export function currentTheme(): 'light' | 'dark' {
+  const t = document.documentElement.dataset.theme;
+  if (t === 'light' || t === 'dark') return t;
+  return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+export function toggleTheme(): 'light' | 'dark' {
+  const next = currentTheme() === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  try {
+    localStorage.setItem(THEME_KEY, next);
+  } catch {
+    // ignore
+  }
+  return next;
+}

@@ -2,6 +2,7 @@
   "id": "water.connection",
   "name": "Netzanschluss",
   "category": "water",
+  "disciplines": ["sanitary"],
   "norm": "",
   "checked": false,
   "size": [5, 10],

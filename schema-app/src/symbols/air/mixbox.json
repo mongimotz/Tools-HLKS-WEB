@@ -1,6 +1,20 @@
-{ "id": "air.mixbox", "name": "Mischkammer", "category": "air", "norm": "SN EN 12792 T5/6", "checked": true,
-  "size": [10, 10], "prefix": "MK",
-  "ports": [ { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] }, { "id": "rec", "at": [5, 0], "dir": "N", "media": ["air.*"] }, { "id": "out", "at": [10, 5], "dir": "E", "media": ["air.*"] } ],
-  "flow": [["in", "out"], ["rec", "out"]],
-  "labelAnchor": [-1, -1.5], "labelAlign": "end", "props": [], "keywords": ["Mischluft", "Umluft", "Mischkasten"],
-  "svg": "<rect x='0' y='0' width='10' height='10'/><path d='M0 5H5V0'/><circle cx='5' cy='5' r='0.7' fill='currentColor' stroke='none'/>" }
+{
+  "id": "air.mixbox",
+  "name": "Mischkammer",
+  "category": "air",
+  "norm": "",
+  "checked": false,
+  "size": [10,10],
+  "prefix": "MK",
+  "ports": [
+    { "id": "in", "at": [0,5], "dir": "W", "media": ["air.*"] },
+    { "id": "rec", "at": [5,0], "dir": "N", "media": ["air.*"] },
+    { "id": "out", "at": [10,5], "dir": "E", "media": ["air.*"] }
+  ],
+  "flow": [["in","out"],["rec","out"]],
+  "labelAnchor": [-1,-1.5],
+  "labelAlign": "end",
+  "props": [],
+  "keywords": ["Mischluft","Umluft","Mischkasten"],
+  "svg": "<path d='M2.5 0H10V10H0V2.5H2.5ZM2.5 2.5H10M6.25 0V2.5M2.5 2.5V10M0 6.25H2.5'/><path d='M3.625 0.5L5.125 2'/><circle cx='4.375' cy='1.25' r='0.5'/><circle cx='4.375' cy='1.25' r='0.2'/><path d='M7.375 0.5L8.875 2'/><circle cx='8.125' cy='1.25' r='0.5'/><circle cx='8.125' cy='1.25' r='0.2'/><path d='M0.5 3.625L2 5.125'/><circle cx='1.25' cy='4.375' r='0.5'/><circle cx='1.25' cy='4.375' r='0.2'/><path d='M0.5 7.375L2 8.875'/><circle cx='1.25' cy='8.125' r='0.5'/><circle cx='1.25' cy='8.125' r='0.2'/><path d='M5.95 2.5L6.25 5L6.55 2.5M2.5 5.95L5 6.25L2.5 6.55'/>"
+}

@@ -73,5 +73,14 @@
 - Hydraulic symbols and media, `add_chain` with `medium`, circuit layout (return row), examples «Heizgruppe mit Beimischung» and «Kältekreis». Symbols not yet checked against the norm PDFs.
 - Symbols checked against EN 1861 / EN 806-1 where they define one; network connection symbol; example «Trinkwasser mit Wassererwärmer».
 
+## 2026-11-22 (owner feedback)
+- Ventilation and MSR symbols after the owner's sample sheet, with variants; palette tabs Lüftung / Heizung / Sanitär (MSR, general and own symbols in every tab); search lists every variant.
+- Properties: variant picker (also key V), text inside the symbol, «Als Vorlage für eigenes Bauteil».
+- Drop into a line: highlight while dragging, larger snap distance, also by moving an unconnected component onto a line, or by clicking a palette symbol while a line is selected. Sensors dropped near a duct sit on it.
+- Display menu: IDs (key H), medium codes, values; dark paper.
+- Shortcuts: Ctrl+C/X/V (system clipboard), Ctrl+Shift+G, Shift+R, V, P, T, Enter, Alt+1…9 / Alt+N / Alt+W.
+- Document tabs (several schemas, symbol editor). Own symbols in the browser library, embedded in files.
+- App bar: «HLKS-Tools» link back to the start page, source link, theme button (shared with the site).
+
 ## Open (2026-11-18)
 Owner checks and remaining points: see `HANDOFF.md`.

@@ -1,0 +1,37 @@
+{
+  "id": "air.part",
+  "name": "Einbauteil",
+  "category": "air",
+  "norm": "",
+  "checked": false,
+  "size": [10,10],
+  "prefix": "EB",
+  "ports": [
+    { "id": "in", "at": [0,5], "dir": "W", "media": ["air.*"] },
+    { "id": "out", "at": [10,5], "dir": "E", "media": ["air.*"] }
+  ],
+  "labelAnchor": [5,-1.5],
+  "props": [],
+  "keywords": ["Einbauteil","Leerteil","Kammer"],
+  "text": { "at": [5,5], "size": 2, "align": "middle", "value": "" },
+  "svg": "<rect x='0' y='0' width='10' height='10'/>",
+  "variants": [
+    {
+      "id": "einbau",
+      "name": "Einbauteil",
+      "svg": "<rect x='0' y='0' width='10' height='10'/>"
+    },
+    {
+      "id": "leer",
+      "name": "Leerteil",
+      "size": [5,10],
+      "ports": [
+        { "id": "in", "at": [0,5], "dir": "W", "media": ["air.*"] },
+        { "id": "out", "at": [5,5], "dir": "E", "media": ["air.*"] }
+      ],
+      "labelAnchor": [2.5,-1.5],
+      "text": { "at": [2.5,5], "size": 1.5, "align": "middle", "value": "" },
+      "svg": "<rect x='0' y='0' width='5' height='10'/>"
+    }
+  ]
+}

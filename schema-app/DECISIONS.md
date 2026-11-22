@@ -102,3 +102,15 @@ Format: date | decision | alternatives | reason.
 
 ## 2026-11-18 | Way of working
 - Owner decision: no stop points between phases; build without asking, minimal testing. The plan's stop points (after phases 2, 4, and «phase 8 only after feedback») no longer apply.
+
+## 2026-11-22 | Owner feedback: symbols, properties, tabs
+- Ventilation and MSR symbols redrawn after the owner's sample sheet (`0.1_LUE.pdf`, from Nova). One row of the sheet = one symbol, its drawings = variants (Ausführungen). Proportions from the sheet (filter 5 × 10 mm, dampers 2.5 × 10, fire damper and «Absperr-/Drossel-/Rückschlagklappe» 5 × 10 as noted on the sheet). Sizes on 2.5 mm instead of 5 mm; ports of 2.5 and 7.5 mm wide symbols lie off the 2.5 mm sheet grid by 1.25 mm, which straight duct lines do not mind.
+- Exceptions to the sheet: WRG block 40 × 40 mm and rotor 15 × 40 mm (sheet: 2 × filter height), so supply and extract rows are 20 mm apart; at 15 mm the values of the extract row collided with the supply labels. Air cooler drawn with «\\» in all variants (the sheet's hydraulic variants show «/»). MSR symbols about 1.6 × the sheet's size, so their letters stay readable.
+- Heater / cooler hydraulics (Beimisch-, Drosselschaltung) are part of the symbol drawing (no water ports); pipe colours follow the media colours via placeholders.
+- Variants live on the symbol (`variants`), the component stores `variant` and optional `text`. Alternative: separate types per drawing. Rejected: the owner wants to place a filter once and switch its Ausführung; search still lists every variant on its own.
+- Old types kept as hidden symbols (`control.sensor.t/.rh/.p/.co2/.voc`, `air.cav`) so older files draw; the palette offers `control.sensor` with variants.
+- Own symbols: drawn in a symbol-editor tab, kept in the browser library and copied into every file that uses them (`symbols[]`). Their SVG is sanitised on every registration (whitelist of shapes and attributes), because a received file could carry scripts.
+- Tabs: one store, inactive tabs parked in `tabs.ts`. Live sync watches only the active tab's file; a tab polls again when activated. The browser draft holds all schema tabs.
+- Clipboard: the system clipboard (copy/cut/paste events) carries a JSON fragment, so pasting works across tabs and browser windows; paste goes to the pointer.
+- Display (`sheet.show`) is part of the file (it is how the drawing is printed); dark paper is a per-browser view setting and never exported.
+

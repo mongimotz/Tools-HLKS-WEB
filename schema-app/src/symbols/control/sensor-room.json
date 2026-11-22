@@ -1,0 +1,38 @@
+{
+  "id": "control.sensor.room",
+  "name": "Raumfühler",
+  "category": "control",
+  "norm": "",
+  "checked": false,
+  "size": [5,5],
+  "prefix": "TT",
+  "ports": [
+    { "id": "sig", "at": [5,2.5], "dir": "E", "media": ["signal"], "optional": true }
+  ],
+  "labelAnchor": [5.5,1],
+  "labelAlign": "start",
+  "props": [],
+  "keywords": ["Raumtemperaturfühler","Raumthermostat","Luftqualität","CO₂"],
+  "text": { "at": [2.5,2.5], "size": 1.8, "align": "middle", "value": "RT" },
+  "svg": "<circle cx='2.5' cy='2.5' r='2.4'/>",
+  "variants": [
+    {
+      "id": "rt",
+      "name": "Raumtemperaturfühler",
+      "svg": "<circle cx='2.5' cy='2.5' r='2.4'/>"
+    },
+    {
+      "id": "q",
+      "name": "Luftqualitätsfühler (Raum)",
+      "prefix": "QT",
+      "svg": "<circle cx='2.5' cy='2.5' r='2.4'/>",
+      "text": { "at": [2.5,2.5], "size": 1.8, "align": "middle", "value": "Q" }
+    },
+    {
+      "id": "thermostat",
+      "name": "Raumthermostat",
+      "prefix": "TS",
+      "svg": "<rect x='0.25' y='0.25' width='4.5' height='4.5'/>"
+    }
+  ]
+}

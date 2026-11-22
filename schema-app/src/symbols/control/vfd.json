@@ -1,0 +1,18 @@
+{
+  "id": "control.vfd",
+  "name": "Frequenzumformer",
+  "category": "control",
+  "norm": "",
+  "checked": false,
+  "size": [5,7.5],
+  "prefix": "FU",
+  "ports": [
+    { "id": "sig", "at": [5,2.5], "dir": "E", "media": ["signal"], "optional": true }
+  ],
+  "labelAnchor": [4.5,-0.5],
+  "labelAlign": "start",
+  "props": [],
+  "keywords": ["FU","Frequenzumrichter","Drehzahlregelung"],
+  "text": { "at": [2.5,2.5], "size": 1.4, "align": "middle", "value": "FU" },
+  "svg": "<rect x='0.75' y='0.75' width='3.5' height='3.5'/><path d='M2.5 4.25V7.5'/>"
+}

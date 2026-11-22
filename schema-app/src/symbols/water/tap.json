@@ -2,6 +2,7 @@
   "id": "water.tap",
   "name": "Entnahmestelle",
   "category": "water",
+  "disciplines": ["sanitary"],
   "norm": "",
   "checked": false,
   "size": [

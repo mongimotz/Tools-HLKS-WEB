@@ -1,4 +1,17 @@
-{ "id": "air.firedamper", "name": "Brandschutzklappe", "category": "air", "norm": "SN EN 12792 T4/16", "checked": true,
-  "size": [5, 10], "prefix": "BSK", "ports": [ { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] }, { "id": "out", "at": [5, 5], "dir": "E", "media": ["air.*"] } ],
-  "labelAnchor": [2.5, -1.5], "props": ["EI", "Auslösung"], "keywords": ["BSK", "Brandschutz", "Feuerschutzklappe"],
-  "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0.6 8.4L3.4 0.4M1.6 9.6L4.4 1.6'/><circle cx='2.5' cy='5' r='1.1' fill='currentColor' stroke='none'/>" }
+{
+  "id": "air.firedamper",
+  "name": "Brandschutzklappe",
+  "category": "air",
+  "norm": "",
+  "checked": false,
+  "size": [5,10],
+  "prefix": "BSK",
+  "ports": [
+    { "id": "in", "at": [0,5], "dir": "W", "media": ["air.*"] },
+    { "id": "out", "at": [5,5], "dir": "E", "media": ["air.*"] }
+  ],
+  "labelAnchor": [2.5,-1.5],
+  "props": ["EI","Auslösung"],
+  "keywords": ["BSK","Brandschutz","Feuerschutzklappe"],
+  "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M1.07 1.05L4.57 8.65L3.93 8.95L0.43 1.35Z'/><path d='M3.063 4.906L2.937 4.634L1.937 5.094L2.063 5.366Z' fill='currentColor'/>"
+}

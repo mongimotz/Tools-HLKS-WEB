@@ -1,12 +1,37 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Stable, diff-friendly JSON: fixed key order, 2-space indent, short arrays and small objects on one line.
-import type { Schema } from './types.ts';
+import type { Schema, SymbolDef } from './types.ts';
+import { findSymbol } from '../symbols/library.ts';
+
+/** Own symbols the file uses, in their current version (this browser's library), else the copy in the file. */
+function usedOwnSymbols(s: Schema): SymbolDef[] {
+  const types = [...new Set(s.components.map((c) => c.type).filter((t) => t.startsWith('user.')))].sort();
+  const out: SymbolDef[] = [];
+  for (const t of types) {
+    const d = findSymbol(t) ?? s.symbols?.find((x) => x.id === t);
+    if (d) out.push(d);
+  }
+  return out;
+}
 
 const ORDER: Record<string, string[]> = {
-  root: ['format', 'version', 'meta', 'sheet', 'style', 'components', 'connections', 'groups', 'texts', 'notes'],
+  root: [
+    'format',
+    'version',
+    'meta',
+    'sheet',
+    'style',
+    'components',
+    'connections',
+    'groups',
+    'texts',
+    'notes',
+    'symbols',
+  ],
   meta: ['title', 'project', 'author', 'date', 'revision'],
-  sheet: ['size', 'orientation', 'grid', 'titleBlock', 'legend'],
-  component: ['id', 'type', 'label', 'props', 'pos', 'rot', 'flip', 'pinned'],
+  sheet: ['size', 'orientation', 'grid', 'titleBlock', 'legend', 'show'],
+  component: ['id', 'type', 'variant', 'text', 'label', 'props', 'pos', 'rot', 'flip', 'pinned'],
+  symbol: ['id', 'name', 'category', 'prefix', 'size', 'ports', 'labelAnchor', 'text', 'svg'],
   connection: ['id', 'from', 'to', 'medium', 'waypoints', 'pinned'],
   group: ['id', 'label', 'members', 'frame'],
   text: ['id', 'pos', 'text', 'size'],
@@ -64,11 +89,14 @@ export function toPlain(s: Schema): Record<string, unknown> {
       ...s,
       meta: ordered(s.meta as never, ORDER.meta!),
       sheet: ordered(s.sheet as never, ORDER.sheet!),
-      components: s.components.map((c) => ordered({ ...c, props: ordered(c.props, []) } as never, ORDER.component!)),
+      components: s.components.map((c) =>
+        ordered({ ...c, variant: c.variant || undefined, props: ordered(c.props, []) } as never, ORDER.component!),
+      ),
       connections: s.connections.map((c) => ordered(c as never, ORDER.connection!)),
       groups: s.groups.map((g) => ordered(g as never, ORDER.group!)),
       texts: s.texts.map((t) => ordered(t as never, ORDER.text!)),
       notes: s.notes.map((n) => ordered(n as never, ORDER.note!)),
+      symbols: usedOwnSymbols(s).map((d) => ordered(d as never, ORDER.symbol!)),
     } as never,
     ORDER.root!,
   );

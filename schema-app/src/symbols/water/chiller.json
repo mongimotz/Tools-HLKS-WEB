@@ -2,6 +2,7 @@
   "id": "water.chiller",
   "name": "Kältemaschine",
   "category": "water",
+  "disciplines": ["heat"],
   "norm": "",
   "checked": false,
   "size": [

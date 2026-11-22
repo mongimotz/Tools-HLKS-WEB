@@ -6,7 +6,16 @@ export interface Style {
   id: string;
   font: { family: string; label: number; small: number; normal: number; large: number };
   /** line: pipes, duct: air lines (air.*, total width incl. outline), ductOutline: black edge of a duct (0 = none), signal: Wirklinie. */
-  stroke: { line: number; duct: number; ductOutline: number; signal: number; symbol: number; frame: number; thin: number; group: number };
+  stroke: {
+    line: number;
+    duct: number;
+    ductOutline: number;
+    signal: number;
+    symbol: number;
+    frame: number;
+    thin: number;
+    group: number;
+  };
   /** group: secondary text (title block labels); unit: device frame (group); label: component IDs. */
   colors: {
     ink: string;

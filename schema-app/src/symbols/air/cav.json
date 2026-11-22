@@ -1,4 +1,18 @@
-{ "id": "air.cav", "name": "KVS-Regler (konstant)", "category": "air", "norm": "SN EN 12792 T4/18", "checked": true,
-  "size": [5, 10], "prefix": "VR", "ports": [ { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] }, { "id": "out", "at": [5, 5], "dir": "E", "media": ["air.*"] } ],
-  "labelAnchor": [2.5, -1.5], "props": ["V"], "keywords": ["CAV", "Konstantvolumenstromregler", "KVR"],
-  "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M0 3L5 1.2M0 7L5 8.8M1.4 4.3H3.6M1.4 5.7H3.6'/>" }
+{
+  "id": "air.cav",
+  "name": "Volumenstromregler (konstant)",
+  "category": "air",
+  "norm": "",
+  "checked": false,
+  "hidden": true,
+  "size": [7.5,5],
+  "prefix": "VR",
+  "ports": [
+    { "id": "in", "at": [0,2.5], "dir": "W", "media": ["air.*"] },
+    { "id": "out", "at": [7.5,2.5], "dir": "E", "media": ["air.*"] }
+  ],
+  "labelAnchor": [3.75,-1.5],
+  "props": ["V"],
+  "keywords": ["VVS","KVS","VAV","CAV","Volumenstromregler"],
+  "svg": "<rect x='0' y='0' width='7.5' height='5'/><path d='M0 1.8H7.5M0 3.2H7.5M1.2 1.8A2.55 1.6 0 0 1 6.3 1.8M1.2 3.2A2.55 1.6 0 0 0 6.3 3.2'/>"
+}

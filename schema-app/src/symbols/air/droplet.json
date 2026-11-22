@@ -1,4 +1,17 @@
-{ "id": "air.droplet", "name": "Tropfenabscheider", "category": "air", "norm": "", "checked": false,
-  "size": [5, 10], "prefix": "TA", "ports": [ { "id": "in", "at": [0, 5], "dir": "W", "media": ["air.*"] }, { "id": "out", "at": [5, 5], "dir": "E", "media": ["air.*"] } ],
-  "labelAnchor": [2.5, -1.5], "props": [], "keywords": ["Tropfenabscheider", "Abscheider"],
-  "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M2.5 0.5L1.2 2.3L3.8 4.1L1.2 5.9L3.8 7.7L2.5 9.5'/>" }
+{
+  "id": "air.droplet",
+  "name": "Tropfenabscheider",
+  "category": "air",
+  "norm": "",
+  "checked": false,
+  "size": [5,10],
+  "prefix": "TA",
+  "ports": [
+    { "id": "in", "at": [0,5], "dir": "W", "media": ["air.*"] },
+    { "id": "out", "at": [5,5], "dir": "E", "media": ["air.*"] }
+  ],
+  "labelAnchor": [2.5,-1.5],
+  "props": [],
+  "keywords": ["Tropfenabscheider","Abscheider"],
+  "svg": "<rect x='0' y='0' width='5' height='10'/><path d='M2.5 0V10' stroke-dasharray='1.2 0.8'/><path d='M0 8.4L2.5 10L5 8.4'/>"
+}
