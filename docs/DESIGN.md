@@ -38,14 +38,14 @@ What these mean in practice:
 
 Technical and quiet. The start page shows the tools as one small network per discipline, in HLKS order (2 × 2 on wide screens, one column on phones). It is the only illustrative element. Tool pages are plain so the numbers stand out.
 
-All four networks share one drawing language: a source symbol in a circle, lines in `--text-muted` (placeholder branches in `--border-strong`), the moving medium in `--primary`, valves and dampers shut while idle. The source symbols have balanced visual size within their circles. Each discipline has its own idiom:
+All four networks share one drawing language: a source symbol in a circle, lines in `--text-muted` (placeholder branches in `--border-strong`), valves and dampers shut while idle, and zero active animations or `rAF` loops at rest. The source symbols have balanced visual size within their circles. Each discipline has its own idiom:
 
 | Discipline | Source | Network | Branch control | Terminal | Medium |
 |---|---|---|---|---|---|
-| Heizung | flame | Tichelmann (reverse return): supply, return collector, return to the boiler; every radiator has the same circuit length | valve (filled = shut) | radiator | water, short dashes |
-| Lüftung | four-blade fan | duct with two walls, tees | damper (across = shut) | supply diffuser, air jets | air, long dashes |
-| Klima | snowflake | paired refrigerant feed and return lines with 45° Y branches (refnet) | flap of the unit | wall unit, air downwards | refrigerant, dots |
-| Sanitär | water drop with one reflection stroke | manifold with one line per tap (Einzelzuleitungen), bent corners | lever (flat = shut) | compact outlined tap, falling water | water, short dashes |
+| Heizung | dual-layer burner flame (organic flicker) | Tichelmann (reverse return) with swept elbows | thermostatic radiator valve (lifting stem) | 5-rib sectional radiator (warms L → R) + rising convection | supply red (`--danger`), return blue (`--primary`) |
+| Lüftung | four-blade swept fan (inertial spin-up / coast-down) | curved sheet-metal duct with flange collars and rounded take-offs | in-duct butterfly damper (shut `76°` → streamlined `0°`) | flared louvered supply diffuser, curving air plumes | air, dual laminar streamlines (`--primary`) |
+| Klima | static snowflake (crystallizes outward from centre) | chilled-water supply and return pipes with crossing halos | — | fan-coil unit (finned coil + inertial axial fan wheel), horizontal chilled air | chilled supply (`--primary`), warmer return (`--chart-8`) |
+| Sanitär | water drop with rising internal liquid wave | chamfered manifold block with union ports and swept lines (Einzelzuleitungen) | minimalist forward pin-lever (lifts `-28°`) | modern wall mixer tap with rosette and aerator, continuous water stream + sheen + splash | pressurized water (`--primary`) |
 
 The geometry is built in `assets/js/home.js` (one function per discipline); styles and motion are in `assets/css/home.css`.
 
@@ -116,7 +116,7 @@ Patterns of the PDF → DXF tool (reuse them for drawing previews):
 
 ## Motion
 
-Motion only answers an action: on the start page, hovering or focusing a ready tool opens its valve or damper, starts the source (fan turns, flame lights, snowflake turns, drop falls) and lets the medium run from the source to the terminal; a row flashes after jumping to it. Nothing animates on its own, nothing delays content, no scroll-triggered reveals. `prefers-reduced-motion` turns all of it off.
+Motion only answers an action: on the start page, hovering or focusing a ready tool opens its valve, damper or lever, activates the source (fan spins up and coasts down with inertia, flame flickers, snowflake crystallizes outward, water wave rises in the drop) and lets the medium run from the source to the terminal; a row flashes after jumping to it. Nothing animates on its own, nothing delays content, no scroll-triggered reveals, and the `rAF` loop sleeps when idle. `prefers-reduced-motion` turns all of it off.
 
 ## Writing
 

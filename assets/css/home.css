@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 /* Start page. Every discipline is drawn as a small network in its own idiom: a source symbol,
-   the distribution and one branch per tool with a terminal unit (radiator, diffuser, wall unit, tap).
-   Everything is still. Hovering or focusing a ready tool opens its valve or damper, starts the source
-   and lets the medium run from the source to the terminal (feedback, not decoration).
+   the distribution and one branch per tool with a terminal unit (radiator, diffuser, fan-coil, tap).
+   Everything is still at rest (no active animations or rAF loops). Hovering or focusing a ready tool
+   opens its valve or damper, starts the source and lets the medium run from the source to the terminal.
    The geometry is built in assets/js/home.js, which also sets --row, --head and --net. */
 
 .home-wrap {
@@ -41,7 +41,10 @@
   font-stretch: var(--stretch-brand);
   font-size: var(--fs-lg);
   color: var(--text-muted);
+  transition: color 0.2s;
 }
+.discipline.is-on .discipline-name { color: var(--primary); }
+.discipline[data-group='heating'].is-on .discipline-name { color: var(--danger); }
 
 .tools { list-style: none; margin: 0; padding: 0; }
 .tool > a, .tool > div {
@@ -63,11 +66,14 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: color 0.16s;
 }
 .tool-meta { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; overflow: hidden; }
 .is-placeholder .tool-name { color: var(--text-muted); }
 
 .is-ready a:hover .tool-name, .is-ready a:focus-visible .tool-name { color: var(--primary); }
+.discipline[data-group='heating'] .is-ready a:hover .tool-name,
+.discipline[data-group='heating'] .is-ready a:focus-visible .tool-name { color: var(--danger); }
 .is-ready a:focus-visible { outline: none; }
 .is-ready a:focus-visible .tool-name { text-decoration: underline; }
 
@@ -84,6 +90,7 @@
   min-width: 200px; padding: var(--sp-4) var(--sp-5);
   border: 1px solid var(--border); border-radius: var(--r-panel); background: var(--surface);
   color: var(--text-muted); text-decoration: none;
+  transition: border-color 0.14s, color 0.14s;
 }
 .gtile.is-ready:hover, .gtile.is-ready:focus-visible { border-color: var(--primary); color: var(--primary); }
 .gtile.is-ready:hover .tool-name, .gtile.is-ready:focus-visible .tool-name { color: var(--primary); }
@@ -91,75 +98,196 @@
 .gtile.is-ready:focus-visible .tool-name { text-decoration: underline; }
 .gtile.is-placeholder .tool-name { color: var(--text-muted); }
 
-/* ---- drawing ---------------------------------------------------------------- */
+/* ---- schematic drawing ------------------------------------------------------ */
 
 .net {
-  --line: var(--text-muted);          /* built parts */
+  --line: var(--text-muted);
   --line-placeholder: var(--border-strong);
-  --flow: var(--primary);             /* moving medium, running source, reached terminal */
+  --flow: var(--primary);
+  --flow-hot: var(--danger);
+  --flow-hot-subtle: var(--danger-subtle);
+  --flow-cold: var(--primary);
+  --flow-cold-ret: var(--chart-8);
+  --fill-active: var(--primary-subtle);
   fill: none;
   stroke-linecap: butt;
-  stroke-linejoin: miter;
+  stroke-linejoin: round;
 }
 .net .is-placeholder { --line: var(--line-placeholder); }
 
-.pipe { stroke: var(--line); stroke-width: 2; }
-.manifold { stroke: var(--line); stroke-width: 4; stroke-linecap: round; }
-.duct-wall { stroke: var(--line); stroke-width: 20; }
-.duct-in { stroke: var(--bg); stroke-width: 16; }
+.pipe { stroke: var(--line); stroke-width: 1.85; stroke-linecap: round; }
+.pipe-halo { stroke: var(--bg); stroke-width: 5.2; stroke-linecap: round; }
+.duct-wall { stroke: var(--line); stroke-width: 16; stroke-linecap: butt; stroke-linejoin: round; }
+.duct-in { stroke: var(--bg); stroke-width: 12.6; stroke-linecap: butt; stroke-linejoin: round; }
+.duct-flange { stroke: var(--line); stroke-width: 1.5; stroke-linecap: round; }
+.manifold-body { fill: var(--surface); stroke: var(--line); stroke-width: 1.75; }
+.manifold-port { stroke: var(--line); stroke-width: 2.6; stroke-linecap: butt; }
 
-.term { stroke: var(--line); stroke-width: 2; transition: stroke 0.2s; }
-.term rect { fill: var(--bg); }
-.term path { stroke-width: 1.5; }
-.term .tap-body { fill: var(--bg); stroke-width: 2; stroke-linejoin: round; }
+/* ---- source medallions ------------------------------------------------------ */
 
-.valve { stroke: var(--line); stroke-width: 1.5; stroke-linejoin: round; fill: var(--line); transition: fill 0.2s; }
-.damper, .flap, .lever { stroke: var(--line); stroke-width: 2; stroke-linecap: round; transform-box: fill-box; transition: transform 0.25s ease-out; }
-.damper { transform-origin: center; }
-.damper circle { fill: var(--bg); stroke-width: 1.5; }
-.lever { stroke-width: 2.5; transform-origin: right center; }
+.src-ring { fill: var(--bg); stroke: var(--text); stroke-width: 1.85; transition: stroke 0.24s, fill 0.24s; }
+.src { stroke: var(--text); stroke-width: 1.55; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; transition: stroke 0.24s, fill 0.24s, opacity 0.24s; }
+.fan-hub { fill: var(--bg); stroke: var(--text); stroke-width: 1.5; transition: stroke 0.24s, fill 0.24s; }
+.js-fan, .js-fc-fan { transform-origin: 0 0; }
+.js-flame { transform-origin: 0 12px; }
 
-/* source symbol */
-.src-ring { fill: var(--bg); stroke: var(--text); stroke-width: 2; transition: stroke 0.2s; }
-.src { stroke: var(--text); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; transition: stroke 0.2s, fill 0.2s; }
-.spin { transform-box: fill-box; transform-origin: center; animation: spin 0.7s linear infinite paused; }
-.fan-hub { fill: var(--bg); }
-.flake { animation-duration: 6s; }
-.flame { transform-box: fill-box; transform-origin: center bottom; }
+.is-on .src-ring { stroke: var(--flow); fill: var(--fill-active); }
+.is-on .src { stroke: var(--flow); }
+.is-on .fan-hub { stroke: var(--flow); fill: var(--fill-active); }
 
-/* medium: revealed along its path from the source (mask), then moving */
-.reveal { stroke: white; stroke-width: 6; stroke-dasharray: var(--len) var(--len); stroke-dashoffset: var(--len); transition: stroke-dashoffset 0s 0.2s; } /* mask luminance, not a colour */
-.flow { stroke: var(--flow); opacity: 0; transition: opacity 0.2s; animation: flow-16 0.35s linear infinite paused; }
-.flow-air { stroke-width: 2; stroke-dasharray: 7 9; }
-.flow-water { stroke-width: 3; stroke-dasharray: 5 5; animation-name: flow-10; animation-duration: 0.45s; }
-.flow-gas { stroke-width: 3.5; stroke-linecap: round; stroke-dasharray: 0 8; animation-name: flow-8; animation-duration: 0.3s; }
-.flow-return { animation-direction: reverse; }
-.flow.out { stroke-width: 2; }
+/* Heating burner flame (red supply) */
+.discipline[data-group='heating'].is-on .src-ring { stroke: var(--flow-hot); fill: var(--flow-hot-subtle); }
+.flame-outer { fill: transparent; transition: fill 0.24s, stroke 0.24s; }
+.flame-core { fill: transparent; stroke: var(--text); stroke-width: 1.25; transition: fill 0.24s, stroke 0.24s; }
+.discipline[data-group='heating'].is-on .flame-outer { fill: var(--flow-hot); stroke: var(--flow-hot); }
+.discipline[data-group='heating'].is-on .flame-core { fill: var(--bg); stroke: var(--bg); }
 
-/* active branch */
-.run.is-active .reveal { stroke-dashoffset: 0; transition: stroke-dashoffset var(--reveal) linear; }
-.run.is-active .flow { opacity: 1; animation-play-state: running; transition: none; }
-.run.is-active .out { transition: opacity 0.2s var(--reveal); }
-.run.is-active .valve { fill: var(--bg); }
-.run.is-active .damper { transform: rotate(90deg); }
-.run.is-active .lever { transform: rotate(25deg); }
-.run.is-active .flap { transform: translateY(4px); transition-delay: var(--reveal); }
-.run.is-active .term { stroke: var(--flow); transition-delay: var(--reveal); }
+/* Cooling: static snowflake crystallizing outward from centre */
+.flake-base { stroke: var(--text); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transition: opacity 0.24s; }
+.is-on .flake-base { opacity: 0.25; }
+.flake-frost { stroke: var(--flow-cold); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 28 28; stroke-dashoffset: 28; transition: stroke-dashoffset 0.3s ease-in; }
+.is-on .flake-frost { stroke-dashoffset: 0; transition: stroke-dashoffset 0.46s cubic-bezier(0.22, 1, 0.36, 1); }
+.flake-core-dot { fill: var(--bg); stroke: var(--text); stroke-width: 1.4; transition: fill 0.24s, stroke 0.24s; }
+.is-on .flake-core-dot { fill: var(--flow-cold); stroke: var(--flow-cold); }
 
-.is-on .src-ring, .is-on .src { stroke: var(--flow); }
-.is-on .spin { animation-play-state: running; }
-.is-on .flame { fill: var(--flow); animation: flicker 0.5s ease-in-out infinite alternate; }
-.is-on .drop { fill: var(--flow); animation: drip 0.9s ease-in infinite; }
-.drop-reflection { fill: none; }
+/* Sanitary: rising liquid wave inside the water drop */
+.drop-fill { opacity: 0; transition: opacity 0.2s; }
+.is-on .drop-fill { opacity: 1; }
+.drop-wave { fill: var(--flow); opacity: 0.88; }
+.drop-reflection { stroke: var(--text); stroke-width: 1.4; stroke-linecap: round; transition: stroke 0.26s; }
 .is-on .drop-reflection { stroke: var(--bg); }
 
-@keyframes flow-16 { to { stroke-dashoffset: -16; } }
-@keyframes flow-10 { to { stroke-dashoffset: -10; } }
-@keyframes flow-8 { to { stroke-dashoffset: -8; } }
-@keyframes spin { to { transform: rotate(360deg); } }
-@keyframes flicker { to { transform: scale(0.94, 1.06); } }
-@keyframes drip {
-  0% { transform: translateY(-1px); opacity: 0; }
-  25% { transform: translateY(0); opacity: 1; }
-  100% { transform: translateY(4px); opacity: 0; }
+/* ---- Heizung: thermostatic valve, sectional radiator, convection ------------ */
+
+.tvalve-body { fill: var(--bg); stroke: var(--line); stroke-width: 1.45; stroke-linejoin: round; transition: stroke 0.2s, fill 0.2s; }
+.tvalve-seat { fill: var(--line); transition: fill 0.22s; }
+.tvalve-head { fill: var(--surface); stroke: var(--line); stroke-width: 1.35; transition: stroke 0.2s, fill 0.2s; }
+.tvalve-pin { stroke: var(--line); stroke-width: 1.55; stroke-linecap: round; transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), stroke 0.2s; }
+.run.is-active .tvalve-body { stroke: var(--flow-hot); }
+.run.is-active .tvalve-head { stroke: var(--flow-hot); fill: var(--flow-hot-subtle); }
+.run.is-active .tvalve-pin { stroke: var(--flow-hot); transform: translateY(-2.4px); }
+.run.is-active .tvalve-seat { fill: var(--bg); }
+
+.rad-frame { stroke: var(--line); stroke-width: 1.5; fill: var(--bg); transition: stroke 0.26s; }
+.rad-warm { fill: var(--flow-hot-subtle); stroke: var(--flow-hot); stroke-width: 1.5; }
+.rad-warm-mask-rect { transform: scaleX(0); transform-box: fill-box; transform-origin: left center; transition: transform 0.22s ease-in; }
+.run.is-active .rad-warm-mask-rect { transform: scaleX(1); transition: transform 0.38s cubic-bezier(0.25, 0.8, 0.25, 1) var(--reveal); }
+.run.is-active .rad-frame { stroke: var(--flow-hot); transition-delay: var(--reveal); }
+
+.heat-wrap { opacity: 0; transition: opacity 0.2s; }
+.run.is-active .heat-wrap { opacity: 0.88; transition: opacity 0.28s ease calc(var(--reveal) + 120ms); }
+.heat-wave { stroke: var(--flow-hot); stroke-width: 1.35; stroke-linecap: round; stroke-dasharray: 8 10; }
+.run.is-active .heat-wave { animation: heat-rise 0.9s linear infinite; }
+
+/* ---- Lüftung: in-duct butterfly damper, flared diffuser, air plumes --------- */
+
+.damper-boss { fill: var(--line); transition: fill 0.2s; }
+.damper-blade { stroke: var(--line); stroke-width: 1.9; stroke-linecap: round; transform-box: fill-box; transform-origin: center; transform: rotate(76deg); transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), stroke 0.22s; }
+.damper-pivot { fill: var(--bg); stroke: var(--line); stroke-width: 1.35; transition: stroke 0.22s; }
+.run.is-active .damper-blade { transform: rotate(0deg); stroke: var(--flow); }
+.run.is-active .damper-pivot { stroke: var(--flow); }
+.run.is-active .damper-boss { fill: var(--flow); }
+
+.diffuser-body { fill: var(--bg); stroke: var(--line); stroke-width: 1.65; stroke-linejoin: round; transition: stroke 0.22s, fill 0.22s; }
+.diffuser-blade { stroke: var(--line); stroke-width: 1.25; stroke-linecap: round; transition: stroke 0.22s; }
+.run.is-active .diffuser-body { stroke: var(--flow); fill: var(--fill-active); transition-delay: var(--reveal); }
+.run.is-active .diffuser-blade { stroke: var(--flow); transition-delay: var(--reveal); }
+
+.plume-wrap { opacity: 0; transition: opacity 0.18s; }
+.run.is-active .plume-wrap { opacity: 0.9; transition: opacity 0.24s ease var(--reveal); }
+.air-plume { stroke: var(--flow); stroke-width: 1.6; stroke-linecap: round; stroke-dasharray: 9 13; }
+.air-plume.p2 { stroke-dasharray: 11 11; }
+.run.is-active .air-plume { animation: plume-out 0.62s linear infinite; }
+.run.is-active .air-plume.p2 { animation-duration: 0.5s; }
+.run.is-active .air-plume.p3 { animation-duration: 0.65s; animation-delay: -0.22s; }
+
+/* ---- Klima: fan-coil (Umluftkühler) ----------------------------------------- */
+
+.fc-box { fill: var(--bg); stroke: var(--line); stroke-width: 1.65; transition: stroke 0.22s, fill 0.22s; }
+.fc-fin { stroke: var(--line); stroke-width: 1.35; stroke-linecap: round; transition: stroke 0.22s; }
+.fc-ring { fill: var(--bg); stroke: var(--line); stroke-width: 1.35; transition: stroke 0.22s, fill 0.22s; }
+.fc-blade { stroke: var(--line); stroke-width: 1.45; stroke-linecap: round; transition: stroke 0.22s; }
+.run.is-active .fc-box { stroke: var(--flow-cold); fill: var(--fill-active); transition-delay: var(--reveal); }
+.run.is-active .fc-fin { stroke: var(--flow-cold); transition-delay: var(--reveal); }
+.run.is-active .fc-ring { stroke: var(--flow-cold); fill: var(--bg); transition-delay: var(--reveal); }
+.run.is-active .fc-blade { stroke: var(--flow-cold); transition-delay: var(--reveal); }
+
+.fc-plume-wrap { opacity: 0; transition: opacity 0.18s; }
+.run.is-active .fc-plume-wrap { opacity: 0.9; transition: opacity 0.24s ease calc(var(--reveal) + 80ms); }
+.fc-plume { stroke: var(--flow-cold); stroke-width: 1.5; stroke-linecap: round; stroke-dasharray: 8 11; }
+.fc-plume.d2 { stroke-dasharray: 10 9; }
+.run.is-active .fc-plume { animation: fc-blow 0.58s linear infinite; }
+.run.is-active .fc-plume.d2 { animation-delay: -0.2s; }
+.run.is-active .fc-plume.d3 { animation-delay: -0.4s; }
+
+/* ---- Sanitär: modern wall mixer tap, water stream & splash ------------------ */
+
+.tap-rosette { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; transition: stroke 0.2s, fill 0.2s; }
+.tap-spout { fill: var(--bg); stroke: var(--line); stroke-width: 1.6; stroke-linejoin: round; transition: stroke 0.2s, fill 0.2s; }
+.tap-cartridge { fill: var(--surface); stroke: var(--line); stroke-width: 1.45; transition: stroke 0.2s, fill 0.2s; }
+.tap-aerator { stroke: var(--line); stroke-width: 1.5; stroke-linecap: round; transition: stroke 0.2s; }
+.tap-lever { stroke: var(--line); stroke-width: 1.9; stroke-linecap: round; transform-box: fill-box; transform-origin: left center; transform: rotate(0deg); transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), stroke 0.2s; }
+.run.is-active .tap-rosette { stroke: var(--flow); fill: var(--fill-active); transition-delay: var(--reveal); }
+.run.is-active .tap-spout { stroke: var(--flow); fill: var(--fill-active); transition-delay: var(--reveal); }
+.run.is-active .tap-cartridge { stroke: var(--flow); fill: var(--fill-active); transition-delay: var(--reveal); }
+.run.is-active .tap-aerator { stroke: var(--flow); transition-delay: var(--reveal); }
+.run.is-active .tap-lever { stroke: var(--flow); transform: rotate(-28deg); }
+
+.water-stream-core { stroke: var(--flow); stroke-width: 2.8; stroke-linecap: round; stroke-dasharray: 22 22; stroke-dashoffset: 22; opacity: 0; transition: stroke-dashoffset 0.18s ease-in, opacity 0.15s; }
+.run.is-active .water-stream-core { stroke-dashoffset: 0; opacity: 0.92; transition: stroke-dashoffset 0.2s ease-out var(--reveal), opacity 0.1s ease var(--reveal); }
+.water-sheen-wrap { opacity: 0; transition: opacity 0.14s; }
+.run.is-active .water-sheen-wrap { opacity: 0.72; transition: opacity 0.18s ease calc(var(--reveal) + 100ms); }
+.water-stream-sheen { stroke: var(--bg); stroke-width: 1.05; stroke-linecap: round; stroke-dasharray: 3 7; }
+.run.is-active .water-stream-sheen { animation: water-fall 0.32s linear infinite; }
+
+.splash-wrap { opacity: 0; transition: opacity 0.14s; }
+.run.is-active .splash-wrap { opacity: 1; transition: opacity 0.18s ease calc(var(--reveal) + 150ms); }
+.water-splash { stroke: var(--flow); stroke-width: 1.25; stroke-linecap: round; transform-box: fill-box; transform-origin: center bottom; }
+.run.is-active .water-splash { animation: splash-pop 0.55s ease-out infinite; }
+
+/* ---- medium reveal & flow (animations attach only while active) ------------- */
+
+.reveal { stroke: white; stroke-width: 9; stroke-dasharray: var(--len) var(--len); stroke-dashoffset: var(--len); transition: stroke-dashoffset 0s 0.22s; } /* mask luminance, not a colour */
+.run.is-active .reveal { stroke-dashoffset: 0; transition: stroke-dashoffset var(--reveal) cubic-bezier(0.2, 0.6, 0.35, 1); }
+
+.flow-base-hot { stroke: var(--flow-hot); opacity: 0; transition: opacity 0.22s; }
+.run.is-active .flow-base-hot { opacity: 0.34; transition: opacity 0.12s; }
+.flow-base-cold { stroke: var(--flow-cold); opacity: 0; transition: opacity 0.22s; }
+.run.is-active .flow-base-cold { opacity: 0.32; transition: opacity 0.12s; }
+.flow-base-cold-ret { stroke: var(--flow-cold-ret); opacity: 0; transition: opacity 0.22s; }
+.run.is-active .flow-base-cold-ret { opacity: 0.28; transition: opacity 0.12s; }
+
+.flow { stroke: var(--flow); opacity: 0; transition: opacity 0.22s; }
+.run.is-active .flow { opacity: 1; transition: none; }
+
+.flow-hot { stroke: var(--flow-hot); stroke-width: 2.3; stroke-linecap: round; stroke-dasharray: 10 7; }
+.run.is-active .flow-hot { animation: flow-17 0.5s linear infinite; }
+.flow-heat-ret { stroke: var(--flow-cold); stroke-width: 2.2; stroke-linecap: round; stroke-dasharray: 10 7; }
+.run.is-active .flow-heat-ret { animation: flow-17 0.54s linear infinite; }
+
+.flow-air-a { stroke-width: 1.45; stroke-linecap: round; stroke-dasharray: 12 10; }
+.run.is-active .flow-air-a { animation: flow-22 0.46s linear infinite; }
+.flow-air-b { stroke-width: 1.2; stroke-linecap: round; stroke-dasharray: 9 13; }
+.run.is-active .flow-air-b { opacity: 0.68; animation: flow-22 0.58s linear -0.2s infinite; }
+
+.flow-chilled-sup { stroke: var(--flow-cold); stroke-width: 2.1; stroke-linecap: round; stroke-dasharray: 9 6; }
+.run.is-active .flow-chilled-sup { animation: flow-15 0.46s linear infinite; }
+.flow-chilled-ret { stroke: var(--flow-cold-ret); stroke-width: 1.9; stroke-linecap: round; stroke-dasharray: 9 6; }
+.run.is-active .flow-chilled-ret { animation: flow-15 0.5s linear infinite reverse; }
+
+.flow-tap { stroke-width: 2.15; stroke-linecap: round; stroke-dasharray: 11 7; }
+.run.is-active .flow-tap { animation: flow-18 0.38s linear infinite; }
+
+@keyframes flow-22 { to { stroke-dashoffset: -22; } }
+@keyframes flow-18 { to { stroke-dashoffset: -18; } }
+@keyframes flow-17 { to { stroke-dashoffset: -17; } }
+@keyframes flow-15 { to { stroke-dashoffset: -15; } }
+@keyframes heat-rise { from { stroke-dashoffset: 0; } to { stroke-dashoffset: 18; } }
+@keyframes plume-out { from { stroke-dashoffset: 22; } to { stroke-dashoffset: 0; } }
+@keyframes fc-blow { from { stroke-dashoffset: 19; } to { stroke-dashoffset: 0; } }
+@keyframes water-fall { from { stroke-dashoffset: 10; } to { stroke-dashoffset: 0; } }
+@keyframes splash-pop {
+  0% { transform: scale(0.55, 0.5); opacity: 0.9; }
+  75% { transform: scale(1.15, 1.05); opacity: 0.55; }
+  100% { transform: scale(1.3, 0.85); opacity: 0; }
 }
