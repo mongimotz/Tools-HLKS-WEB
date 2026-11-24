@@ -29,7 +29,7 @@ import {
   rotateSelection,
   type Clip,
 } from './actions.ts';
-import { loadDrafts, saveDrafts } from '../io/files.ts';
+import { loadDrafts, saveDrafts, takeHlksHandoff } from '../io/files.ts';
 import { SymbolEditor } from './SymbolEditor.tsx';
 import { TabBar } from './TabBar.tsx';
 import { insertIntoLine } from './insert.ts';
@@ -50,6 +50,7 @@ import { initPaper } from '../io/style.ts';
 import { nextId } from '../ops/ops.ts';
 import {
   initAutosave,
+  openDroppedFile,
   openFile,
   reopenLast,
   resolveConflict,
@@ -58,7 +59,7 @@ import {
   saveAs,
   setAutosave,
 } from '../io/session.ts';
-import { exportAs } from '../io/export.ts';
+import { exportAs, openInPdfEditor } from '../io/export.ts';
 import { initStyle } from '../io/style.ts';
 import { Icon } from './icons.tsx';
 import { loadExample } from '../io/examples.ts';
@@ -66,9 +67,10 @@ import { loadExample } from '../io/examples.ts';
 export function App() {
   const st = useEditor();
   const [help, setHelp] = useState(false);
+  const [draggingFile, setDraggingFile] = useState(false);
   const canvasSize = useRef({ w: 1000, h: 700 });
 
-  // Own symbols, then the browser draft (all tabs), then the last file (live sync) if permission is still granted.
+  // Own symbols, then the browser draft (all tabs), then any handoff from HLKS-Tools or the last live file.
   useEffect(() => {
     initOwnSymbols();
     initTabs();
@@ -77,7 +79,85 @@ export function App() {
     initStyle();
     initPaper();
     initAutosave();
-    void restoreLastFile();
+    const handoff = takeHlksHandoff();
+    if (handoff) {
+      tabForOpen();
+      useEditor.getState().load(handoff.doc, handoff.fileName);
+      useEditor.getState().notify(`${handoff.fileName} geöffnet`);
+    } else {
+      void restoreLastFile();
+    }
+    const syncGlobal = () => {
+      try {
+        const raw = localStorage.getItem('hlks-tools:project');
+        if (!raw) return;
+        const ctx = JSON.parse(raw) as { name?: string; author?: string; date?: string };
+        const s = useEditor.getState();
+        const cur = s.doc.meta;
+        const nextProject = typeof ctx.name === 'string' ? ctx.name : cur.project;
+        const nextAuthor = typeof ctx.author === 'string' ? ctx.author : cur.author;
+        const nextDate = typeof ctx.date === 'string' && ctx.date ? ctx.date : cur.date;
+        if (cur.project !== nextProject || cur.author !== nextAuthor || cur.date !== nextDate) {
+          useEditor.setState({
+            doc: { ...s.doc, meta: { ...cur, project: nextProject, author: nextAuthor, date: nextDate } },
+          });
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+    syncGlobal();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'hlks-tools:project' || e.key === 'hlks-tools:author') syncGlobal();
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('pageshow', syncGlobal);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('pageshow', syncGlobal);
+    };
+  }, []);
+
+  // File drag-and-drop anywhere on the page (.schema or Prinzipschema .pdf).
+  useEffect(() => {
+    let depth = 0;
+    const hasFiles = (e: DragEvent) => [...(e.dataTransfer?.types ?? [])].includes('Files');
+    const reset = () => {
+      depth = 0;
+      setDraggingFile(false);
+    };
+    const onEnter = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      depth++;
+      setDraggingFile(true);
+    };
+    const onLeave = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      depth = Math.max(0, depth - 1);
+      if (!depth) setDraggingFile(false);
+    };
+    const onOver = (e: DragEvent) => {
+      if (hasFiles(e)) e.preventDefault();
+    };
+    const onDrop = (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      reset();
+      const file = e.dataTransfer?.files?.[0];
+      if (file) void openDroppedFile(file);
+    };
+    window.addEventListener('dragenter', onEnter);
+    window.addEventListener('dragleave', onLeave);
+    window.addEventListener('dragover', onOver);
+    window.addEventListener('drop', onDrop);
+    window.addEventListener('dragend', reset);
+    return () => {
+      window.removeEventListener('dragenter', onEnter);
+      window.removeEventListener('dragleave', onLeave);
+      window.removeEventListener('dragover', onOver);
+      window.removeEventListener('drop', onDrop);
+      window.removeEventListener('dragend', reset);
+    };
   }, []);
   // Keep the draft of all schema tabs current (debounced).
   useEffect(() => {
@@ -127,7 +207,17 @@ export function App() {
     async exportAs(kind: 'pdf' | 'svg' | 'png') {
       const st = useEditor.getState();
       try {
-        await exportAs(st.doc, st.fileName, kind, { mono: st.mono });
+        const name = await exportAs(st.doc, st.fileName, kind, { mono: st.mono });
+        st.notify(`${name} gespeichert`);
+      } catch (e) {
+        st.notify(`Export fehlgeschlagen: ${(e as Error).message}`, 'error');
+      }
+    },
+    async toPdfEditor() {
+      const st = useEditor.getState();
+      try {
+        const ok = await openInPdfEditor(st.doc, st.fileName, { mono: st.mono });
+        if (!ok) st.notify('Übergabe blockiert (Browser-Speicher gesperrt)', 'error');
       } catch (e) {
         st.notify(`Export fehlgeschlagen: ${(e as Error).message}`, 'error');
       }
@@ -158,7 +248,25 @@ export function App() {
       setHelp(true);
     },
     async example(id: string) {
-      const doc = await loadExample(id);
+      const loaded = await loadExample(id);
+      let doc = loaded;
+      try {
+        const raw = localStorage.getItem('hlks-tools:project');
+        if (raw) {
+          const ctx = JSON.parse(raw) as { name?: string; author?: string; date?: string };
+          doc = {
+            ...loaded,
+            meta: {
+              ...loaded.meta,
+              ...(ctx.name ? { project: ctx.name } : {}),
+              ...(ctx.author ? { author: ctx.author } : {}),
+              ...(ctx.date ? { date: ctx.date } : {}),
+            },
+          };
+        }
+      } catch {
+        /* keep example metadata */
+      }
       tabForOpen();
       useEditor.getState().load(doc, `${id}.schema`);
     },
@@ -460,6 +568,11 @@ export function App() {
         </div>
       )}
       {help && <Help onClose={() => setHelp(false)} />}
+      {draggingFile && (
+        <div className="file-drop-overlay" aria-hidden="true">
+          <span>.schema / PDF öffnen</span>
+        </div>
+      )}
     </div>
   );
 }

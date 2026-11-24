@@ -3,8 +3,9 @@
 // tiles for tools without a discipline, and one open button for any PDF (HLKS-Tools PDFs open in their tool,
 // other PDFs in the PDF-Editor).
 
-import { GROUPS, GENERAL, TOOLS, findTool, toolUrl } from '../../lib/core/registry.js';
-import { readEnvelopeFromFile, pickFile, stashHandoff, stashFileHandoff, enableFileDrop } from '../../lib/core/files.js';
+import { GROUPS, GENERAL, TOOLS } from '../../lib/core/registry.js';
+import { readAnyFile, routeToTool, pickFile, takeHandoff, enableFileDrop } from '../../lib/core/files.js';
+import { draftLabelFor, mountDossierDialog, DOSSIER_TOOL_ID } from '../../lib/core/dossier.js';
 import { html, raw, icon, toast, bindThemeToggle, mountSourceLink } from '../../lib/core/ui.js';
 
 // ---- geometry (px; home.css reads ROW, HEAD and NET from custom properties set below) -------------
@@ -354,20 +355,9 @@ const DRAW = { heating, ventilation, cooling, plumbing };
 
 // ---- page -------------------------------------------------------------------
 
-/** Name of the locally saved draft of a tool ("Projekt – Anlage"), or ''. */
-function draftLabel(id) {
-  try {
-    const d = JSON.parse(localStorage.getItem(`hlks-tools:${id}:draft`) || 'null');
-    if (!d) return '';
-    return [d.project?.name, d.inputs?.system?.name].filter(Boolean).join(' – ');
-  } catch {
-    return '';
-  }
-}
-
 function toolRow(t, i) {
   const ready = t.status === 'ready';
-  const draft = ready ? draftLabel(t.id) : '';
+  const draft = ready ? draftLabelFor(t.id) : '';
   const body = html`
     <span class="tool-name">${t.name}</span>
     ${draft ? html`<span class="tool-meta">${icon('save', { size: 12 })}${draft}</span>` : ''}`;
@@ -537,59 +527,56 @@ function renderGeneral() {
   const tools = TOOLS.filter((t) => t.group === GENERAL);
   host.hidden = !tools.length;
   host.innerHTML = tools
-    .map((t) =>
-      String(
+    .map((t) => {
+      const draft = t.status === 'ready' ? draftLabelFor(t.id) : '';
+      const label = html`<span class="gtile-text"><span class="tool-name">${t.name}</span>${draft ? html`<span class="tool-meta">${icon('save', { size: 12 })}${draft}</span>` : ''}</span>`;
+      return String(
         t.status === 'ready'
-          ? html`<a class="gtile is-ready" href="${t.path}">${icon(t.icon ?? 'open', { size: 28 })}<span class="tool-name">${t.name}</span></a>`
-          : html`<div class="gtile is-placeholder" aria-disabled="true">${icon(t.icon ?? 'open', { size: 28 })}<span class="tool-name">${t.name}</span></div>`,
-      ),
-    )
+          ? html`<a class="gtile is-ready" href="${t.path}">${icon(t.icon ?? 'open', { size: 28 })}${label}</a>`
+          : html`<div class="gtile is-placeholder" aria-disabled="true">${icon(t.icon ?? 'open', { size: 28 })}${label}</div>`,
+      );
+    })
     .join('');
 }
 
-/** A PDF without HLKS-Tools data opens in the PDF-Editor (its → DXF button hands it on to PDF → DXF). */
-async function openForeignPdf(file) {
-  const tool = findTool('pdf-editor');
-  if (tool?.status !== 'ready') return false;
-  if (!(await stashFileHandoff(file))) {
-    toast('Übergabe blockiert (Browser-Speicher gesperrt)', { kind: 'error', timeout: 8000 });
-    return true;
-  }
-  location.href = toolUrl('pdf-editor');
-  return true;
-}
+let dossier;
 
 async function openFile(file) {
   if (!file) return;
   try {
-    let env;
-    try {
-      env = await readEnvelopeFromFile(file);
-    } catch (e) {
-      if ((e.code === 'no-data' || e.code === 'pdf-unreadable') && (await openForeignPdf(file))) return;
-      throw e;
-    }
-    const tool = findTool(env.tool);
-    if (!tool || tool.status !== 'ready') {
-      toast('Unbekanntes Werkzeug', { kind: 'error', timeout: 7000 });
+    const res = await readAnyFile(file);
+    if (res.kind === 'envelope' && res.envelope.tool === DOSSIER_TOOL_ID) {
+      dossier.openEnvelope(res.envelope);
       return;
     }
-    if (!stashHandoff(env)) {
-      toast('Übergabe blockiert (Browser-Speicher gesperrt)', { kind: 'error', timeout: 8000 });
-      return;
-    }
-    location.href = toolUrl(env.tool);
+    await routeToTool(res);
   } catch (e) {
     toast(e.message, { kind: 'error', timeout: 8000 });
   }
 }
 
-renderNetworks();
-renderGeneral();
-bindFlow(document.getElementById('tools'));
+function refreshHome() {
+  renderNetworks();
+  renderGeneral();
+  bindFlow(document.getElementById('tools'));
+  if (dossier) {
+    const draftCount = dossier.draftCount();
+    const dossierBtn = document.getElementById('open-dossier');
+    dossierBtn.innerHTML = String(html`${icon('dossier')}<span>Dossier</span>${draftCount ? html`<span class="dossier-pill num">${draftCount}</span>` : ''}`);
+  }
+}
+
 bindThemeToggle(document.getElementById('theme-toggle'));
 mountSourceLink();
+dossier = mountDossierDialog(document.getElementById('dossier-dialog'), { onChange: refreshHome });
+refreshHome();
+window.addEventListener('pageshow', refreshHome);
+window.addEventListener('storage', refreshHome);
+const dossierBtn = document.getElementById('open-dossier');
+dossierBtn.addEventListener('click', () => dossier.open());
 const openBtn = document.getElementById('open-file');
 openBtn.innerHTML = String(html`${icon('open')}<span>Öffnen</span>`);
 openBtn.addEventListener('click', async () => openFile(await pickFile()));
 enableFileDrop(openFile);
+const handoff = takeHandoff();
+if (handoff?.tool === DOSSIER_TOOL_ID) dossier.openEnvelope(handoff);

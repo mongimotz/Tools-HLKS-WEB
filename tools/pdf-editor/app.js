@@ -11,10 +11,10 @@ import { mountViewer } from './bridge.js';
 import { WorkerClient } from './client.js';
 import { installSymbols, installStamps } from './library.js';
 import * as ui from './tools-ui.js';
-import { pickFile, download, enableFileDrop, takeFileHandoff, stashFileHandoff } from '../../lib/core/files.js';
+import { pickFileWithHandle, saveFile, download, enableFileDrop, takeFileHandoff, stashFileHandoff, routeToTool } from '../../lib/core/files.js';
 import { html, raw, icon, toast, bindThemeToggle, mountSourceLink } from '../../lib/core/ui.js';
 import { createIssuePanel } from '../../lib/core/issues.js';
-import { toolUrl } from '../../lib/core/registry.js';
+import { findTool, toolUrl } from '../../lib/core/registry.js';
 import { fmt } from '../../lib/core/format.js';
 
 const SETTINGS_KEY = `hlks-tools:${TOOL_ID}:settings`;
@@ -313,10 +313,13 @@ function openSettings() {
 // ============================================================================
 
 async function openPicked() {
-  openFile(await pickFile('.pdf,application/pdf'));
+  const picked = await pickFileWithHandle('.pdf,application/pdf', [
+    { description: 'PDF-Dokument', accept: { 'application/pdf': ['.pdf'] } },
+  ]);
+  if (picked) openFile(picked.file, picked.handle);
 }
 
-async function openFile(file) {
+async function openFile(file, handle = null) {
   if (!file || !app.bridge) return;
   if (/\.svg$/i.test(file.name) || file.type === 'image/svg+xml') {
     app.symbols?.addFiles([file]); // an SVG dropped anywhere becomes an own symbol
@@ -333,7 +336,30 @@ async function openFile(file) {
     toast(ERRORS.notPdf, { kind: 'error' });
     return;
   }
-  await openBytes(bytes, file.name || DEFAULT_NAME);
+  await openBytes(bytes, file.name || DEFAULT_NAME, { handle });
+}
+
+/** Lazily check if the opened PDF carries HLKS-Tools data.json and show a jump-back notice. */
+async function inspectHlksData(bytes) {
+  setNotice('hlks-data', null);
+  try {
+    const [{ extractDataJson }, { parseEnvelope }] = await Promise.all([
+      import('../../lib/core/pdf.js'),
+      import('../../lib/core/envelope.js'),
+    ]);
+    const text = await extractDataJson(bytes);
+    if (!text) return null;
+    const env = parseEnvelope(text);
+    const label = env.tool === 'dossier' ? 'Projekt-Dossier' : findTool(env.tool)?.name ?? env.tool;
+    setNotice('hlks-data', {
+      severity: 'info',
+      text: `HLKS-Daten enthalten (${label})`,
+      run: () => void routeToTool({ kind: 'envelope', envelope: env }).catch((e) => toast(e.message, { kind: 'error' })),
+    });
+    return env;
+  } catch {
+    return null;
+  }
 }
 
 const openedOk = (doc) => doc && doc.status !== 'error' && doc.status !== 'failed';
@@ -343,7 +369,7 @@ const openedOk = (doc) => doc && doc.status !== 'error' && doc.status !== 'faile
  * again. `keep`: the same document after a document tool (name and password stay, it counts as changed).
  * `origin`: the autosave slot the document belongs to (a restored slot); else the file as opened.
  */
-async function openBytes(bytes, name, { keep = false, password, origin } = {}) {
+async function openBytes(bytes, name, { keep = false, password, origin, handle = null } = {}) {
   if (!keep) await flushAutosave(); // the last changes of the document that closes
   app.loading = true;
   setNotice('open-failed', null);
@@ -361,7 +387,16 @@ async function openBytes(bytes, name, { keep = false, password, origin } = {}) {
     }
     if (!openedOk(doc)) throw new Error('open');
     setNotice('open-failed', null); // the viewer reported the first attempt
-    app.file = keep ? { ...app.file, name, password } : { name, origin: origin ?? { name, size: copy.length } };
+    const prevEnv = keep ? app.file?.hlksEnvelope ?? null : null;
+    const prevHandle = keep ? app.file?.handle ?? null : handle;
+    app.file = keep
+      ? { ...app.file, name, password, handle: prevHandle, hlksEnvelope: prevEnv }
+      : { name, origin: origin ?? { name, size: copy.length }, handle, hlksEnvelope: null };
+    if (!keep) {
+      inspectHlksData(copy).then((env) => {
+        if (env && app.file) app.file.hlksEnvelope = env;
+      });
+    }
     app.dirty = keep || repaired || !!origin;
     document.title = `${name} – ${TITLE} – HLKS-Tools`;
     if (repaired) setNotice('repaired', { severity: 'warning', text: RESULTS.repaired, dismiss: () => setNotice('repaired', null) });
@@ -391,17 +426,39 @@ export function fileName() {
   return /\.pdf$/i.test(name) ? name : `${name}.pdf`;
 }
 
-async function save() {
+async function save(forcePicker = false) {
   if (!app.bridge?.hasDocument()) return;
   try {
-    const bytes = await app.bridge.bytes();
-    download(bytes, fileName(), 'application/pdf');
+    let bytes = await app.bridge.bytes();
+    if (app.file?.hlksEnvelope) {
+      try {
+        const { extractDataJson, attachDataJson } = await import('../../lib/core/pdf.js');
+        const u = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+        if (!(await extractDataJson(u))) {
+          bytes = await attachDataJson(u, app.file.hlksEnvelope);
+        }
+      } catch {
+        /* keep original saved bytes if re-attaching fails */
+      }
+    }
+    const res = await saveFile({
+      data: bytes,
+      filename: fileName(),
+      mime: 'application/pdf',
+      handle: app.file?.handle ?? null,
+      forcePicker,
+    });
+    if (!res) return;
+    if (app.file) {
+      app.file.handle = res.handle;
+      if (res.name) app.file.name = res.name;
+    }
     app.dirty = false;
     clearTimeout(app.saveTimer);
     app.saveTimer = 0;
     const key = liveKey();
     if (key) app.slots.remove(key); // saved: nothing to restore
-    toast(saved(fileName()), { kind: 'success' });
+    toast(saved(res.name || fileName()), { kind: 'success' });
   } catch {
     toast(ERRORS.save, { kind: 'error', timeout: 7000 });
   }
@@ -692,7 +749,9 @@ function redo() {
 
 function updateUi() {
   const has = !!app.bridge?.hasDocument();
-  $('[data-action="save"]').disabled = !has;
+  const saveBtn = $('[data-action="save"]');
+  saveBtn.disabled = !has;
+  saveBtn.classList.toggle('is-dirty', has && app.dirty);
   $('[data-action="to-dxf"]').disabled = !has;
   $('[data-action="undo"]').disabled = !has || !app.bridge.enabled('history:undo');
   $('[data-action="redo"]').disabled = !has || !app.bridge.enabled('history:redo');
@@ -704,6 +763,8 @@ const isEditable = (el) => !!el && (el.isContentEditable || /^(input|textarea|se
 
 /** The ⋯ menu: the document tools in the plan's order, then the settings. `doc` entries need an open document. */
 const MENU = [
+  { action: 'saveAs', label: 'PDF speichern unter…', icon: 'saveAs', doc: true, run: () => save(true) },
+  { separator: true },
   { action: 'merge', icon: 'merge', doc: true, run: mergeTool },
   { action: 'split', icon: 'split', doc: true, run: splitTool },
   { action: 'watermark', icon: 'stamp', doc: true, run: watermarkTool },
@@ -809,7 +870,7 @@ function bindActions() {
       const k = e.key.toLowerCase();
       const typing = isEditable(e.composedPath()[0]);
       let run = null;
-      if (k === 's') run = save;
+      if (k === 's') run = () => save(e.shiftKey);
       else if (k === 'o') run = openPicked;
       else if (!typing && k === 'z' && !e.shiftKey) run = undo;
       else if (!typing && (k === 'y' || (k === 'z' && e.shiftKey))) run = redo;

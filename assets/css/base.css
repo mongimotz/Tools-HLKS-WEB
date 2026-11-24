@@ -76,6 +76,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn.icon-only { width: 32px; padding: 0; }
 .btn.small { height: 26px; padding: 0 8px; font-size: var(--fs-xs); }
 .btn.small.icon-only { width: 26px; }
+.btn.is-dirty::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.85; }
+.btn.is-busy { opacity: 0.7; cursor: wait; }
 
 @media (max-width: 720px) {
   .btn .btn-label { display: none; }

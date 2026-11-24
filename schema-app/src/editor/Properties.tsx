@@ -454,10 +454,52 @@ function ConnectionProps({ doc, id }: { doc: Schema; id: string }) {
   );
 }
 
+function syncGlobalProject(key: 'project' | 'author' | 'date', value: string) {
+  try {
+    const prev = JSON.parse(localStorage.getItem('hlks-tools:project') || '{}') as {
+      name?: string;
+      number?: string;
+      author?: string;
+      date?: string;
+    };
+    const next = {
+      name: key === 'project' ? value : prev.name ?? '',
+      number: prev.number ?? '',
+      author: key === 'author' ? value : prev.author ?? '',
+      date: key === 'date' ? value : prev.date ?? '',
+    };
+    localStorage.setItem('hlks-tools:project', JSON.stringify(next));
+    if (key === 'author') localStorage.setItem('hlks-tools:author', value);
+    for (const id of ['duct-sizing', 'duct-pressure-loss', 'silencer', 'hx-diagram']) {
+      const dKey = `hlks-tools:${id}:draft`;
+      const raw = localStorage.getItem(dKey);
+      if (!raw) continue;
+      try {
+        const d = JSON.parse(raw) as { project?: Record<string, string> };
+        if (!d || typeof d !== 'object') continue;
+        d.project = {
+          name: next.name,
+          number: next.number,
+          author: next.author,
+          date: next.date || d.project?.date || new Date().toISOString().slice(0, 10),
+        };
+        localStorage.setItem(dKey, JSON.stringify(d));
+      } catch {
+        /* ignore */
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 function SheetProps({ doc }: { doc: Schema }) {
   const st = useEditor();
   const m = doc.meta;
-  const set = (k: keyof Schema['meta']) => (v: string) => st.change('Schriftfeld', (d) => void (d.meta[k] = v));
+  const set = (k: keyof Schema['meta']) => (v: string) => {
+    st.change('Schriftfeld', (d) => void (d.meta[k] = v));
+    if (k === 'project' || k === 'author' || k === 'date') syncGlobalProject(k, v);
+  };
   return (
     <section>
       <h2>Blatt</h2>

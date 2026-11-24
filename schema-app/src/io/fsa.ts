@@ -15,6 +15,9 @@ type W = Window & {
 };
 
 const TYPES = [{ description: 'Prinzipschema', accept: { 'application/json': ['.schema'] } }];
+const OPEN_TYPES = [
+  { description: 'Prinzipschema (.schema, .pdf)', accept: { 'application/json': ['.schema'], 'application/pdf': ['.pdf'] } },
+];
 const LAST = 'last-file';
 
 export const fsaSupported = typeof window !== 'undefined' && 'showOpenFilePicker' in window;
@@ -24,7 +27,7 @@ export type Handle = PermHandle;
 export async function pickOpen(): Promise<Handle | null> {
   try {
     const [h] = await (window as W).showOpenFilePicker!({
-      types: TYPES,
+      types: OPEN_TYPES,
       excludeAcceptAllOption: false,
       multiple: false,
     });

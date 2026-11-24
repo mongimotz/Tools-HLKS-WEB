@@ -14,45 +14,69 @@
 
 :root {
   --font: 'IBM Plex Sans Var', 'IBM Plex Sans', system-ui, sans-serif;
-  --bg: #eef1f4;
+  /* Wave Ink light tokens (aligned with assets/css/tokens.css) */
+  --bg: #f4f4f7;
   --panel: #ffffff;
-  --line: #d9dfe6;
-  --text: #1c2530;
-  --muted: #64707d;
-  --accent: #2f6fc9;
-  --accent-soft: #e3edfa;
-  --warn: #c98a00;
-  --error: #c4332b;
-  --stage: #dfe4ea;
-  --hover: #f1f4f7;
+  --line: #d3d3dc;
+  --text: #2a2a37;
+  --muted: #545464;
+  --accent: #4d699b;
+  --accent-soft: #e3e9f4;
+  --warn: #9a5400;
+  --error: #b5384b;
+  --stage: #ebebf0;
+  --hover: #e1e1e8;
   color-scheme: light;
 }
 /* Page theme: the shared HLKS-Tools choice (data-theme), else the system setting. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #151a20;
-    --panel: #1c232b;
-    --line: #2d3742;
-    --text: #e3e8ee;
-    --muted: #93a0ad;
-    --accent: #6ea4ec;
-    --accent-soft: #233650;
-    --stage: #10151a;
-    --hover: #242d37;
+    --bg: #1f1f28;
+    --panel: #24242f;
+    --line: #363646;
+    --text: #d4d4dd;
+    --muted: #a09cb0;
+    --accent: #7e9cd8;
+    --accent-soft: #223249;
+    --warn: #ffa066;
+    --error: #e46876;
+    --stage: #16161d;
+    --hover: #2a2a37;
     color-scheme: dark;
   }
 }
 :root[data-theme='dark'] {
-  --bg: #151a20;
-  --panel: #1c232b;
-  --line: #2d3742;
-  --text: #e3e8ee;
-  --muted: #93a0ad;
-  --accent: #6ea4ec;
-  --accent-soft: #233650;
-  --stage: #10151a;
-  --hover: #242d37;
+  --bg: #1f1f28;
+  --panel: #24242f;
+  --line: #363646;
+  --text: #d4d4dd;
+  --muted: #a09cb0;
+  --accent: #7e9cd8;
+  --accent-soft: #223249;
+  --warn: #ffa066;
+  --error: #e46876;
+  --stage: #16161d;
+  --hover: #2a2a37;
   color-scheme: dark;
+}
+
+.file-drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 3px dashed var(--accent);
+}
+.file-drop-overlay span {
+  background: var(--panel);
+  color: var(--text);
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.25);
 }
 
 * {

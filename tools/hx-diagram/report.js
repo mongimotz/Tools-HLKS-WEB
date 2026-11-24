@@ -3,7 +3,7 @@
 // processes; and the blank sheet. No DOM: also used by Node tests. The diagram is the same item list as on
 // screen (chart.js), drawn with pdf-lib.
 
-import { buildPdf, loadInk, INK, ReportWriter, A4_PORTRAIT, hexColor } from '../../lib/core/pdf.js';
+import { buildPdf, standardDecorate, loadInk, INK, ReportWriter, A4_PORTRAIT, hexColor } from '../../lib/core/pdf.js';
 import { PDFDocument, degrees } from '../../lib/vendor/pdf-lib/pdf-lib.esm.min.js';
 import { fmt, fmtDate } from '../../lib/core/format.js';
 import { buildChart, DEFAULT_RANGE } from './chart.js';
@@ -337,18 +337,12 @@ export async function buildReport(doc, _result, envelope) {
       drawTables(w, c, index, r, project);
     });
   };
-  const decorate = (w, i, total) => {
-    if (sheets.has(i)) return;
-    const top = 30;
-    w.text('HLKS-Tools', w.left, top, { size: 8, bold: true, color: INK.primary });
-    w.text(TOOL_NAME, w.left + w.measure('HLKS-Tools', 8, true) + 8, top, { size: 8, color: INK.text });
-    w.text([project.name, project.number].filter(Boolean).join(' | '), w.right, top, { size: 8, color: INK.text, align: 'right', maxWidth: w.contentWidth / 2 });
-    w.line(w.left, top + 7, w.right, top + 7, { color: INK.border, width: 0.6 });
-    const fy = w.pageH - 24;
-    w.line(w.left, fy - 10, w.right, fy - 10, { color: INK.border, width: 0.4 });
-    w.text(`HLKS-Tools | Berechnungsversion ${CALC_VERSION} | Eingaben eingebettet (data.json)`, w.left, fy, { size: 6.5, color: INK.muted, maxWidth: w.contentWidth - 80 });
-    w.text(`Seite ${i + 1} / ${total}`, w.right, fy, { size: 7, color: INK.muted, align: 'right' });
-  };
+  const decorate = standardDecorate({
+    toolName: TOOL_NAME,
+    project,
+    calcVersion: CALC_VERSION,
+    skipPages: sheets,
+  });
 
   return buildPdf({
     envelope: { ...envelope, project, inputs, snapshot: snapshotProjectOf(results) },

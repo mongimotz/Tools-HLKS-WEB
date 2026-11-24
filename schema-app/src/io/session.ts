@@ -63,6 +63,7 @@ function prepareTab(name: string) {
 export async function openHandle(h: Handle, ask = true): Promise<boolean> {
   if (!(await ensurePermission(h, ask))) return false;
   const f = await h.getFile();
+  if (/\.pdf$/i.test(f.name)) return openDroppedFile(f);
   const text = await f.text();
   let doc: Schema;
   try {
@@ -82,6 +83,21 @@ export async function openHandle(h: Handle, ask = true): Promise<boolean> {
   return true;
 }
 
+export async function openDroppedFile(f: File): Promise<boolean> {
+  try {
+    const { doc, name, fromPdf } = await readSchemaFile(f);
+    prepareTab(name);
+    st().load(doc, name);
+    useEditor.setState({ handle: null, syncError: null, conflict: null, reopen: null });
+    stopWatching();
+    st().notify(fromPdf ? `${f.name} (eingebettetes Schema) geöffnet` : `${name} geöffnet`);
+    return true;
+  } catch (e) {
+    st().notify(errText(e), 'error');
+    return false;
+  }
+}
+
 export async function openFile() {
   if (fsaSupported) {
     const h = await pickOpen();
@@ -91,16 +107,16 @@ export async function openFile() {
   const f = await pickFile();
   if (!f) return;
   try {
-    const doc = await readSchemaFile(f);
-    prepareTab(f.name);
-    st().load(doc, f.name);
+    const { doc, name, fromPdf } = await readSchemaFile(f);
+    prepareTab(name);
+    st().load(doc, name);
     useEditor.setState({ handle: null });
-    if (!hintShown) {
+    if (!hintShown && !fromPdf) {
       hintShown = true;
       st().notify(
-        `${f.name} geöffnet. Dieser Browser kann nicht direkt in die Datei speichern: Speichern lädt die Datei herunter, keine Live-Synchronisation (dafür Chrome oder Edge).`,
+        `${name} geöffnet. Dieser Browser kann nicht direkt in die Datei speichern: Speichern lädt die Datei herunter, keine Live-Synchronisation (dafür Chrome oder Edge).`,
       );
-    } else st().notify(`${f.name} geöffnet`);
+    } else st().notify(fromPdf ? `${f.name} (eingebettetes Schema) geöffnet` : `${name} geöffnet`);
   } catch (e) {
     st().notify(errText(e), 'error');
   }

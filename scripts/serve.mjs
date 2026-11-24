@@ -40,12 +40,26 @@ createServer(async (req, res) => {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end(`Not found (site under ${base})`);
       return;
     }
-    let path = normalize(join(root, decodeURIComponent(url.pathname.slice(base.length - 1))));
+    const relPath = decodeURIComponent(url.pathname.slice(base.length - 1));
+    let path = normalize(join(root, relPath));
     if (!path.startsWith(root)) {
       res.writeHead(403).end();
       return;
     }
     let info = await stat(path).catch(() => null);
+    // Local dev mirror of .github/workflows/pages.yml: serve /schema/* from schema-app/dist/* when /schema/ is absent.
+    if (!info && (relPath === '/schema' || relPath.startsWith('/schema/'))) {
+      const distRoot = join(root, 'schema-app', 'dist');
+      const sub = relPath.slice('/schema'.length) || '/';
+      const alt = normalize(join(distRoot, sub));
+      if (alt.startsWith(distRoot)) {
+        const altInfo = await stat(alt).catch(() => null);
+        if (altInfo) {
+          path = alt;
+          info = altInfo;
+        }
+      }
+    }
     if (info?.isDirectory()) {
       if (!url.pathname.endsWith('/')) {
         res.writeHead(301, { Location: `${url.pathname}/` }).end();

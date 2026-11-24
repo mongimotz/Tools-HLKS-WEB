@@ -3,7 +3,7 @@
 // Same picture as the page: per path the level list (one line per operation), the sum and the receiver; then the
 // silencers with their front view.
 
-import { buildPdf, INK } from '../../lib/core/pdf.js';
+import { buildPdf, standardDecorate, INK } from '../../lib/core/pdf.js';
 import { fmt, fmtDate } from '../../lib/core/format.js';
 import { CALC_VERSION, DATA_VERSION, seriesOf } from './calc.js';
 import { SOURCES } from './data/index.js';
@@ -156,22 +156,12 @@ export async function buildReport(doc, result, envelope) {
     }
   };
 
-  const decorate = (w, i, total) => {
-    const top = 30;
-    w.text('HLKS-Tools', w.left, top, { size: 8, bold: true, color: INK.primary });
-    w.text(TOOL_NAME, w.left + w.measure('HLKS-Tools', 8, true) + 8, top, { size: 8, color: INK.text });
-    const right = [project.name, project.number].filter(Boolean).join(' | ');
-    w.text(right, w.right, top, { size: 8, color: INK.text, align: 'right', maxWidth: w.contentWidth / 2 });
-    w.line(w.left, top + 7, w.right, top + 7, { color: INK.border, width: 0.6 });
-    const fy = w.pageH - 24;
-    w.line(w.left, fy - 10, w.right, fy - 10, { color: INK.border, width: 0.4 });
-    w.text(`Berechnungsversion ${CALC_VERSION} | Herstellerdaten ${DATA_VERSION} | Eingaben eingebettet (data.json)`, w.left, fy, {
-      size: 6.5,
-      color: INK.muted,
-      maxWidth: w.contentWidth - 80,
-    });
-    w.text(`Seite ${i + 1} / ${total}`, w.right, fy, { size: 7, color: INK.muted, align: 'right' });
-  };
+  const decorate = standardDecorate({
+    toolName: TOOL_NAME,
+    project,
+    calcVersion: CALC_VERSION,
+    extraFooter: `Herstellerdaten ${DATA_VERSION}`,
+  });
 
   return buildPdf({
     envelope,

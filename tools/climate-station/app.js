@@ -10,6 +10,7 @@ import { DocumentStore } from '../../lib/core/store.js';
 import { fmt, parseNum, toInputValue } from '../../lib/core/format.js';
 import { html, icon, toast, bindThemeToggle, mountSourceLink } from '../../lib/core/ui.js';
 import { createIssuePanel } from '../../lib/core/issues.js';
+import { saveSiteContext } from '../../lib/core/project-info.js';
 
 const DRAFT_KEY = `hlks-tools:${TOOL_ID}:draft`;
 const API = 'https://api3.geo.admin.ch/rest/services';
@@ -104,6 +105,7 @@ async function fetchHeight() {
       // Not an undo step of its own: the height belongs to the site that was just set.
       now.height = Math.round(h);
       now.heightSource = 'swisstopo';
+      saveSiteContext({ altitude: now.height, label: now.label });
       app.store.committed = JSON.stringify(app.store.doc);
       app.store.writeDraft(app.store.committed);
     }
@@ -475,6 +477,7 @@ function bindActions() {
         change((s) => {
           s.site.height = v;
           s.site.heightSource = 'manual';
+          saveSiteContext({ altitude: v, label: s.site.label });
         });
       } else t.setAttribute('aria-invalid', 'true');
     } else if (t.id === 'w-height' || t.id === 'w-region') {

@@ -4,6 +4,7 @@ import { useEditor } from './store.ts';
 import { Icon } from './icons.tsx';
 import { EXAMPLES } from '../io/examples.ts';
 import { currentTheme, loadStyleFile, resetStyle, setMono, setPaperDark, toggleTheme } from '../io/style.ts';
+import { fsaSupported } from '../io/fsa.ts';
 import type { Schema, SheetShow } from '../model/types.ts';
 
 const SOURCE_URL = 'https://github.com/mongimotz/Tools-HLKS-WEB';
@@ -14,6 +15,7 @@ export interface ToolbarActions {
   save(): void;
   saveAs(): void;
   exportAs(kind: 'pdf' | 'svg' | 'png'): void;
+  toPdfEditor(): void;
   tidy(): void;
   fit(): void;
   zoom(k: number): void;
@@ -175,12 +177,30 @@ export function Toolbar({ a, symbolTab }: { a: ToolbarActions; symbolTab: boolea
                 <button role="menuitem" data-testid="export-pdf" onClick={(e) => (closeMenu(e), a.exportAs('pdf'))}>
                   PDF (Vektor, {st.doc.sheet.size} 1:1)
                 </button>
+                <button role="menuitem" data-testid="export-pdf-editor" onClick={(e) => (closeMenu(e), a.toPdfEditor())}>
+                  In PDF-Editor öffnen
+                </button>
                 <button role="menuitem" data-testid="export-svg" onClick={(e) => (closeMenu(e), a.exportAs('svg'))}>
                   SVG
                 </button>
                 <button role="menuitem" data-testid="export-png" onClick={(e) => (closeMenu(e), a.exportAs('png'))}>
                   PNG (300 dpi)
                 </button>
+                <hr />
+                <button role="menuitem" data-testid="save-as" onClick={(e) => (closeMenu(e), a.saveAs())}>
+                  Schema speichern unter… ({MOD}⇧S)
+                </button>
+                {fsaSupported && (
+                  <label className="menu-check">
+                    <input
+                      type="checkbox"
+                      checked={st.autosave}
+                      data-testid="toggle-autosave"
+                      onChange={(e) => a.setAutosave(e.target.checked)}
+                    />{' '}
+                    Automatisch speichern
+                  </label>
+                )}
                 <hr />
                 <label className="menu-check">
                   <input

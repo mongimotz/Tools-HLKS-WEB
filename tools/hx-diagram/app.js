@@ -30,8 +30,8 @@ import { buildCsv } from './csv.js';
 import { DocumentStore } from '../../lib/core/store.js';
 import { fmt, parseNum, toInputValue, todayIso } from '../../lib/core/format.js';
 import { createEnvelope, checkCompatibility, normalizeProject, EnvelopeError } from '../../lib/core/envelope.js';
-import { readEnvelopeFromFile, pickFile, download, safeFileName, takeHandoff, stashHandoff, enableFileDrop } from '../../lib/core/files.js';
-import { mountProjectInfo, newProject } from '../../lib/core/project-info.js';
+import { readAnyFile, routeToTool, pickFileWithHandle, saveFile, download, safeFileName, takeHandoff, openInPdfEditor, enableFileDrop } from '../../lib/core/files.js';
+import { mountProjectInfo, newProject, applyGlobalProject, readSiteContext } from '../../lib/core/project-info.js';
 import { findTool, toolUrl } from '../../lib/core/registry.js';
 import { html, raw, icon, toast, bindThemeToggle, mountSourceLink } from '../../lib/core/ui.js';
 import { createIssuePanel } from '../../lib/core/issues.js';
@@ -52,6 +52,7 @@ const ui = {
   result: null,
   fileNotes: [],
   keyStep: false,
+  pdfHandle: null,
 };
 
 let store;
@@ -79,12 +80,15 @@ function loadInitialDoc() {
   const draft = DocumentStore.readDraft(DRAFT_KEY);
   if (draft?.inputs) {
     try {
-      return { project: normalizeProject(draft.project), inputs: normalizeInputs(draft.inputs) };
+      return { project: applyGlobalProject(normalizeProject(draft.project)), inputs: normalizeInputs(draft.inputs) };
     } catch {
       /* fall through to an empty diagram */
     }
   }
-  return { project: newProject(), inputs: emptyInputs() };
+  const fresh = emptyInputs();
+  const site = readSiteContext();
+  if (site && fresh.site) fresh.site.altitude = site.altitude;
+  return { project: newProject(), inputs: fresh };
 }
 
 function currentEnvelope() {
@@ -98,11 +102,9 @@ function currentEnvelope() {
   });
 }
 
-async function openEnvelope(env, sourceName = '') {
+async function openEnvelope(env, sourceName = '', handle = null) {
   if (env.tool !== TOOL_ID) {
-    const tool = findTool(env.tool);
-    if (tool?.status === 'ready' && stashHandoff(env)) location.href = toolUrl(env.tool);
-    else toast('Unbekanntes Werkzeug', { kind: 'error' });
+    await routeToTool({ kind: 'envelope', envelope: env });
     return;
   }
   let notes;
@@ -114,6 +116,8 @@ async function openEnvelope(env, sourceName = '') {
   }
   const next = { project: normalizeProject(env.project), inputs: normalizeInputs(env.inputs) };
   store.replace(next);
+  store.markSaved();
+  ui.pdfHandle = /\.pdf$/i.test(sourceName) ? handle : null;
   ui.selected = null;
   const now = snapshotProjectOf(computeProject(next.inputs));
   for (const saved of env.snapshot?.calculations ?? []) {
@@ -128,27 +132,72 @@ async function openEnvelope(env, sourceName = '') {
   toast(sourceName || 'Geöffnet', { kind: 'success' });
 }
 
-async function openFile(file) {
+async function openFile(file, handle = null) {
   if (!file) return;
   try {
-    await openEnvelope(await readEnvelopeFromFile(file), file.name);
+    const res = await readAnyFile(file);
+    if (res.kind !== 'envelope' || res.envelope.tool !== TOOL_ID) {
+      await routeToTool(res);
+      return;
+    }
+    await openEnvelope(res.envelope, file.name, handle);
   } catch (e) {
     toast(e instanceof EnvelopeError ? e.message : `Datei nicht lesbar: ${e.message}`, { kind: 'error', timeout: 8000 });
   }
 }
 
+async function pickOpen() {
+  const picked = await pickFileWithHandle('.pdf,.json,.schema,application/pdf,application/json', [
+    { description: 'HLKS-Tools', accept: { 'application/pdf': ['.pdf'], 'application/json': ['.json', '.schema'] } },
+  ]);
+  if (picked) await openFile(picked.file, picked.handle);
+}
+
 const fileBaseName = () => ['hx-Diagramm', doc().project.name, doc().project.date || todayIso()];
 
-async function exportPdf() {
+async function buildCurrentPdf() {
+  store.commit();
+  const { buildReport } = await import('./report.js'); // pdf-lib + fonts load only when needed
+  return buildReport(doc(), computeProject(inputs()), currentEnvelope());
+}
+
+async function exportPdf(forcePicker = false) {
+  const btn = $('[data-action="export-pdf"]');
+  btn?.classList.add('is-busy');
   try {
-    store.commit();
-    const { buildReport } = await import('./report.js'); // pdf-lib + fonts load only when needed
-    const bytes = await buildReport(doc(), computeProject(inputs()), currentEnvelope());
-    download(bytes, safeFileName(fileBaseName(), 'pdf'), 'application/pdf');
-    toast('PDF gespeichert', { kind: 'success' });
+    const bytes = await buildCurrentPdf();
+    const saved = await saveFile({
+      data: bytes,
+      filename: safeFileName(fileBaseName(), 'pdf'),
+      handle: ui.pdfHandle,
+      forcePicker,
+    });
+    if (!saved) return;
+    ui.pdfHandle = saved.handle;
+    store.markSaved();
+    updateHistoryButtons();
+    toast(`${saved.name} gespeichert`, { kind: 'success' });
   } catch (e) {
     console.error(e);
     toast(`PDF-Fehler: ${e.message}`, { kind: 'error', timeout: 8000 });
+  } finally {
+    btn?.classList.remove('is-busy');
+  }
+}
+
+async function sendToPdfEditor() {
+  const btn = $('[data-action="export-pdf"]');
+  btn?.classList.add('is-busy');
+  try {
+    const bytes = await buildCurrentPdf();
+    if (!(await openInPdfEditor(bytes, safeFileName(fileBaseName(), 'pdf')))) {
+      toast('Übergabe blockiert (Browser-Speicher gesperrt)', { kind: 'error', timeout: 7000 });
+    }
+  } catch (e) {
+    console.error(e);
+    toast(`PDF-Fehler: ${e.message}`, { kind: 'error', timeout: 8000 });
+  } finally {
+    btn?.classList.remove('is-busy');
   }
 }
 
@@ -156,7 +205,9 @@ async function exportBlank() {
   try {
     const { buildBlankSheet } = await import('./report.js');
     const bytes = await buildBlankSheet(inputs().site, activeCalculation().range);
-    download(bytes, safeFileName(['hx-Diagramm', `${fmt(inputs().site.altitude, 0)} m`], 'pdf'), 'application/pdf');
+    const name = safeFileName(['hx-Diagramm', `${fmt(inputs().site.altitude, 0)} m`], 'pdf');
+    download(bytes, name, 'application/pdf');
+    toast(`${name} gespeichert`, { kind: 'success' });
   } catch (e) {
     console.error(e);
     toast(`PDF-Fehler: ${e.message}`, { kind: 'error', timeout: 8000 });
@@ -169,7 +220,9 @@ async function exportImage() {
     const host = $('#diagram');
     const c = activeCalculation();
     const bytes = await buildPng(ui.result, c, pressure(), { width: host.clientWidth, height: host.clientHeight, font: FONT });
-    download(bytes, safeFileName([...fileBaseName(), calculationName(c, inputs().calculations.indexOf(c))], 'png'), 'image/png');
+    const name = safeFileName([...fileBaseName(), calculationName(c, inputs().calculations.indexOf(c))], 'png');
+    download(bytes, name, 'image/png');
+    toast(`${name} gespeichert`, { kind: 'success' });
   } catch (e) {
     console.error(e);
     toast(`Bild-Fehler: ${e.message}`, { kind: 'error', timeout: 8000 });
@@ -178,18 +231,26 @@ async function exportImage() {
 
 function exportJson() {
   store.commit();
-  download(JSON.stringify(currentEnvelope(), null, 2), safeFileName(fileBaseName(), 'json'), 'application/json');
+  const name = safeFileName(fileBaseName(), 'json');
+  download(JSON.stringify(currentEnvelope(), null, 2), name, 'application/json');
+  toast(`${name} gespeichert`, { kind: 'success' });
 }
 
 function exportCsv() {
   store.commit();
-  download(buildCsv(doc()), safeFileName(fileBaseName(), 'csv'), 'text/csv;charset=utf-8');
+  const name = safeFileName(fileBaseName(), 'csv');
+  download(buildCsv(doc()), name, 'text/csv;charset=utf-8');
+  toast(`${name} gespeichert`, { kind: 'success' });
 }
 
 const UNDO_ACTION = { icon: 'undo', label: 'Rückgängig', run: () => undo() };
 
 function newDocument() {
-  store.replace({ project: newProject(), inputs: emptyInputs() });
+  const fresh = emptyInputs();
+  const site = readSiteContext();
+  if (site && fresh.site) fresh.site.altitude = site.altitude;
+  ui.pdfHandle = null;
+  store.replace({ project: newProject(), inputs: fresh });
   ui.fileNotes = [];
   ui.selected = null;
   renderAll();
@@ -197,7 +258,8 @@ function newDocument() {
 }
 
 function loadExample() {
-  store.replace({ project: { ...newProject(), name: 'Beispiel' }, inputs: exampleInputs() });
+  ui.pdfHandle = null;
+  store.replace({ project: { ...doc().project }, inputs: exampleInputs() });
   ui.fileNotes = [];
   ui.selected = null;
   renderAll();
@@ -264,6 +326,7 @@ function renderTabs() {
 function updateHistoryButtons() {
   $('[data-action="undo"]').disabled = !store.canUndo;
   $('[data-action="redo"]').disabled = !store.canRedo;
+  $('[data-action="export-pdf"]')?.classList.toggle('is-dirty', store.isDirty);
 }
 
 function renderSite() {
@@ -1121,8 +1184,10 @@ function bindToolbar() {
       case 'add-menu': toggleMenu($('#add-menu'), a); break;
       case 'undo': undo(); break;
       case 'redo': redo(); break;
-      case 'open': openFile(await pickFile()); break;
-      case 'export-pdf': exportPdf(); break;
+      case 'open': pickOpen(); break;
+      case 'export-pdf': exportPdf(false); break;
+      case 'export-pdf-as': exportPdf(true); break;
+      case 'to-pdf-editor': sendToPdfEditor(); break;
       case 'export-json': exportJson(); break;
       case 'export-csv': exportCsv(); break;
       case 'export-blank': exportBlank(); break;
@@ -1157,10 +1222,10 @@ function bindToolbar() {
       redo();
     } else if (k === 's') {
       e.preventDefault();
-      exportPdf();
+      exportPdf(e.shiftKey);
     } else if (k === 'o') {
       e.preventDefault();
-      pickFile().then(openFile);
+      pickOpen();
     }
   });
 }
@@ -1199,6 +1264,9 @@ async function start() {
   bindInputs();
   bindDiagram();
   enableFileDrop(openFile);
+  window.addEventListener('beforeunload', (e) => {
+    if (ui.pdfHandle && store.isDirty) e.preventDefault();
+  });
   renderAll();
   if (handoff) await openEnvelope(handoff);
 }

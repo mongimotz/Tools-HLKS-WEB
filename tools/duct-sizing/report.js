@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // PDF report for the duct sizing tool. No DOM: also used by Node tests.
 
-import { buildPdf, INK } from '../../lib/core/pdf.js';
+import { buildPdf, standardDecorate, INK } from '../../lib/core/pdf.js';
 import { fmt, fmtSig, fmtDate } from '../../lib/core/format.js';
 import { computeProject, snapshotProjectOf, CALC_VERSION, HOUR_COLUMNS, RECOMMENDED_MAX_RATIO } from './calc.js';
 import { TOOL_NAME, SHAPE_LABELS, modeLabel, ratioText, sizeText, issueText } from './labels.js';
@@ -156,18 +156,12 @@ export async function buildReport(doc, _result, envelope) {
     });
   };
 
-  const decorate = (w, i, total) => {
-    const top = 30;
-    w.text('HLKS-Tools', w.left, top, { size: 8, bold: true, color: INK.primary });
-    w.text(`${TOOL_NAME} | ${pageLabels[i]}`, w.left + w.measure('HLKS-Tools', 8, true) + 8, top, { size: 8, color: INK.text, maxWidth: w.contentWidth / 2 - 60 });
-    const right = [project.name, project.number].filter(Boolean).join(' | ');
-    w.text(right, w.right, top, { size: 8, color: INK.text, align: 'right', maxWidth: w.contentWidth / 2 });
-    w.line(w.left, top + 7, w.right, top + 7, { color: INK.border, width: 0.6 });
-    const fy = w.pageH - 24;
-    w.line(w.left, fy - 10, w.right, fy - 10, { color: INK.border, width: 0.4 });
-    w.text(`Berechnungsversion ${CALC_VERSION} | Eingaben eingebettet (data.json)`, w.left, fy, { size: 6.5, color: INK.muted, maxWidth: w.contentWidth - 80 });
-    w.text(`Seite ${i + 1} / ${total}`, w.right, fy, { size: 7, color: INK.muted, align: 'right' });
-  };
+  const decorate = standardDecorate({
+    toolName: TOOL_NAME,
+    project,
+    calcVersion: CALC_VERSION,
+    pageLabel: (i) => pageLabels[i],
+  });
 
   return buildPdf({
     envelope: { ...envelope, project, inputs: doc.inputs, snapshot: snapshotProjectOf(results) },

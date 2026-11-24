@@ -18,7 +18,8 @@
     <header class="home-head">
       <h1 class="wordmark">HLKS-Tools</h1>
       <div class="home-actions">
-        <button class="btn primary" id="open-file" title="Öffnen (PDF, JSON)"></button>
+        <button class="btn" id="open-dossier" title="Projekt-Dossier erstellen"></button>
+        <button class="btn primary" id="open-file" title="Öffnen (PDF, JSON, .schema)"></button>
         <button class="btn ghost icon-only" id="theme-toggle"></button>
       </div>
     </header>
@@ -27,6 +28,7 @@
     <nav class="general-tools" id="general-tools" aria-label="Weitere Werkzeuge" hidden></nav>
   </div>
 
-  <div class="drop-overlay" aria-hidden="true"><span>PDF / JSON öffnen</span></div>
+  <dialog id="dossier-dialog" class="dossier-dialog" aria-label="Projekt-Dossier"></dialog>
+  <div class="drop-overlay" aria-hidden="true"><span>PDF / JSON / .schema öffnen</span></div>
 </body>
 </html>

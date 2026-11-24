@@ -56,9 +56,9 @@ import { buildCsv } from './csv.js';
 import { DocumentStore } from '../../lib/core/store.js';
 import { fmt, parseNum, toInputValue, todayIso } from '../../lib/core/format.js';
 import { createEnvelope, checkCompatibility, normalizeProject, EnvelopeError } from '../../lib/core/envelope.js';
-import { readEnvelopeFromFile, pickFile, download, safeFileName, takeHandoff, stashHandoff, enableFileDrop } from '../../lib/core/files.js';
+import { readAnyFile, routeToTool, pickFileWithHandle, saveFile, download, safeFileName, takeHandoff, openInPdfEditor, enableFileDrop } from '../../lib/core/files.js';
 import { findTool, toolUrl } from '../../lib/core/registry.js';
-import { mountProjectInfo, newProject } from '../../lib/core/project-info.js';
+import { mountProjectInfo, newProject, applyGlobalProject } from '../../lib/core/project-info.js';
 import { html, raw, icon, toast, bindThemeToggle, mountSourceLink } from '../../lib/core/ui.js';
 import { bindRowDrag, moveBefore } from '../../lib/core/drag.js';
 import { createIssuePanel } from '../../lib/core/issues.js';
@@ -76,6 +76,7 @@ const ui = {
   result: null,
   variants: [], // list shown in the design panel (for "take")
   fileNotes: [],
+  pdfHandle: null,
 };
 
 let store;
@@ -110,20 +111,21 @@ function loadInitialDoc() {
     ui.fileNotes = [{ id: 'draft-version', text: `Entwurf nicht geöffnet: Eingabeversion ${draft.version ?? 'unbekannt'}, aktuell ${INPUT_VERSION}` }];
   } else if (draft?.inputs?.paths) {
     try {
-      return { version: INPUT_VERSION, project: normalizeProject(draft.project), inputs: normalizeInputs(draft.inputs) };
+      return { version: INPUT_VERSION, project: applyGlobalProject(normalizeProject(draft.project)), inputs: normalizeInputs(draft.inputs) };
     } catch {
-      /* fall through to the example */
+      /* fall through to an empty document */
     }
   }
-  return exampleDoc();
+  return { version: INPUT_VERSION, project: newProject(), inputs: emptyInputs() };
 }
 
-const exampleDoc = () => ({ version: INPUT_VERSION, project: { ...newProject(), name: 'Beispiel' }, inputs: exampleInputs() });
+const exampleDoc = () => ({ version: INPUT_VERSION, project: { ...doc().project }, inputs: exampleInputs() });
 
 const UNDO_ACTION = { icon: 'undo', label: 'Rückgängig', run: () => undo() };
 
 function replaceDocument(next, message) {
   next.version = INPUT_VERSION;
+  ui.pdfHandle = null;
   store.replace(next);
   ui.pathId = next.inputs.paths[0]?.id ?? null;
   ui.selectedId = null;
@@ -143,11 +145,9 @@ function currentEnvelope() {
   });
 }
 
-async function openEnvelope(env, sourceName = '') {
+async function openEnvelope(env, sourceName = '', handle = null) {
   if (env.tool !== TOOL_ID) {
-    const tool = findTool(env.tool);
-    if (tool?.status === 'ready' && stashHandoff(env)) location.href = toolUrl(env.tool);
-    else toast('Unbekanntes Werkzeug', { kind: 'error' });
+    await routeToTool({ kind: 'envelope', envelope: env });
     return;
   }
   let notes;
@@ -159,6 +159,8 @@ async function openEnvelope(env, sourceName = '') {
   }
   const next = { version: INPUT_VERSION, project: normalizeProject(env.project), inputs: normalizeInputs(env.inputs) };
   store.replace(next);
+  store.markSaved();
+  ui.pdfHandle = /\.pdf$/i.test(sourceName) ? handle : null;
   ui.pathId = next.inputs.paths[0]?.id ?? null;
   ui.selectedId = null;
   const stale = staleRows(next.inputs);
@@ -169,14 +171,25 @@ async function openEnvelope(env, sourceName = '') {
   toast(sourceName || 'Geöffnet', { kind: 'success' });
 }
 
-async function openFile(file) {
+async function openFile(file, handle = null) {
   if (!file) return;
   try {
-    const env = await readEnvelopeFromFile(file);
-    await openEnvelope(env, file.name);
+    const res = await readAnyFile(file);
+    if (res.kind !== 'envelope' || res.envelope.tool !== TOOL_ID) {
+      await routeToTool(res);
+      return;
+    }
+    await openEnvelope(res.envelope, file.name, handle);
   } catch (e) {
     toast(e instanceof EnvelopeError ? e.message : `Datei nicht lesbar: ${e.message}`, { kind: 'error', timeout: 8000 });
   }
+}
+
+async function pickOpen() {
+  const picked = await pickFileWithHandle('.pdf,.json,.schema,application/pdf,application/json', [
+    { description: 'HLKS-Tools', accept: { 'application/pdf': ['.pdf'], 'application/json': ['.json', '.schema'] } },
+  ]);
+  if (picked) await openFile(picked.file, picked.handle);
 }
 
 /** Keep file notes in the same status panel as calculation issues. */
@@ -214,27 +227,64 @@ function fileBaseName() {
   return ['Schalldämpfer', p.name, p.date || todayIso()];
 }
 
-async function exportPdf() {
+async function buildCurrentPdf() {
+  store.commit();
+  const { buildReport } = await import('./report.js'); // pdf-lib + fonts load only when needed
+  return buildReport(doc(), compute(inputs()), currentEnvelope());
+}
+
+async function exportPdf(forcePicker = false) {
+  const btn = $('[data-action="export-pdf"]');
+  btn?.classList.add('is-busy');
   try {
-    store.commit();
-    const { buildReport } = await import('./report.js'); // pdf-lib + fonts load only when needed
-    const bytes = await buildReport(doc(), compute(inputs()), currentEnvelope());
-    download(bytes, safeFileName(fileBaseName(), 'pdf'), 'application/pdf');
-    toast('PDF gespeichert', { kind: 'success' });
+    const bytes = await buildCurrentPdf();
+    const saved = await saveFile({
+      data: bytes,
+      filename: safeFileName(fileBaseName(), 'pdf'),
+      handle: ui.pdfHandle,
+      forcePicker,
+    });
+    if (!saved) return;
+    ui.pdfHandle = saved.handle;
+    store.markSaved();
+    updateHistoryButtons();
+    toast(`${saved.name} gespeichert`, { kind: 'success' });
   } catch (e) {
     console.error(e);
     toast(`PDF-Fehler: ${e.message}`, { kind: 'error', timeout: 8000 });
+  } finally {
+    btn?.classList.remove('is-busy');
+  }
+}
+
+async function sendToPdfEditor() {
+  const btn = $('[data-action="export-pdf"]');
+  btn?.classList.add('is-busy');
+  try {
+    const bytes = await buildCurrentPdf();
+    if (!(await openInPdfEditor(bytes, safeFileName(fileBaseName(), 'pdf')))) {
+      toast('Übergabe blockiert (Browser-Speicher gesperrt)', { kind: 'error', timeout: 7000 });
+    }
+  } catch (e) {
+    console.error(e);
+    toast(`PDF-Fehler: ${e.message}`, { kind: 'error', timeout: 8000 });
+  } finally {
+    btn?.classList.remove('is-busy');
   }
 }
 
 function exportCsv() {
   store.commit();
-  download(buildCsv(doc(), compute(inputs())), safeFileName(fileBaseName(), 'csv'), 'text/csv;charset=utf-8');
+  const name = safeFileName(fileBaseName(), 'csv');
+  download(buildCsv(doc(), compute(inputs())), name, 'text/csv;charset=utf-8');
+  toast(`${name} gespeichert`, { kind: 'success' });
 }
 
 function exportJson() {
   store.commit();
-  download(JSON.stringify(currentEnvelope(), null, 2), safeFileName(fileBaseName(), 'json'), 'application/json');
+  const name = safeFileName(fileBaseName(), 'json');
+  download(JSON.stringify(currentEnvelope(), null, 2), name, 'application/json');
+  toast(`${name} gespeichert`, { kind: 'success' });
 }
 
 function undo() {
@@ -287,6 +337,7 @@ function updateOutputs() {
 function updateHistoryButtons() {
   $('[data-action="undo"]').disabled = !store.canUndo;
   $('[data-action="redo"]').disabled = !store.canRedo;
+  $('[data-action="export-pdf"]')?.classList.toggle('is-dirty', store.isDirty);
 }
 
 // ---- focus keeping across re-renders -------------------------------------------
@@ -1099,9 +1150,11 @@ function bindToolbar() {
         break;
       case 'undo': undo(); break;
       case 'redo': redo(); break;
-      case 'open': openFile(await pickFile()); break;
+      case 'open': pickOpen(); break;
       case 'export-json': exportJson(); break;
-      case 'export-pdf': exportPdf(); break;
+      case 'export-pdf': exportPdf(false); break;
+      case 'export-pdf-as': exportPdf(true); break;
+      case 'to-pdf-editor': sendToPdfEditor(); break;
       case 'export-csv': exportCsv(); break;
       case 'new': replaceDocument({ project: newProject(), inputs: emptyInputs() }, 'Neue Berechnung'); break;
       case 'example': replaceDocument(exampleDoc(), 'Beispiel geladen'); break;
@@ -1120,10 +1173,10 @@ function bindToolbar() {
       redo();
     } else if (k === 's') {
       e.preventDefault();
-      exportPdf();
+      exportPdf(e.shiftKey);
     } else if (k === 'o') {
       e.preventDefault();
-      pickFile().then(openFile);
+      pickOpen();
     }
   });
 }
@@ -1175,6 +1228,9 @@ async function start() {
   bindWork();
   enableCombos($('#design'), (name) => name === 'gap' && selected()?.kind === 'rect' ? rectChoices(selected().rect).s : []);
   enableFileDrop(openFile);
+  window.addEventListener('beforeunload', (e) => {
+    if (ui.pdfHandle && store.isDirty) e.preventDefault();
+  });
   renderAll();
   if (handoff) await openEnvelope(handoff);
 }
