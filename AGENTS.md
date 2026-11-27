@@ -1,6 +1,11 @@
 In-Chat responses should be kept concise and to the point.
 
-End every task with an 80/20 summary, max 10 lines: the 20% I have to read, what to check, what you were unsure about, what's next. No recap of your reasoning, no restating what I asked.
+End every task with a short summary covering these three things:
+- What did you actually do? What did you change?
+- Assumptions you made that i need to verify.
+- The next step.
+
+Don't ask to commit or push for me.
 
 ## Project conventions
 
